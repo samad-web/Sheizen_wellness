@@ -101,30 +101,92 @@ export type Database = {
         }
         Relationships: []
       }
+      action_plans: {
+        Row: {
+          age: number | null
+          client_id: string
+          created_at: string | null
+          daily_habits: Json | null
+          diet_type: string | null
+          donts: Json | null
+          dos: Json | null
+          goals: string | null
+          id: string
+          lifestyle: string | null
+          plan_image_url: string
+          updated_at: string | null
+        }
+        Insert: {
+          age?: number | null
+          client_id: string
+          created_at?: string | null
+          daily_habits?: Json | null
+          diet_type?: string | null
+          donts?: Json | null
+          dos?: Json | null
+          goals?: string | null
+          id?: string
+          lifestyle?: string | null
+          plan_image_url: string
+          updated_at?: string | null
+        }
+        Update: {
+          age?: number | null
+          client_id?: string
+          created_at?: string | null
+          daily_habits?: Json | null
+          diet_type?: string | null
+          donts?: Json | null
+          dos?: Json | null
+          goals?: string | null
+          id?: string
+          lifestyle?: string | null
+          plan_image_url?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "action_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessments: {
         Row: {
+          ai_generated: boolean | null
+          assessment_data: Json | null
           client_id: string
           created_at: string
           file_name: string | null
           file_url: string | null
+          form_responses: Json | null
           id: string
           notes: string | null
           updated_at: string
         }
         Insert: {
+          ai_generated?: boolean | null
+          assessment_data?: Json | null
           client_id: string
           created_at?: string
           file_name?: string | null
           file_url?: string | null
+          form_responses?: Json | null
           id?: string
           notes?: string | null
           updated_at?: string
         }
         Update: {
+          ai_generated?: boolean | null
+          assessment_data?: Json | null
           client_id?: string
           created_at?: string
           file_name?: string | null
           file_url?: string | null
+          form_responses?: Json | null
           id?: string
           notes?: string | null
           updated_at?: string
@@ -179,6 +241,47 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "message_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calendar_events: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          description: string | null
+          event_date: string
+          event_type: string | null
+          id: string
+          metadata: Json | null
+          title: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          description?: string | null
+          event_date: string
+          event_type?: string | null
+          id?: string
+          metadata?: Json | null
+          title: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          description?: string | null
+          event_date?: string
+          event_type?: string | null
+          id?: string
+          metadata?: Json | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -284,6 +387,56 @@ export type Database = {
           },
         ]
       }
+      diet_preferences: {
+        Row: {
+          allergies: string[] | null
+          calorie_target: number | null
+          client_id: string
+          created_at: string | null
+          dietary_type: string | null
+          food_dislikes: Json | null
+          id: string
+          meal_timings: Json | null
+          meals_per_day: number | null
+          preferences_notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allergies?: string[] | null
+          calorie_target?: number | null
+          client_id: string
+          created_at?: string | null
+          dietary_type?: string | null
+          food_dislikes?: Json | null
+          id?: string
+          meal_timings?: Json | null
+          meals_per_day?: number | null
+          preferences_notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allergies?: string[] | null
+          calorie_target?: number | null
+          client_id?: string
+          created_at?: string | null
+          dietary_type?: string | null
+          food_dislikes?: Json | null
+          id?: string
+          meal_timings?: Json | null
+          meals_per_day?: number | null
+          preferences_notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diet_preferences_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       files: {
         Row: {
           client_id: string
@@ -315,6 +468,53 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "files_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      follow_ups: {
+        Row: {
+          admin_notes: string | null
+          client_id: string
+          completed_at: string | null
+          created_at: string | null
+          follow_up_type: string | null
+          id: string
+          pre_call_form_data: Json | null
+          scheduled_date: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          client_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          follow_up_type?: string | null
+          id?: string
+          pre_call_form_data?: Json | null
+          scheduled_date: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          follow_up_type?: string | null
+          id?: string
+          pre_call_form_data?: Json | null
+          scheduled_date?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follow_ups_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
@@ -449,6 +649,53 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "weekly_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_compliance: {
+        Row: {
+          by_day: Json | null
+          by_meal_type: Json | null
+          calculated_at: string | null
+          calorie_accuracy: number | null
+          client_id: string
+          id: string
+          overall_compliance: number | null
+          photo_compliance: number | null
+          week_end: string
+          week_start: string
+        }
+        Insert: {
+          by_day?: Json | null
+          by_meal_type?: Json | null
+          calculated_at?: string | null
+          calorie_accuracy?: number | null
+          client_id: string
+          id?: string
+          overall_compliance?: number | null
+          photo_compliance?: number | null
+          week_end: string
+          week_start: string
+        }
+        Update: {
+          by_day?: Json | null
+          by_meal_type?: Json | null
+          calculated_at?: string | null
+          calorie_accuracy?: number | null
+          client_id?: string
+          id?: string
+          overall_compliance?: number | null
+          photo_compliance?: number | null
+          week_end?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_compliance_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
