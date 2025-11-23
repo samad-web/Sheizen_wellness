@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
@@ -37,6 +38,7 @@ export default function ClientDashboard() {
   const [todayCalories, setTodayCalories] = useState(0);
   const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "reports">("today");
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [weightInput, setWeightInput] = useState<string>("");
 
   useEffect(() => {
     if (!user) {
@@ -175,6 +177,35 @@ export default function ClientDashboard() {
 
     toast.success(`Added ${minutes} minutes`);
     fetchClientData();
+  };
+
+  const logWeight = async (weight: number) => {
+    if (!clientData) return;
+
+    const today = new Date().toISOString().split("T")[0];
+    const updateData = {
+      client_id: clientData.id,
+      log_date: today,
+      weight: weight,
+    };
+
+    try {
+      if (todayLog) {
+        await supabase.from("daily_logs").update(updateData).eq("id", todayLog.id);
+      } else {
+        const { data } = await supabase.from("daily_logs").insert(updateData).select().single();
+        setTodayLog(data);
+      }
+
+      // Update last_weight in clients table for tracking
+      await supabase.from("clients").update({ last_weight: weight }).eq("id", clientData.id);
+
+      toast.success(`Weight logged: ${weight} kg`);
+      fetchClientData();
+    } catch (error) {
+      console.error("Error logging weight:", error);
+      toast.error("Failed to log weight");
+    }
   };
 
   if (loading) {
@@ -400,6 +431,38 @@ export default function ClientDashboard() {
                         >
                           <Plus className="mr-1 h-3 w-3" />
                           60 min
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Weight Logging */}
+                    <div>
+                      <Label className="mb-2 block">Log Weight</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="0.1"
+                          min="20"
+                          max="300"
+                          placeholder="Enter weight in kg"
+                          value={weightInput}
+                          onChange={(e) => setWeightInput(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          onClick={() => {
+                            const weight = parseFloat(weightInput);
+                            if (!isNaN(weight) && weight >= 20 && weight <= 300) {
+                              logWeight(weight);
+                              setWeightInput("");
+                            } else {
+                              toast.error("Please enter a valid weight (20-300 kg)");
+                            }
+                          }}
+                          disabled={!weightInput}
+                        >
+                          <Scale className="mr-2 h-4 w-4" />
+                          Log
                         </Button>
                       </div>
                     </div>
