@@ -76,22 +76,52 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
       setEndDate(plan.end_date);
       setStatus((plan.status === "published" ? "published" : "draft") as "draft" | "published");
 
-      const { data: cards, error: cardsError } = await supabase
+      // Initialize all 28 empty meal cards first
+      const emptyCards: MealCard[] = [];
+      for (let day = 1; day <= 7; day++) {
+        MEAL_TYPES.forEach(type => {
+          emptyCards.push({
+            day_number: day,
+            meal_type: type,
+            meal_name: "",
+            description: "",
+            ingredients: "",
+            instructions: "",
+            kcal: 0,
+          });
+        });
+      }
+
+      // Fetch existing meal cards from database
+      const { data: existingCards, error: cardsError } = await supabase
         .from("meal_cards")
         .select("*")
         .eq("plan_id", planId);
 
       if (cardsError) throw cardsError;
 
-      setMealCards(cards.map(card => ({
-        day_number: card.day_number,
-        meal_type: card.meal_type,
-        meal_name: card.meal_name,
-        description: card.description || "",
-        ingredients: card.ingredients || "",
-        instructions: card.instructions || "",
-        kcal: card.kcal,
-      })));
+      // Merge existing data into the empty cards structure
+      const mergedCards = emptyCards.map(emptyCard => {
+        const existingCard = existingCards?.find(
+          c => c.day_number === emptyCard.day_number && c.meal_type === emptyCard.meal_type
+        );
+        
+        if (existingCard) {
+          return {
+            day_number: existingCard.day_number,
+            meal_type: existingCard.meal_type,
+            meal_name: existingCard.meal_name,
+            description: existingCard.description || "",
+            ingredients: existingCard.ingredients || "",
+            instructions: existingCard.instructions || "",
+            kcal: existingCard.kcal,
+          };
+        }
+        
+        return emptyCard;
+      });
+
+      setMealCards(mergedCards);
     } catch (error: any) {
       toast.error(error.message || "Failed to load plan");
     }
