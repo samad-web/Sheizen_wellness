@@ -15,6 +15,7 @@ import {
   Eye,
   TrendingUp
 } from "lucide-react";
+import { FoodItemsManager } from "@/components/FoodItemsManager";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -222,19 +223,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="food">
-            <Card>
-              <CardHeader>
-                <CardTitle>Food Items Manager</CardTitle>
-                <CardDescription>Manage your food database</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">Food database</p>
-                  <p className="text-sm">Food items management coming soon</p>
-                </div>
-              </CardContent>
-            </Card>
+            <FoodItemsManager />
           </TabsContent>
 
           <TabsContent value="recipes">
