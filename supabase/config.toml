@@ -11,3 +11,15 @@ verify_jwt = false
 
 [functions.daily-motivation-sender]
 verify_jwt = false
+
+[functions.generate-health-assessment]
+verify_jwt = true
+
+[functions.generate-action-plan]
+verify_jwt = true
+
+[functions.generate-diet-plan]
+verify_jwt = true
+
+[functions.check-follow-ups]
+verify_jwt = false
