@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Save, Send, FileText, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Badge } from "@/components/ui/badge";
 
 interface HealthAssessmentCardEditorProps {
@@ -162,7 +162,7 @@ export function HealthAssessmentCardEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-7xl max-h-screen overflow-hidden flex flex-col">
         <DialogHeader className="px-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-wellness-green/20 to-wellness-mint/20 rounded-lg">
@@ -176,7 +176,7 @@ export function HealthAssessmentCardEditor({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 px-6">
+        <div className="flex-1 overflow-y-auto max-h-[90vh] md:max-h-[80vh] px-6 scrollbar-thin">
           <div className="grid grid-cols-2 gap-6 pb-6">
           {/* Edit Form */}
           <div className="space-y-4">
@@ -339,7 +339,7 @@ export function HealthAssessmentCardEditor({
             </Card>
           </div>
         </div>
-        </ScrollArea>
+        </div>
 
         <div className="flex justify-end gap-2 px-6 py-4 border-t bg-muted/30">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
