@@ -40,6 +40,8 @@ export default function ClientDashboard() {
   const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "reports">("today");
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [weightInput, setWeightInput] = useState<string>("");
+  const [waterInput, setWaterInput] = useState<string>("");
+  const [activityInput, setActivityInput] = useState<string>("");
 
   useEffect(() => {
     if (!user) {
@@ -153,6 +155,7 @@ export default function ClientDashboard() {
     }
 
     toast.success(`Added ${amount}ml water`);
+    setWaterInput("");
     fetchClientData();
   };
 
@@ -177,6 +180,7 @@ export default function ClientDashboard() {
     }
 
     toast.success(`Added ${minutes} minutes`);
+    setActivityInput("");
     fetchClientData();
   };
 
@@ -371,7 +375,7 @@ export default function ClientDashboard() {
                     {/* Water Quick Add */}
                     <div>
                       <Label className="mb-2 block">Add Water</Label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mb-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -400,12 +404,39 @@ export default function ClientDashboard() {
                           750ml
                         </Button>
                       </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="50"
+                          min="50"
+                          max="2000"
+                          placeholder="Custom amount (ml)"
+                          value={waterInput}
+                          onChange={(e) => setWaterInput(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="default"
+                          onClick={() => {
+                            const amount = parseInt(waterInput);
+                            if (isNaN(amount) || amount < 50 || amount > 2000) {
+                              toast.error("Please enter a valid amount (50-2000ml)");
+                              return;
+                            }
+                            quickAddWater(amount);
+                          }}
+                          className="min-w-[100px]"
+                        >
+                          <Droplets className="mr-2 h-4 w-4" />
+                          Add
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Activity Quick Add */}
                     <div>
                       <Label className="mb-2 block">Log Activity</Label>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 mb-2">
                         <Button
                           variant="outline"
                           size="sm"
@@ -432,6 +463,33 @@ export default function ClientDashboard() {
                         >
                           <Plus className="mr-1 h-3 w-3" />
                           60 min
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="5"
+                          min="5"
+                          max="300"
+                          placeholder="Custom minutes"
+                          value={activityInput}
+                          onChange={(e) => setActivityInput(e.target.value)}
+                          className="flex-1"
+                        />
+                        <Button
+                          variant="default"
+                          onClick={() => {
+                            const minutes = parseInt(activityInput);
+                            if (isNaN(minutes) || minutes < 5 || minutes > 300) {
+                              toast.error("Please enter valid minutes (5-300)");
+                              return;
+                            }
+                            quickAddActivity(minutes);
+                          }}
+                          className="min-w-[100px]"
+                        >
+                          <Activity className="mr-2 h-4 w-4" />
+                          Log
                         </Button>
                       </div>
                     </div>
