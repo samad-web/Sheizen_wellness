@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { MealPhotoUpload } from "@/components/MealPhotoUpload";
 import { FileUploadSection } from "@/components/FileUploadSection";
+import { WeeklyPlanViewer } from "@/components/WeeklyPlanViewer";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -284,19 +285,7 @@ export default function ClientDashboard() {
           </TabsContent>
 
           <TabsContent value="plan">
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Plan</CardTitle>
-                <CardDescription>Your personalized meal plan</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">No active plan available</p>
-                  <p className="text-sm">Your dietitian will create a personalized plan for you</p>
-                </div>
-              </CardContent>
-            </Card>
+            {clientData && <WeeklyPlanViewer clientId={clientData.id} />}
           </TabsContent>
 
           <TabsContent value="logs">
