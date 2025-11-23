@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Moon, Clock, Star, Sparkles, Save, Send, AlertCircle } from "lucide-react";
@@ -338,9 +340,20 @@ export function SleepCardEditor({
                     <Label htmlFor="overall_quality" className="text-xs text-muted-foreground">
                       Overall Sleep Quality Rating
                     </Label>
-                    <div className={`px-3 py-2 rounded-md border ${getQualityColor(formData.form_responses?.overall_sleep_quality_rating || '')} font-medium transition-all duration-200`}>
-                      {sleepQualityLabels[formData.form_responses?.overall_sleep_quality_rating || ''] || formData.form_responses?.overall_sleep_quality_rating || 'Not specified'}
-                    </div>
+                    <Select 
+                      value={formData.form_responses?.overall_sleep_quality_rating || ''} 
+                      onValueChange={(value) => updateField('form_responses.overall_sleep_quality_rating', value)}
+                    >
+                      <SelectTrigger className={`transition-all duration-200 ${getQualityColor(formData.form_responses?.overall_sleep_quality_rating || '')}`}>
+                        <SelectValue placeholder="Select quality rating" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="very_good">Very Good</SelectItem>
+                        <SelectItem value="fairly_good">Fairly Good</SelectItem>
+                        <SelectItem value="fairly_bad">Fairly Bad</SelectItem>
+                        <SelectItem value="very_bad">Very Bad</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -353,20 +366,42 @@ export function SleepCardEditor({
                 </div>
                 <div className="grid gap-4">
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
+                    <Label htmlFor="sleep_trouble" className="text-xs text-muted-foreground">
                       🌙 How Often Do You Experience Sleep Difficulties?
                     </Label>
-                    <Badge variant="outline" className="w-full justify-start py-2 font-normal">
-                      {sleepFrequencyLabels[formData.form_responses?.sleep_trouble_frequency || ''] || formData.form_responses?.sleep_trouble_frequency || 'Not specified'}
-                    </Badge>
+                    <Select 
+                      value={formData.form_responses?.sleep_trouble_frequency || ''} 
+                      onValueChange={(value) => updateField('form_responses.sleep_trouble_frequency', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_during_past_month">Not during past month</SelectItem>
+                        <SelectItem value="less_than_once_a_week">Less than once a week</SelectItem>
+                        <SelectItem value="once_or_twice_a_week">Once or twice a week</SelectItem>
+                        <SelectItem value="three_plus_times_a_week">3+ times a week</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
+                    <Label htmlFor="sleep_medicine" className="text-xs text-muted-foreground">
                       💊 Sleep Medication Usage Frequency
                     </Label>
-                    <Badge variant="outline" className="w-full justify-start py-2 font-normal">
-                      {sleepFrequencyLabels[formData.form_responses?.sleep_medicine_frequency || ''] || formData.form_responses?.sleep_medicine_frequency || 'Not specified'}
-                    </Badge>
+                    <Select 
+                      value={formData.form_responses?.sleep_medicine_frequency || ''} 
+                      onValueChange={(value) => updateField('form_responses.sleep_medicine_frequency', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_during_past_month">Not during past month</SelectItem>
+                        <SelectItem value="less_than_once_a_week">Less than once a week</SelectItem>
+                        <SelectItem value="once_or_twice_a_week">Once or twice a week</SelectItem>
+                        <SelectItem value="three_plus_times_a_week">3+ times a week</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -379,31 +414,55 @@ export function SleepCardEditor({
                 </div>
                 <div className="grid gap-4">
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
+                    <Label htmlFor="daytime_sleepiness" className="text-xs text-muted-foreground">
                       ☀️ Daytime Sleepiness Level
                     </Label>
-                    <Badge variant="secondary" className="w-full justify-start py-2 font-normal">
-                      {sleepFrequencyLabels[formData.form_responses?.daytime_sleepiness_frequency || ''] || formData.form_responses?.daytime_sleepiness_frequency || 'Not specified'}
-                    </Badge>
+                    <Select 
+                      value={formData.form_responses?.daytime_sleepiness_frequency || ''} 
+                      onValueChange={(value) => updateField('form_responses.daytime_sleepiness_frequency', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="not_during_past_month">Not during past month</SelectItem>
+                        <SelectItem value="less_than_once_a_week">Less than once a week</SelectItem>
+                        <SelectItem value="once_or_twice_a_week">Once or twice a week</SelectItem>
+                        <SelectItem value="three_plus_times_a_week">3+ times a week</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-muted-foreground">
+                    <Label htmlFor="enthusiasm" className="text-xs text-muted-foreground">
                       ⚡ Energy & Motivation Level
                     </Label>
-                    <Badge variant="secondary" className="w-full justify-start py-2 font-normal">
-                      {problemLevelLabels[formData.form_responses?.enthusiasm_problem_level || ''] || formData.form_responses?.enthusiasm_problem_level || 'Not specified'}
-                    </Badge>
+                    <Select 
+                      value={formData.form_responses?.enthusiasm_problem_level || ''} 
+                      onValueChange={(value) => updateField('form_responses.enthusiasm_problem_level', value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="no_problem">No problem at all</SelectItem>
+                        <SelectItem value="slight_problem">Only a very slight problem</SelectItem>
+                        <SelectItem value="somewhat_problem">Somewhat of a problem</SelectItem>
+                        <SelectItem value="very_big_problem">A very big problem</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
 
               {/* Sleep Symptoms */}
-              {formData.form_responses?.sleep_symptoms_observed && Array.isArray(formData.form_responses.sleep_symptoms_observed) && formData.form_responses.sleep_symptoms_observed.length > 0 && (
-                <div className="space-y-4 p-5 bg-gradient-to-br from-destructive/5 to-transparent rounded-xl border border-destructive/20 transition-all duration-300 hover:shadow-md">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                    <h4 className="font-medium text-sm">Observed Sleep Symptoms</h4>
-                  </div>
+              <div className="space-y-4 p-5 bg-gradient-to-br from-destructive/5 to-transparent rounded-xl border border-destructive/20 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <h4 className="font-medium text-sm">Observed Sleep Symptoms</h4>
+                </div>
+                
+                {/* Current Symptoms Display */}
+                {formData.form_responses?.sleep_symptoms_observed && Array.isArray(formData.form_responses.sleep_symptoms_observed) && formData.form_responses.sleep_symptoms_observed.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {formData.form_responses.sleep_symptoms_observed.map((symptom: string, idx: number) => (
                       <Badge key={idx} variant="destructive" className="px-3 py-1.5 font-normal">
@@ -411,8 +470,50 @@ export function SleepCardEditor({
                       </Badge>
                     ))}
                   </div>
+                )}
+                
+                {/* Editable Symptoms */}
+                <div className="space-y-2 pt-2 border-t border-destructive/10">
+                  <Label className="text-xs text-muted-foreground">Edit Symptoms (check/uncheck)</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      'Snoring',
+                      'Sleep Apnea',
+                      'Insomnia',
+                      'Restless Legs',
+                      'Night Sweats',
+                      'Frequent Waking',
+                      'Nightmares',
+                      'Teeth Grinding'
+                    ].map((symptom) => {
+                      const symptoms = formData.form_responses?.sleep_symptoms_observed || [];
+                      const isChecked = symptoms.includes(symptom);
+                      
+                      return (
+                        <div key={symptom} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`symptom-${symptom}`}
+                            checked={isChecked}
+                            onCheckedChange={(checked) => {
+                              const currentSymptoms = formData.form_responses?.sleep_symptoms_observed || [];
+                              const newSymptoms = checked
+                                ? [...currentSymptoms, symptom]
+                                : currentSymptoms.filter((s: string) => s !== symptom);
+                              updateField('form_responses.sleep_symptoms_observed', newSymptoms);
+                            }}
+                          />
+                          <Label 
+                            htmlFor={`symptom-${symptom}`} 
+                            className="text-xs cursor-pointer font-normal"
+                          >
+                            {symptom}
+                          </Label>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-              )}
+              </div>
 
               <Separator className="my-4" />
 
