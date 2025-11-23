@@ -472,6 +472,83 @@ export type Database = {
           },
         ]
       }
+      message_templates: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          template: string
+          trigger_event: string | null
+          variables: string[] | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          template: string
+          trigger_event?: string | null
+          variables?: string[] | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          template?: string
+          trigger_event?: string | null
+          variables?: string[] | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          client_id: string
+          content: string
+          created_at: string
+          id: string
+          is_read: boolean
+          message_type: string
+          metadata: Json | null
+          sender_id: string | null
+          sender_type: string
+        }
+        Insert: {
+          client_id: string
+          content: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_type: string
+          metadata?: Json | null
+          sender_id?: string | null
+          sender_type: string
+        }
+        Update: {
+          client_id?: string
+          content?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_type?: string
+          metadata?: Json | null
+          sender_id?: string | null
+          sender_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string

@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.check-achievements]
 verify_jwt = false
+
+[functions.send-automated-message]
+verify_jwt = false
+
+[functions.daily-motivation-sender]
+verify_jwt = false
