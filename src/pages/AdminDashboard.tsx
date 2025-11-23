@@ -25,6 +25,8 @@ import { CronJobsManager } from "@/components/CronJobsManager";
 import { WorkflowStatusWidget } from "@/components/WorkflowStatusWidget";
 import { PendingReviewDashboard } from "@/components/PendingReviewDashboard";
 import { HealthAssessmentCardEditor } from "@/components/HealthAssessmentCardEditor";
+import { StressCardEditor } from "@/components/StressCardEditor";
+import { SleepCardEditor } from "@/components/SleepCardEditor";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 
 export default function AdminDashboard() {
@@ -345,6 +347,34 @@ export default function AdminDashboard() {
 
         {reviewCardId && reviewCardType === 'health_assessment' && (
           <HealthAssessmentCardEditor
+            cardId={reviewCardId}
+            open={!!reviewCardId}
+            onOpenChange={(open) => {
+              if (!open) {
+                setReviewCardId(null);
+                setReviewCardType(null);
+              }
+            }}
+            onSave={() => setRefreshKey(prev => prev + 1)}
+          />
+        )}
+
+        {reviewCardId && reviewCardType === 'stress_card' && (
+          <StressCardEditor
+            cardId={reviewCardId}
+            open={!!reviewCardId}
+            onOpenChange={(open) => {
+              if (!open) {
+                setReviewCardId(null);
+                setReviewCardType(null);
+              }
+            }}
+            onSave={() => setRefreshKey(prev => prev + 1)}
+          />
+        )}
+
+        {reviewCardId && reviewCardType === 'sleep_card' && (
+          <SleepCardEditor
             cardId={reviewCardId}
             open={!!reviewCardId}
             onOpenChange={(open) => {
