@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { ChevronLeft, UtensilsCrossed, Phone, Trophy, Activity, Calendar as CalendarIcon, Loader2, Plus } from "lucide-react";
+import { ChevronLeft, UtensilsCrossed, Phone, Trophy, Activity, Calendar as CalendarIcon, Loader2, Plus, Edit, Trash } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { EventScheduleDialog } from "./EventScheduleDialog";
+import { EventEditDialog } from "./EventEditDialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 
 interface CalendarEvent {
   id: string;
@@ -23,14 +26,17 @@ interface CalendarDayDetailProps {
   events: CalendarEvent[];
   clientId: string;
   onBack: () => void;
+  onEventsChanged?: () => void;
 }
 
-export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDayDetailProps) {
+export function CalendarDayDetail({ date, events, clientId, onBack, onEventsChanged }: CalendarDayDetailProps) {
   const { userRole } = useAuth();
   const [mealPlanDetails, setMealPlanDetails] = useState<any[]>([]);
   const [dailyLogDetails, setDailyLogDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
 
   useEffect(() => {
     loadDayDetails();
@@ -119,6 +125,41 @@ export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDa
     return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
+  const handleEditEvent = (event: CalendarEvent) => {
+    setSelectedEvent(event);
+    setShowEditDialog(true);
+  };
+
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+
+  const handleDeleteEvent = (event: CalendarEvent) => {
+    setEventToDelete(event);
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!eventToDelete?.metadata?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('calendar_events')
+        .delete()
+        .eq('id', eventToDelete.metadata.id);
+
+      if (error) throw error;
+
+      toast.success("Meeting deleted successfully!");
+      setShowDeleteDialog(false);
+      setEventToDelete(null);
+      loadDayDetails();
+      onEventsChanged?.();
+    } catch (error: any) {
+      console.error("Error deleting meeting:", error);
+      toast.error(error.message || "Failed to delete meeting");
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -156,7 +197,7 @@ export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDa
                 <p className="text-sm text-muted-foreground">No events scheduled</p>
               ) : (
                 <div className="space-y-3">
-                   {events.map(event => (
+                  {events.map(event => (
                     <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
                       <Badge variant="outline" className={`${getEventColor(event.type)} shrink-0`}>
                         {getEventIcon(event.type)}
@@ -164,12 +205,34 @@ export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDa
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <h4 className="font-medium text-sm">{event.title}</h4>
-                          {event.metadata?.time && (
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {event.metadata.time}
-                              {event.metadata.duration && ` (${event.metadata.duration} min)`}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1">
+                            {event.metadata?.time && (
+                              <span className="text-xs text-muted-foreground">
+                                {event.metadata.time}
+                                {event.metadata.duration && ` (${event.metadata.duration} min)`}
+                              </span>
+                            )}
+                            {userRole === 'admin' && event.metadata?.id && event.type === 'custom' && (
+                              <div className="flex gap-1 ml-2">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6"
+                                  onClick={() => handleEditEvent(event)}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-6 w-6 text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteEvent(event)}
+                                >
+                                  <Trash className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                         {event.description && (
                           <p className="text-xs text-muted-foreground mt-1">{event.description}</p>
@@ -301,7 +364,35 @@ export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDa
         date={date}
         clientId={clientId}
         onEventCreated={loadDayDetails}
+        onEventsChanged={onEventsChanged}
       />
+
+      {selectedEvent && (
+        <EventEditDialog
+          open={showEditDialog}
+          onOpenChange={setShowEditDialog}
+          event={selectedEvent}
+          onEventUpdated={loadDayDetails}
+          onEventsChanged={onEventsChanged}
+        />
+      )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Meeting</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{eventToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
