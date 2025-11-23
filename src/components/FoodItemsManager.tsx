@@ -54,6 +54,115 @@ const foodItemSchema = z.object({
 
 type FoodItemFormData = z.infer<typeof foodItemSchema>;
 
+// FormFields component defined outside to prevent re-renders and focus loss
+const FormFields = ({ 
+  formData, 
+  setFormData, 
+  saving 
+}: { 
+  formData: FoodItemFormData; 
+  setFormData: (data: FoodItemFormData) => void; 
+  saving: boolean;
+}) => (
+  <div className="space-y-4">
+    <div className="grid grid-cols-2 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="name">Food Name *</Label>
+        <Input
+          id="name"
+          value={formData.name}
+          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          placeholder="e.g., Chicken Breast"
+          disabled={saving}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="category">Category</Label>
+        <Input
+          id="category"
+          value={formData.category}
+          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+          placeholder="e.g., Protein, Vegetable"
+          disabled={saving}
+        />
+      </div>
+    </div>
+
+    <div className="grid grid-cols-3 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="serving_size">Serving Size *</Label>
+        <Input
+          id="serving_size"
+          value={formData.serving_size}
+          onChange={(e) => setFormData({ ...formData, serving_size: e.target.value })}
+          placeholder="e.g., 100, 1"
+          disabled={saving}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="serving_unit">Unit *</Label>
+        <Input
+          id="serving_unit"
+          value={formData.serving_unit}
+          onChange={(e) => setFormData({ ...formData, serving_unit: e.target.value })}
+          placeholder="e.g., g, cup, piece"
+          disabled={saving}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="kcal">Calories (kcal) *</Label>
+        <Input
+          id="kcal"
+          type="number"
+          value={formData.kcal_per_serving}
+          onChange={(e) => setFormData({ ...formData, kcal_per_serving: parseFloat(e.target.value) || 0 })}
+          placeholder="e.g., 165"
+          disabled={saving}
+        />
+      </div>
+    </div>
+
+    <div className="grid grid-cols-3 gap-4">
+      <div className="space-y-2">
+        <Label htmlFor="protein">Protein (g)</Label>
+        <Input
+          id="protein"
+          type="number"
+          step="0.1"
+          value={formData.protein ?? ""}
+          onChange={(e) => setFormData({ ...formData, protein: e.target.value ? parseFloat(e.target.value) : null })}
+          placeholder="e.g., 31"
+          disabled={saving}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="carbs">Carbs (g)</Label>
+        <Input
+          id="carbs"
+          type="number"
+          step="0.1"
+          value={formData.carbs ?? ""}
+          onChange={(e) => setFormData({ ...formData, carbs: e.target.value ? parseFloat(e.target.value) : null })}
+          placeholder="e.g., 0"
+          disabled={saving}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="fats">Fats (g)</Label>
+        <Input
+          id="fats"
+          type="number"
+          step="0.1"
+          value={formData.fats ?? ""}
+          onChange={(e) => setFormData({ ...formData, fats: e.target.value ? parseFloat(e.target.value) : null })}
+          placeholder="e.g., 3.6"
+          disabled={saving}
+        />
+      </div>
+    </div>
+  </div>
+);
+
 export function FoodItemsManager() {
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -206,106 +315,6 @@ export function FoodItemsManager() {
       (item.category && item.category.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const FormFields = () => (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Food Name *</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="e.g., Chicken Breast"
-            disabled={saving}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
-          <Input
-            id="category"
-            value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-            placeholder="e.g., Protein, Vegetable"
-            disabled={saving}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="serving_size">Serving Size *</Label>
-          <Input
-            id="serving_size"
-            value={formData.serving_size}
-            onChange={(e) => setFormData({ ...formData, serving_size: e.target.value })}
-            placeholder="e.g., 100, 1"
-            disabled={saving}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="serving_unit">Unit *</Label>
-          <Input
-            id="serving_unit"
-            value={formData.serving_unit}
-            onChange={(e) => setFormData({ ...formData, serving_unit: e.target.value })}
-            placeholder="e.g., g, cup, piece"
-            disabled={saving}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="kcal">Calories (kcal) *</Label>
-          <Input
-            id="kcal"
-            type="number"
-            value={formData.kcal_per_serving}
-            onChange={(e) => setFormData({ ...formData, kcal_per_serving: parseFloat(e.target.value) || 0 })}
-            placeholder="e.g., 165"
-            disabled={saving}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="protein">Protein (g)</Label>
-          <Input
-            id="protein"
-            type="number"
-            step="0.1"
-            value={formData.protein ?? ""}
-            onChange={(e) => setFormData({ ...formData, protein: e.target.value ? parseFloat(e.target.value) : null })}
-            placeholder="e.g., 31"
-            disabled={saving}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="carbs">Carbs (g)</Label>
-          <Input
-            id="carbs"
-            type="number"
-            step="0.1"
-            value={formData.carbs ?? ""}
-            onChange={(e) => setFormData({ ...formData, carbs: e.target.value ? parseFloat(e.target.value) : null })}
-            placeholder="e.g., 0"
-            disabled={saving}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="fats">Fats (g)</Label>
-          <Input
-            id="fats"
-            type="number"
-            step="0.1"
-            value={formData.fats ?? ""}
-            onChange={(e) => setFormData({ ...formData, fats: e.target.value ? parseFloat(e.target.value) : null })}
-            placeholder="e.g., 3.6"
-            disabled={saving}
-          />
-        </div>
-      </div>
-    </div>
-  );
-
   return (
     <>
       <Card>
@@ -415,7 +424,7 @@ export function FoodItemsManager() {
               {editingItem ? "Update the food item details" : "Add a new food item to your nutrition database"}
             </DialogDescription>
           </DialogHeader>
-          <FormFields />
+          <FormFields formData={formData} setFormData={setFormData} saving={saving} />
           <DialogFooter>
             <Button
               variant="outline"
