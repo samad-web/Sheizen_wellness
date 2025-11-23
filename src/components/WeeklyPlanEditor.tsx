@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -250,7 +251,7 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
           {planId ? "Edit Plan" : "Create Plan"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>{planId ? "Edit Weekly Plan" : "Create Weekly Plan"}</DialogTitle>
           <DialogDescription>
@@ -258,7 +259,8 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <ScrollArea className="flex-1 px-1">
+          <div className="space-y-4 pr-4">
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor="week">Week Number</Label>
@@ -374,17 +376,18 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
             ))}
           </Tabs>
         </div>
+        </ScrollArea>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button variant="secondary" onClick={() => handleSave(false)} disabled={saving}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="group">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />}
             Save Draft
           </Button>
-          <Button onClick={() => handleSave(true)} disabled={saving}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          <Button onClick={() => handleSave(true)} disabled={saving} className="bg-wellness-green hover:bg-wellness-green/90 group">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />}
             Publish Plan
           </Button>
         </DialogFooter>

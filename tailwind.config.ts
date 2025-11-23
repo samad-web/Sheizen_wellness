@@ -90,6 +90,12 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "fade-in": "fadeIn 0.5s ease-out",
+        "slide-up": "slideUp 0.4s ease-out",
+        "scale-in": "scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
+      },
+      boxShadow: {
+        'wellness': '0 10px 30px -5px hsl(var(--wellness-green) / 0.15)',
       },
     },
   },

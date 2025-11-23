@@ -150,47 +150,59 @@ export default function AdminDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="card-hover">
+          <Card className="relative overflow-hidden group card-hover border-l-4 border-l-wellness-green animate-fade-in">
+            <div className="absolute inset-0 bg-gradient-to-br from-wellness-green/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Total Clients</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 bg-wellness-light rounded-lg">
+                <Users className="h-5 w-5 text-wellness-green" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalClients}</div>
-              <p className="text-xs text-muted-foreground">All registered clients</p>
+              <div className="text-3xl font-bold text-gradient-primary">{stats.totalClients}</div>
+              <p className="text-xs text-muted-foreground mt-1">All registered clients</p>
             </CardContent>
           </Card>
 
-          <Card className="card-hover">
+          <Card className="relative overflow-hidden group card-hover border-l-4 border-l-wellness-mint animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-wellness-mint/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 bg-green-100 rounded-lg">
+                <TrendingUp className="h-5 w-5 text-green-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.activeClients}</div>
-              <p className="text-xs text-muted-foreground">Currently active programs</p>
+              <div className="text-3xl font-bold text-green-600">{stats.activeClients}</div>
+              <p className="text-xs text-muted-foreground mt-1">Currently active programs</p>
             </CardContent>
           </Card>
 
-          <Card className="card-hover">
+          <Card className="relative overflow-hidden group card-hover border-l-4 border-l-wellness-amber animate-fade-in" style={{ animationDelay: '0.2s' }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-wellness-amber/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Pending</CardTitle>
-              <FileText className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <FileText className="h-5 w-5 text-amber-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.pendingClients}</div>
-              <p className="text-xs text-muted-foreground">Awaiting attention</p>
+              <div className="text-3xl font-bold text-amber-600">{stats.pendingClients}</div>
+              <p className="text-xs text-muted-foreground mt-1">Awaiting attention</p>
             </CardContent>
           </Card>
 
-          <Card className="card-hover">
+          <Card className="relative overflow-hidden group card-hover border-l-4 border-l-blue-500 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium">Today's Logs</CardTitle>
-              <Activity className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Activity className="h-5 w-5 text-blue-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.todayLogs}</div>
-              <p className="text-xs text-muted-foreground">Daily tracking updates</p>
+              <div className="text-3xl font-bold text-blue-600">{stats.todayLogs}</div>
+              <p className="text-xs text-muted-foreground mt-1">Daily tracking updates</p>
             </CardContent>
           </Card>
         </div>
@@ -242,40 +254,68 @@ export default function AdminDashboard() {
               </CardHeader>
               <CardContent>
                 {clients.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Users className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg mb-2">No clients yet</p>
-                    <p className="text-sm">New clients will appear here once they sign up</p>
+                  <div className="text-center py-16 text-muted-foreground animate-fade-in">
+                    <div className="p-6 bg-wellness-light rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                      <Users className="w-12 h-12 text-wellness-green/40" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 text-foreground">No clients yet</h3>
+                    <p className="text-sm mb-6">New clients will appear here once they sign up</p>
+                    <Button variant="outline" className="interactive-button" onClick={() => setEditorOpen(true)}>
+                      <Users className="mr-2 h-4 w-4" />
+                      Add Your First Client
+                    </Button>
                   </div>
                 ) : (
-                  <div className="space-y-4">
-                    {clients.map((client) => (
-                      <Card key={client.id} className="card-hover">
-                        <CardContent className="p-6">
+                  <div className="space-y-3">
+                    {clients.map((client, index) => (
+                      <Card 
+                        key={client.id} 
+                        className="relative overflow-hidden group card-hover border-l-4 border-l-transparent hover:border-l-wellness-green transition-all animate-fade-in"
+                        style={{ animationDelay: `${index * 0.05}s` }}
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-wellness-light/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <CardContent className="p-6 relative">
                           <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <h3 className="font-semibold text-lg">{client.name}</h3>
-                                <Badge className={getStatusColor(client.status)}>
-                                  {client.status}
-                                </Badge>
-                              </div>
-                              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm text-muted-foreground">
-                                <div>📧 {client.email}</div>
-                                <div>📱 {client.phone}</div>
+                            <div className="flex-1 space-y-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-wellness-green to-wellness-mint rounded-full flex items-center justify-center text-white font-semibold shadow-md">
+                                  {client.name.charAt(0)}
+                                </div>
                                 <div>
-                                  <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs border ${getServiceTypeBadgeColor(client.service_type)}`}>
+                                  <h3 className="font-semibold text-lg flex items-center gap-2">
+                                    {client.name}
+                                    <Badge className={getStatusColor(client.status)} variant="outline">
+                                      {client.status}
+                                    </Badge>
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground">{client.email}</p>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <span>📱</span>
+                                  <span>{client.phone}</span>
+                                </div>
+                                <div>
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getServiceTypeBadgeColor(client.service_type)}`}>
                                     {formatServiceType(client.service_type)}
                                   </span>
                                 </div>
-                                <div>🎯 {client.program_type?.replace("_", " ")}</div>
-                                <div>⚖️ {client.last_weight ? `${client.last_weight} kg` : "Not set"}</div>
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <span>🎯</span>
+                                  <span className="capitalize">{client.program_type?.replace("_", " ")}</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <span>⚖️</span>
+                                  <span>{client.last_weight ? `${client.last_weight} kg` : "Not set"}</span>
+                                </div>
                               </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 ml-4">
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="interactive-button"
                                 onClick={() => {
                                   setEditingClientId(client.id);
                                   setEditorOpen(true);
@@ -286,10 +326,11 @@ export default function AdminDashboard() {
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="interactive-button group/btn"
                                 onClick={() => navigate(`/admin/client/${client.id}`)}
                               >
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Details
+                                <Eye className="mr-2 h-4 w-4 transition-transform group-hover/btn:scale-110" />
+                                View
                               </Button>
                             </div>
                           </div>
