@@ -340,6 +340,48 @@ export type Database = {
         }
         Relationships: []
       }
+      cron_job_metadata: {
+        Row: {
+          created_at: string | null
+          description: string
+          edge_function_name: string
+          id: string
+          is_active: boolean | null
+          job_name: string
+          last_run_at: string | null
+          last_run_status: string | null
+          next_run_at: string | null
+          schedule: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description: string
+          edge_function_name: string
+          id?: string
+          is_active?: boolean | null
+          job_name: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          next_run_at?: string | null
+          schedule: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string
+          edge_function_name?: string
+          id?: string
+          is_active?: boolean | null
+          job_name?: string
+          last_run_at?: string | null
+          last_run_status?: string | null
+          next_run_at?: string | null
+          schedule?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       daily_logs: {
         Row: {
           activity_minutes: number | null

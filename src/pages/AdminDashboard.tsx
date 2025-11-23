@@ -13,13 +13,15 @@ import {
   FileText, 
   LogOut,
   Eye,
-  TrendingUp
+  TrendingUp,
+  Calendar
 } from "lucide-react";
 import { FoodItemsManager } from "@/components/FoodItemsManager";
 import { RecipeBuilder } from "@/components/RecipeBuilder";
 import { AdminClientEditor } from "@/components/AdminClientEditor";
 import { InterestSubmissionsManager } from "@/components/InterestSubmissionsManager";
 import { BulkMessageButton } from "@/components/BulkMessageButton";
+import { CronJobsManager } from "@/components/CronJobsManager";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 
 export default function AdminDashboard() {
@@ -187,12 +189,13 @@ export default function AdminDashboard() {
 
         {/* Main Content */}
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="clients">Clients</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="food">Food Items</TabsTrigger>
             <TabsTrigger value="recipes">Recipes</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="automation">Automation</TabsTrigger>
           </TabsList>
 
           <TabsContent value="clients">
@@ -303,6 +306,10 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="automation">
+            <CronJobsManager />
           </TabsContent>
         </Tabs>
 
