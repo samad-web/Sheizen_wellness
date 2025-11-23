@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Paperclip, X } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { formatFileSize, isImageFile, getFileIcon } from "@/lib/fileUtils";
 
 interface MessageComposerProps {
   clientId: string;
@@ -29,25 +31,99 @@ const quickTemplates = [
 export function MessageComposer({ clientId, senderId, senderType, onMessageSent }: MessageComposerProps) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [attachment, setAttachment] = useState<{
+    url: string;
+    name: string;
+    type: string;
+    size: number;
+  } | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "File size must be less than 10MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      // Generate unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${clientId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+      // Upload to storage
+      const { data, error } = await supabase.storage
+        .from('message-attachments')
+        .upload(fileName, file);
+
+      if (error) throw error;
+
+      // Store attachment info in state
+      setAttachment({
+        url: data.path,
+        name: file.name,
+        type: file.type,
+        size: file.size
+      });
+
+      toast({
+        title: "File attached",
+        description: "Your file has been attached to the message.",
+      });
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      toast({
+        title: "Upload failed",
+        description: "Could not upload your file. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const handleSend = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() && !attachment) return;
 
     setSending(true);
     try {
-      const { error } = await supabase.from('messages').insert({
+      const messageData: any = {
         client_id: clientId,
         sender_id: senderId,
         sender_type: senderType,
         message_type: 'manual',
-        content: message.trim(),
+        content: message.trim() || '(File attachment)',
         metadata: {},
         is_read: false,
-      });
+      };
+
+      // Add attachment data if present
+      if (attachment) {
+        messageData.attachment_url = attachment.url;
+        messageData.attachment_name = attachment.name;
+        messageData.attachment_type = attachment.type;
+        messageData.attachment_size = attachment.size;
+      }
+
+      const { error } = await supabase.from('messages').insert(messageData);
 
       if (error) throw error;
 
       setMessage('');
+      setAttachment(null);
       toast({
         title: "Message sent",
         description: "Your message has been delivered.",
@@ -95,6 +171,26 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
           </Select>
         </div>
       )}
+
+      {/* File Attachment Preview */}
+      {attachment && (
+        <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+          {React.createElement(getFileIcon(attachment.type), { className: "h-4 w-4 text-muted-foreground shrink-0" })}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{attachment.name}</p>
+            <p className="text-xs text-muted-foreground">{formatFileSize(attachment.size)}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setAttachment(null)}
+            disabled={sending}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <Textarea
           placeholder="Type your message..."
@@ -102,16 +198,33 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           className="min-h-[80px] resize-none"
-          disabled={sending}
+          disabled={sending || uploading}
         />
-        <Button
-          onClick={handleSend}
-          disabled={!message.trim() || sending}
-          size="icon"
-          className="shrink-0"
-        >
-          <Send className="h-4 w-4" />
-        </Button>
+        <div className="flex flex-col gap-2 shrink-0">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,.doc,.docx,.mp3,.m4a"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sending || uploading}
+            title="Attach file"
+          >
+            <Paperclip className="h-4 w-4" />
+          </Button>
+          <Button
+            onClick={handleSend}
+            disabled={(!message.trim() && !attachment) || sending || uploading}
+            size="icon"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground">
         Press Enter to send, Shift+Enter for new line

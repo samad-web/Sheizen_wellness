@@ -139,6 +139,50 @@ export type Database = {
           },
         ]
       }
+      bulk_message_batches: {
+        Row: {
+          admin_id: string
+          completed_at: string | null
+          created_at: string | null
+          failed_count: number | null
+          id: string
+          recipient_count: number
+          sent_count: number | null
+          status: string | null
+          template_id: string | null
+        }
+        Insert: {
+          admin_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          failed_count?: number | null
+          id?: string
+          recipient_count: number
+          sent_count?: number | null
+          status?: string | null
+          template_id?: string | null
+        }
+        Update: {
+          admin_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          failed_count?: number | null
+          id?: string
+          recipient_count?: number
+          sent_count?: number | null
+          status?: string | null
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bulk_message_batches_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "message_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           age: number | null
@@ -507,10 +551,16 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachment_name: string | null
+          attachment_size: number | null
+          attachment_type: string | null
+          attachment_url: string | null
+          batch_id: string | null
           client_id: string
           content: string
           created_at: string
           id: string
+          is_bulk: boolean | null
           is_read: boolean
           message_type: string
           metadata: Json | null
@@ -518,10 +568,16 @@ export type Database = {
           sender_type: string
         }
         Insert: {
+          attachment_name?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
+          attachment_url?: string | null
+          batch_id?: string | null
           client_id: string
           content: string
           created_at?: string
           id?: string
+          is_bulk?: boolean | null
           is_read?: boolean
           message_type: string
           metadata?: Json | null
@@ -529,10 +585,16 @@ export type Database = {
           sender_type: string
         }
         Update: {
+          attachment_name?: string | null
+          attachment_size?: number | null
+          attachment_type?: string | null
+          attachment_url?: string | null
+          batch_id?: string | null
           client_id?: string
           content?: string
           created_at?: string
           id?: string
+          is_bulk?: boolean | null
           is_read?: boolean
           message_type?: string
           metadata?: Json | null

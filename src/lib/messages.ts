@@ -10,6 +10,12 @@ export interface Message {
   metadata: Record<string, any>;
   is_read: boolean;
   created_at: string;
+  attachment_url?: string | null;
+  attachment_name?: string | null;
+  attachment_type?: string | null;
+  attachment_size?: number | null;
+  batch_id?: string | null;
+  is_bulk?: boolean;
 }
 
 export const fillTemplate = (template: string, variables: Record<string, any>): string => {
@@ -75,5 +81,112 @@ export const markMessagesAsRead = async (clientId: string): Promise<void> => {
     }
   } catch (error) {
     console.error('Error in markMessagesAsRead:', error);
+  }
+};
+
+export const sendBulkMessage = async (
+  clientIds: string[],
+  templateId: string | null,
+  messageContent: string,
+  adminId: string
+): Promise<{ success: number; failed: number; batchId: string }> => {
+  const batchId = crypto.randomUUID();
+  let successCount = 0;
+  let failedCount = 0;
+
+  try {
+    // Create batch tracking entry
+    const { error: batchError } = await supabase
+      .from('bulk_message_batches')
+      .insert({
+        id: batchId,
+        admin_id: adminId,
+        template_id: templateId,
+        recipient_count: clientIds.length,
+        status: 'sending',
+      });
+
+    if (batchError) throw batchError;
+
+    // Fetch all clients data for personalization
+    const { data: clients, error: clientsError } = await supabase
+      .from('clients')
+      .select('*')
+      .in('id', clientIds);
+
+    if (clientsError) throw clientsError;
+
+    // Send messages in batches with rate limiting
+    const batchSize = 10;
+    for (let i = 0; i < clientIds.length; i += batchSize) {
+      const batchClientIds = clientIds.slice(i, i + batchSize);
+      
+      const messages = batchClientIds.map(clientId => {
+        const client = clients?.find(c => c.id === clientId);
+        if (!client) return null;
+
+        // Personalize message
+        const personalizedContent = messageContent
+          .replace(/\{name\}/g, client.name)
+          .replace(/\{program_type\}/g, client.program_type?.replace("_", " ") || "your program")
+          .replace(/\{service_type\}/g, client.service_type?.replace("_", " ") || "your service")
+          .replace(/\{last_weight\}/g, client.last_weight?.toString() || "your weight")
+          .replace(/\{target_kcal\}/g, client.target_kcal?.toString() || "your target");
+
+        return {
+          client_id: clientId,
+          sender_id: adminId,
+          sender_type: 'admin',
+          message_type: 'bulk',
+          content: personalizedContent,
+          metadata: {},
+          is_read: false,
+          batch_id: batchId,
+          is_bulk: true,
+        };
+      }).filter(Boolean);
+
+      const { error: insertError } = await supabase
+        .from('messages')
+        .insert(messages);
+
+      if (insertError) {
+        failedCount += messages.length;
+        console.error('Error inserting batch:', insertError);
+      } else {
+        successCount += messages.length;
+      }
+
+      // Rate limiting: wait 500ms between batches
+      if (i + batchSize < clientIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+
+    // Update batch status
+    await supabase
+      .from('bulk_message_batches')
+      .update({
+        sent_count: successCount,
+        failed_count: failedCount,
+        status: failedCount === 0 ? 'completed' : 'failed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', batchId);
+
+    return { success: successCount, failed: failedCount, batchId };
+  } catch (error) {
+    console.error('Error in sendBulkMessage:', error);
+    
+    // Update batch status to failed
+    await supabase
+      .from('bulk_message_batches')
+      .update({
+        status: 'failed',
+        completed_at: new Date().toISOString(),
+      })
+      .eq('id', batchId);
+
+    throw error;
   }
 };
