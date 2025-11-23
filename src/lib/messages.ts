@@ -137,7 +137,7 @@ export const sendBulkMessage = async (
           client_id: clientId,
           sender_id: adminId,
           sender_type: 'admin',
-          message_type: 'bulk',
+          message_type: 'manual',
           content: personalizedContent,
           metadata: {},
           is_read: false,
