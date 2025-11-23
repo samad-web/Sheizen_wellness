@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { MAX_FILE_SIZE, getAcceptString, getFileIcon, getFileDisplayName } from "@/lib/fileUtils";
+import { sendAutomatedMessage } from "@/lib/messages";
 
 interface MealPhotoUploadProps {
   clientId: string;
@@ -128,6 +129,20 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
       toast.success("Meal file uploaded successfully!");
       clearForm();
       onSuccess();
+
+      // Send automated message
+      const mealTypeLabels = {
+        breakfast: 'Breakfast',
+        lunch: 'Lunch',
+        evening_snack: 'Evening Snack',
+        dinner: 'Dinner'
+      };
+      
+      await sendAutomatedMessage(clientId, `meal_logged_${mealType}`, {
+        name: '', // Will be filled by edge function if needed
+        meal_type: mealTypeLabels[mealType as keyof typeof mealTypeLabels],
+        time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+      }).catch(err => console.error('Error sending meal log message:', err));
     } catch (error: any) {
       console.error("Meal log error:", error);
       toast.error(error.message || "Failed to upload meal file");

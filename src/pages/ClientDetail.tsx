@@ -17,6 +17,10 @@ import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 import { GroceryListGenerator } from "@/components/GroceryListGenerator";
 import { getSignedUrl } from "@/lib/storage";
 import { MealPhotoDisplay } from "@/components/MealPhotoDisplay";
+import { MessageFeed } from "@/components/MessageFeed";
+import { MessageComposer } from "@/components/MessageComposer";
+import { type Message } from "@/lib/messages";
+import { useAuth as useAuthContext } from "@/contexts/AuthContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -105,7 +109,7 @@ interface MealLog {
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { userRole } = useAuth();
+  const { userRole, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [client, setClient] = useState<Client | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -114,6 +118,7 @@ const ClientDetail = () => {
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [reports, setReports] = useState<WeeklyReport[]>([]);
   const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [deleteAssessmentId, setDeleteAssessmentId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
 
@@ -196,6 +201,14 @@ const ClientDetail = () => {
         .order("logged_at", { ascending: false })
         .limit(50);
       setMealLogs(mealLogsData || []);
+
+      // Fetch messages
+      const { data: messagesData } = await supabase
+        .from("messages")
+        .select("*")
+        .eq("client_id", id)
+        .order("created_at", { ascending: true });
+      setMessages((messagesData as Message[]) || []);
 
     } catch (error: any) {
       toast.error(error.message || "Failed to load client data");
@@ -373,6 +386,7 @@ const ClientDetail = () => {
             <TabsTrigger value="logs">Daily Logs ({dailyLogs.length})</TabsTrigger>
             <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
             <TabsTrigger value="reports">Reports ({reports.length})</TabsTrigger>
+            <TabsTrigger value="messages">Messages ({messages.length})</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -729,6 +743,24 @@ const ClientDetail = () => {
                   </Table>
                 )}
               </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="messages" className="space-y-6">
+            <Card className="h-[600px] flex flex-col">
+              <CardHeader>
+                <CardTitle>Messages</CardTitle>
+                <CardDescription>Communication with {client.name}</CardDescription>
+              </CardHeader>
+              <MessageFeed messages={messages} currentUserType="admin" />
+              {user && id && (
+                <MessageComposer
+                  clientId={id}
+                  senderId={user.id}
+                  senderType="admin"
+                  onMessageSent={fetchClientData}
+                />
+              )}
             </Card>
           </TabsContent>
         </Tabs>

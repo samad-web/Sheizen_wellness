@@ -31,6 +31,11 @@ import { getFileIcon, getFileDisplayName, handleFileClick } from "@/lib/fileUtil
 import { AchievementList } from "@/components/AchievementList";
 import { AchievementProgress } from "@/components/AchievementProgress";
 import { AchievementNotification } from "@/components/AchievementNotification";
+import { MessageFeed } from "@/components/MessageFeed";
+import { MessageComposer } from "@/components/MessageComposer";
+import { MessageNotification } from "@/components/MessageNotification";
+import { sendAutomatedMessage, getUnreadCount, markMessagesAsRead, type Message } from "@/lib/messages";
+import { MessageCircle } from "lucide-react";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -40,7 +45,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [mealLogs, setMealLogs] = useState<any[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
-  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "reports">("today");
+  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "reports" | "messages">("today");
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [weightInput, setWeightInput] = useState<string>("");
   const [waterInput, setWaterInput] = useState<string>("");
@@ -49,6 +54,9 @@ export default function ClientDashboard() {
   const [userAchievements, setUserAchievements] = useState<any[]>([]);
   const [achievementProgress, setAchievementProgress] = useState<any[]>([]);
   const [newAchievements, setNewAchievements] = useState<any[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [newMessage, setNewMessage] = useState<Message | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -60,6 +68,33 @@ export default function ClientDashboard() {
     fetchAchievements();
   }, [user, navigate]);
 
+  // Real-time messages subscription
+  useEffect(() => {
+    if (!clientData?.id) return;
+
+    fetchMessages();
+    updateUnreadCount();
+
+    const channel = supabase
+      .channel('messages-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `client_id=eq.${clientData.id}`
+      }, (payload) => {
+        const newMsg = payload.new as Message;
+        setMessages(prev => [...prev, newMsg]);
+        setNewMessage(newMsg);
+        setUnreadCount(prev => prev + 1);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clientData?.id]);
+
   const fetchAchievements = async () => {
     // Fetch all achievements
     const { data: allAchievements } = await supabase
@@ -70,6 +105,34 @@ export default function ClientDashboard() {
 
     if (allAchievements) {
       setAchievements(allAchievements);
+    }
+  };
+
+  const fetchMessages = async () => {
+    if (!clientData?.id) return;
+
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('client_id', clientData.id)
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      setMessages(data as Message[]);
+    }
+  };
+
+  const updateUnreadCount = async () => {
+    if (!clientData?.id) return;
+    const count = await getUnreadCount(clientData.id);
+    setUnreadCount(count);
+  };
+
+  const handleMessagesTabOpen = async () => {
+    setActiveTab('messages');
+    if (clientData?.id) {
+      await markMessagesAsRead(clientData.id);
+      setUnreadCount(0);
     }
   };
 
@@ -230,6 +293,19 @@ export default function ClientDashboard() {
     setActivityInput("");
     fetchClientData();
     
+    // Send automated message
+    if (newAmount >= 30) {
+      await sendAutomatedMessage(clientData.id, 'activity_milestone_30', {
+        name: clientData.name,
+        minutes: newAmount
+      });
+    } else {
+      await sendAutomatedMessage(clientData.id, 'activity_logged', {
+        name: clientData.name,
+        minutes
+      });
+    }
+    
     // Check for achievements
     if (clientData?.id) {
       checkAchievements(clientData.id, "activity_log");
@@ -259,6 +335,28 @@ export default function ClientDashboard() {
 
       toast.success(`Weight logged: ${weight} kg`);
       fetchClientData();
+      
+      // Send automated message
+      const previousWeight = clientData.last_weight || weight;
+      const weightDiff = previousWeight - weight;
+      
+      if (weightDiff > 0) {
+        await sendAutomatedMessage(clientData.id, 'weight_logged_loss', {
+          name: clientData.name,
+          weight,
+          diff: weightDiff.toFixed(1)
+        });
+      } else if (weightDiff === 0) {
+        await sendAutomatedMessage(clientData.id, 'weight_logged_maintain', {
+          name: clientData.name,
+          weight
+        });
+      } else {
+        await sendAutomatedMessage(clientData.id, 'weight_logged_positive', {
+          name: clientData.name,
+          weight
+        });
+      }
       
       // Check for achievements
       checkAchievements(clientData.id, "weight_log");
@@ -434,13 +532,21 @@ export default function ClientDashboard() {
           onValueChange={(value) => setActiveTab(value as typeof activeTab)}
           className="space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="today">Today</TabsTrigger>
             <TabsTrigger value="plan">Plan</TabsTrigger>
             <TabsTrigger value="logs">Meals</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="messages" className="relative" onClick={handleMessagesTabOpen}>
+              Messages
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="today" className="space-y-6">
@@ -752,9 +858,41 @@ export default function ClientDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="messages" className="h-[600px] flex flex-col">
+            <Card className="flex-1 flex flex-col">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageCircle className="h-5 w-5" />
+                  Messages
+                </CardTitle>
+                <CardDescription>Chat with your nutritionist and receive updates</CardDescription>
+              </CardHeader>
+              <MessageFeed messages={messages} currentUserType="client" />
+              {clientData && user && (
+                <MessageComposer
+                  clientId={clientData.id}
+                  senderId={user.id}
+                  senderType="client"
+                  onMessageSent={fetchMessages}
+                />
+              )}
+            </Card>
+          </TabsContent>
         </Tabs>
         
         {/* Achievement Notifications */}
+        <AchievementNotification
+          newAchievements={newAchievements}
+          onDismiss={() => setNewAchievements([])}
+        />
+
+        {/* Message Notification */}
+        <MessageNotification
+          message={newMessage}
+          onClose={() => setNewMessage(null)}
+          onOpen={handleMessagesTabOpen}
+        />
         <AchievementNotification
           newAchievements={newAchievements}
           onDismiss={() => setNewAchievements([])}
