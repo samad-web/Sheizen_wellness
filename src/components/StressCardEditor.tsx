@@ -10,7 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { Loader2, Brain, Activity, Sparkles, Save, Send, TrendingUp, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 import { Progress } from "@/components/ui/progress";
 
 interface StressCardEditorProps {
@@ -224,7 +224,7 @@ export function StressCardEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-7xl max-h-screen overflow-hidden flex flex-col">
         <DialogHeader className="bg-gradient-to-r from-accent/10 via-wellness-mint/5 to-transparent border-b border-accent/20 pb-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-accent/10 rounded-lg">
@@ -244,8 +244,8 @@ export function StressCardEditor({
           </div>
         </DialogHeader>
 
-      <ScrollArea className="flex-1 min-h-0">
-        <div className="grid lg:grid-cols-2 gap-6 p-6">
+        <div className="flex-1 overflow-y-auto max-h-[90vh] md:max-h-[80vh] p-6 scrollbar-thin">
+          <div className="grid lg:grid-cols-2 gap-6">
             {/* Edit Form Column */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 pb-2 border-b border-accent/20">
@@ -496,7 +496,7 @@ export function StressCardEditor({
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Action Buttons */}
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border/50 bg-muted/30">
