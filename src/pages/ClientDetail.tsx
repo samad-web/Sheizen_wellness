@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Phone, Mail, Target, Weight, Calendar, Trash2, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Target, Weight, Calendar, Trash2, Image as ImageIcon, Download, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { AssessmentUploadDialog } from "@/components/AssessmentUploadDialog";
 import { WeeklyPlanEditor } from "@/components/WeeklyPlanEditor";
@@ -22,6 +22,10 @@ import { MessageComposer } from "@/components/MessageComposer";
 import { type Message } from "@/lib/messages";
 import { CalendarView } from "@/components/CalendarView";
 import { HundredDayProgress } from "@/components/HundredDayProgress";
+import { WorkflowTimeline } from "@/components/WorkflowTimeline";
+import { StressAssessmentForm } from "@/components/StressAssessmentForm";
+import { SleepAssessmentForm } from "@/components/SleepAssessmentForm";
+import { exportDietPlanToExcel } from "@/lib/excelExport";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -389,6 +393,10 @@ const ClientDetail = () => {
             <TabsTrigger value="reports">Reports ({reports.length})</TabsTrigger>
             <TabsTrigger value="messages">Messages ({messages.length})</TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            <TabsTrigger value="workflow">
+              <Activity className="h-4 w-4 mr-1" />
+              Workflow
+            </TabsTrigger>
             {client?.service_type === 'hundred_days' && (
               <TabsTrigger value="progress">100-Day Progress</TabsTrigger>
             )}
@@ -437,65 +445,80 @@ const ClientDetail = () => {
           </TabsContent>
 
           <TabsContent value="assessments">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle>Assessments</CardTitle>
-                  <CardDescription>View and manage client assessments</CardDescription>
-                </div>
-                <AssessmentUploadDialog clientId={id!} onSuccess={fetchClientData} />
-              </CardHeader>
-              <CardContent>
-                {assessments.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No assessments yet</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>File Name</TableHead>
-                        <TableHead>Notes</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {assessments.map((assessment) => (
-                        <TableRow key={assessment.id}>
-                          <TableCell>{assessment.file_name || "—"}</TableCell>
-                          <TableCell className="max-w-xs truncate">{assessment.notes || "—"}</TableCell>
-                          <TableCell>{new Date(assessment.created_at).toLocaleDateString()}</TableCell>
-                          <TableCell className="text-right space-x-2">
-                            {assessment.file_url && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={async () => {
-                                  try {
-                                    const signedUrl = await getSignedUrl("assessment-files", assessment.file_url);
-                                    window.open(signedUrl, "_blank");
-                                  } catch (error) {
-                                    toast.error("Failed to open assessment file");
-                                  }
-                                }}
-                              >
-                                View
-                              </Button>
-                            )}
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => setDeleteAssessmentId(assessment.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle>Assessments</CardTitle>
+                    <CardDescription>View and manage client assessments</CardDescription>
+                  </div>
+                  <AssessmentUploadDialog clientId={id!} onSuccess={fetchClientData} />
+                </CardHeader>
+                <CardContent>
+                  {assessments.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No assessments yet</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>File Name</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+                      </TableHeader>
+                      <TableBody>
+                        {assessments.map((assessment) => (
+                          <TableRow key={assessment.id}>
+                            <TableCell>{assessment.file_name || "—"}</TableCell>
+                            <TableCell className="max-w-xs truncate">{assessment.notes || "—"}</TableCell>
+                            <TableCell>{new Date(assessment.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell className="text-right space-x-2">
+                              {assessment.file_url && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const signedUrl = await getSignedUrl("assessment-files", assessment.file_url);
+                                      window.open(signedUrl, "_blank");
+                                    } catch (error) {
+                                      toast.error("Failed to open assessment file");
+                                    }
+                                  }}
+                                >
+                                  View
+                                </Button>
+                              )}
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setDeleteAssessmentId(assessment.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <StressAssessmentForm 
+                  clientId={id!} 
+                  clientName={client.name}
+                  onComplete={fetchClientData}
+                />
+                <SleepAssessmentForm 
+                  clientId={id!} 
+                  clientName={client.name}
+                  onComplete={fetchClientData}
+                />
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="plans">
@@ -535,6 +558,30 @@ const ClientDetail = () => {
                           </TableCell>
                           <TableCell>{plan.total_kcal || "—"}</TableCell>
                           <TableCell className="text-right space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const { data: mealCards } = await supabase
+                                    .from('meal_cards')
+                                    .select('*')
+                                    .eq('plan_id', plan.id);
+                                  
+                                  exportDietPlanToExcel(
+                                    { name: client.name, program_type: client.program_type },
+                                    plan,
+                                    mealCards || []
+                                  );
+                                  toast.success("Excel file downloaded successfully!");
+                                } catch (error) {
+                                  toast.error("Failed to export to Excel");
+                                }
+                              }}
+                            >
+                              <Download className="h-4 w-4 mr-1" />
+                              Export
+                            </Button>
                             <WeeklyPlanEditor clientId={id!} planId={plan.id} onSuccess={fetchClientData} />
                             <GroceryListGenerator
                               planId={plan.id}
@@ -771,6 +818,10 @@ const ClientDetail = () => {
 
           <TabsContent value="calendar">
             {id && <CalendarView clientId={id} />}
+          </TabsContent>
+
+          <TabsContent value="workflow">
+            {id && <WorkflowTimeline clientId={id} />}
           </TabsContent>
 
           {client?.service_type === 'hundred_days' && (

@@ -158,6 +158,7 @@ export type Database = {
         Row: {
           ai_generated: boolean | null
           assessment_data: Json | null
+          assessment_type: Database["public"]["Enums"]["assessment_type"] | null
           client_id: string
           created_at: string
           file_name: string | null
@@ -170,6 +171,9 @@ export type Database = {
         Insert: {
           ai_generated?: boolean | null
           assessment_data?: Json | null
+          assessment_type?:
+            | Database["public"]["Enums"]["assessment_type"]
+            | null
           client_id: string
           created_at?: string
           file_name?: string | null
@@ -182,6 +186,9 @@ export type Database = {
         Update: {
           ai_generated?: boolean | null
           assessment_data?: Json | null
+          assessment_type?:
+            | Database["public"]["Enums"]["assessment_type"]
+            | null
           client_id?: string
           created_at?: string
           file_name?: string | null
@@ -281,6 +288,62 @@ export type Database = {
             foreignKeyName: "calendar_events_client_id_fkey"
             columns: ["client_id"]
             isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_workflow_state: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          next_action: string | null
+          next_action_due_at: string | null
+          retargeting_enabled: boolean | null
+          retargeting_frequency: string | null
+          retargeting_last_sent: string | null
+          service_type: string
+          stage_completed_at: string | null
+          updated_at: string | null
+          workflow_stage: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          next_action?: string | null
+          next_action_due_at?: string | null
+          retargeting_enabled?: boolean | null
+          retargeting_frequency?: string | null
+          retargeting_last_sent?: string | null
+          service_type: string
+          stage_completed_at?: string | null
+          updated_at?: string | null
+          workflow_stage: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          next_action?: string | null
+          next_action_due_at?: string | null
+          retargeting_enabled?: boolean | null
+          retargeting_frequency?: string | null
+          retargeting_last_sent?: string | null
+          service_type?: string
+          stage_completed_at?: string | null
+          updated_at?: string | null
+          workflow_stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_workflow_state_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
@@ -1197,6 +1260,44 @@ export type Database = {
           },
         ]
       }
+      workflow_history: {
+        Row: {
+          action: string
+          client_id: string
+          id: string
+          metadata: Json | null
+          triggered_at: string | null
+          triggered_by: string | null
+          workflow_stage: string
+        }
+        Insert: {
+          action: string
+          client_id: string
+          id?: string
+          metadata?: Json | null
+          triggered_at?: string | null
+          triggered_by?: string | null
+          workflow_stage: string
+        }
+        Update: {
+          action?: string
+          client_id?: string
+          id?: string
+          metadata?: Json | null
+          triggered_at?: string | null
+          triggered_by?: string | null
+          workflow_stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workflow_history_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -1226,6 +1327,7 @@ export type Database = {
         | "early_bird"
         | "first_meal"
       app_role: "admin" | "client"
+      assessment_type: "health" | "stress" | "sleep" | "custom"
       client_status: "active" | "inactive" | "pending" | "completed"
       gender_type: "male" | "female" | "other"
       health_goal_type:
@@ -1384,6 +1486,7 @@ export const Constants = {
         "first_meal",
       ],
       app_role: ["admin", "client"],
+      assessment_type: ["health", "stress", "sleep", "custom"],
       client_status: ["active", "inactive", "pending", "completed"],
       gender_type: ["male", "female", "other"],
       health_goal_type: [

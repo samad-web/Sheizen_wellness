@@ -22,6 +22,7 @@ import { AdminClientEditor } from "@/components/AdminClientEditor";
 import { InterestSubmissionsManager } from "@/components/InterestSubmissionsManager";
 import { BulkMessageButton } from "@/components/BulkMessageButton";
 import { CronJobsManager } from "@/components/CronJobsManager";
+import { WorkflowStatusWidget } from "@/components/WorkflowStatusWidget";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 
 export default function AdminDashboard() {
@@ -185,6 +186,10 @@ export default function AdminDashboard() {
               <p className="text-xs text-muted-foreground">Daily tracking updates</p>
             </CardContent>
           </Card>
+        </div>
+
+        <div className="mb-8">
+          <WorkflowStatusWidget />
         </div>
 
         {/* Main Content */}
