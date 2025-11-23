@@ -25,6 +25,7 @@ import { ProgressCharts } from "@/components/ProgressCharts";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 import { MotivationCard } from "@/components/MotivationCard";
 import { WeeklyGoals } from "@/components/WeeklyGoals";
+import { getSignedUrls } from "@/lib/storage";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -34,6 +35,8 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [mealLogs, setMealLogs] = useState<any[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
+  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "reports">("today");
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (!user) {
@@ -105,6 +108,26 @@ export default function ClientDashboard() {
 
     setLoading(false);
   };
+
+  // Load signed URLs for meal photos
+  useEffect(() => {
+    const loadSignedUrls = async () => {
+      const paths = mealLogs
+        .map(log => log.photo_url)
+        .filter(Boolean) as string[];
+      
+      if (paths.length === 0) return;
+      
+      try {
+        const urlMap = await getSignedUrls("meal-photos", paths);
+        setSignedUrls(Object.fromEntries(urlMap));
+      } catch (error) {
+        console.error("Error loading signed URLs:", error);
+      }
+    };
+    
+    loadSignedUrls();
+  }, [mealLogs]);
 
   const quickAddWater = async (amount: number) => {
     if (!clientData) return;
@@ -290,7 +313,11 @@ export default function ClientDashboard() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="today" className="space-y-6">
+        <Tabs 
+          value={activeTab} 
+          onValueChange={(value) => setActiveTab(value as typeof activeTab)}
+          className="space-y-6"
+        >
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="today">Today</TabsTrigger>
             <TabsTrigger value="plan">Weekly Plan</TabsTrigger>
@@ -392,7 +419,7 @@ export default function ClientDashboard() {
                     <CardDescription>Track your nutrition</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button className="w-full" onClick={() => document.querySelector('[value="logs"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))}>
+                    <Button className="w-full" onClick={() => setActiveTab("logs")}>
                       <Plus className="mr-2 h-4 w-4" />
                       Log Meal Photo
                     </Button>
