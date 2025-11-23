@@ -59,18 +59,13 @@ export function AssessmentUploadDialog({ clientId, onSuccess }: AssessmentUpload
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("assessment-files")
-        .getPublicUrl(fileName);
-
-      // Insert assessment record
+      // Insert assessment record with file path (not public URL)
       const { error: dbError } = await supabase
         .from("assessments")
         .insert({
           client_id: clientId,
           file_name: file.name,
-          file_url: urlData.publicUrl,
+          file_url: fileName, // Store path, not public URL
           notes: notes || null,
         });
 

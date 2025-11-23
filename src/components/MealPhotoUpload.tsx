@@ -78,11 +78,6 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("meal-photos")
-        .getPublicUrl(fileName);
-
       // Get or create today's daily log
       const today = new Date().toISOString().split("T")[0];
       let dailyLogId = null;
@@ -98,7 +93,7 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
         dailyLogId = existingLog.id;
       }
 
-      // Insert meal log
+      // Insert meal log with file path (not public URL)
       const { error: dbError } = await supabase
         .from("meal_logs")
         .insert({
@@ -106,7 +101,7 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
           daily_log_id: dailyLogId,
           meal_type: mealType as "breakfast" | "lunch" | "evening_snack" | "dinner",
           meal_name: mealName || null,
-          photo_url: urlData.publicUrl,
+          photo_url: fileName, // Store path, not public URL
           notes: notes || null,
           kcal: kcal ? parseInt(kcal) : null,
           logged_at: new Date().toISOString(),

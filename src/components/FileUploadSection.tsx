@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Upload, Loader2, FileText, Download, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { getSignedUrl } from "@/lib/storage";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -73,18 +74,13 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("client-files")
-        .getPublicUrl(fileName);
-
-      // Insert file record
+      // Insert file record with file path (not public URL)
       const { error: dbError } = await supabase
         .from("files")
         .insert({
           client_id: clientId,
           file_name: selectedFile.name,
-          file_url: urlData.publicUrl,
+          file_url: fileName, // Store path, not public URL
           file_type: selectedFile.type,
           file_size: selectedFile.size,
         });
@@ -101,13 +97,9 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
     }
   };
 
-  const handleDelete = async (fileId: string, fileUrl: string) => {
+  const handleDelete = async (fileId: string, filePath: string) => {
     try {
-      // Extract file path from URL
-      const urlParts = fileUrl.split("/");
-      const filePath = urlParts.slice(-2).join("/");
-
-      // Delete from storage
+      // Delete from storage (filePath is already the path, not a URL)
       const { error: storageError } = await supabase.storage
         .from("client-files")
         .remove([filePath]);
@@ -198,10 +190,19 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
                     <TableCell>{formatFileSize(file.file_size)}</TableCell>
                     <TableCell>{new Date(file.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" asChild>
-                        <a href={file.file_url} target="_blank" rel="noopener noreferrer">
-                          <Download className="h-4 w-4" />
-                        </a>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={async () => {
+                          try {
+                            const signedUrl = await getSignedUrl("client-files", file.file_url);
+                            window.open(signedUrl, "_blank");
+                          } catch (error) {
+                            toast.error("Failed to open file");
+                          }
+                        }}
+                      >
+                        <Download className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="destructive"
