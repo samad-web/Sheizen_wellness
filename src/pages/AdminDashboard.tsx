@@ -199,6 +199,15 @@ export default function AdminDashboard() {
                   <CardTitle>All Clients</CardTitle>
                   <CardDescription>Manage your client roster</CardDescription>
                 </div>
+                <Button
+                  onClick={() => {
+                    setEditingClientId(null);
+                    setEditorOpen(true);
+                  }}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  New Client
+                </Button>
               </CardHeader>
               <CardContent>
                 {clients.length === 0 ? (

@@ -21,6 +21,7 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
     name: "",
     email: "",
     phone: "",
+    password: "",
     age: "",
     gender: "",
     service_type: "",
@@ -57,6 +58,7 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
         name: data.name || "",
         email: data.email || "",
         phone: data.phone || "",
+        password: "",
         age: data.age?.toString() || "",
         gender: data.gender || "",
         service_type: data.service_type || "",
@@ -73,6 +75,7 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
       name: "",
       email: "",
       phone: "",
+      password: "",
       age: "",
       gender: "",
       service_type: "",
@@ -109,9 +112,44 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
         if (error) throw error;
         toast.success("Client updated successfully");
       } else {
-        // Create new client - Note: This requires creating a user first
-        toast.error("Creating new clients requires user account creation first. Please contact the client to sign up, then edit their profile to set service type.");
-        return;
+        // Create new client with user account
+        if (!formData.password) {
+          toast.error("Password is required for new clients");
+          return;
+        }
+
+        // Create auth user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              name: formData.name,
+              phone: formData.phone,
+            },
+          },
+        });
+
+        if (authError) throw authError;
+        if (!authData.user) throw new Error("Failed to create user account");
+
+        // The trigger will create the profile and user_role automatically
+        // Now update the client record with additional fields
+        const { error: updateError } = await supabase
+          .from("clients")
+          .update({
+            age: formData.age ? parseInt(formData.age) : null,
+            gender: formData.gender as any,
+            service_type: formData.service_type as any,
+            program_type: formData.program_type as any,
+            target_kcal: formData.target_kcal ? parseInt(formData.target_kcal) : null,
+            status: formData.status as any,
+            goals: formData.goals || null,
+          })
+          .eq("user_id", authData.user.id);
+
+        if (updateError) throw updateError;
+        toast.success("Client created successfully");
       }
 
       onSuccess();
@@ -154,6 +192,21 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
               />
             </div>
           </div>
+
+          {!clientId && (
+            <div>
+              <Label htmlFor="password">Password *</Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+                placeholder="Minimum 6 characters"
+                minLength={6}
+              />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>
