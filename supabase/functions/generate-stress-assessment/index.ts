@@ -76,6 +76,8 @@ Format the response as a professional assessment report in markdown.`;
         form_responses: form_data,
         assessment_data: { report: assessmentText },
         ai_generated: true,
+        file_name: `Stress Assessment - ${client_name} - ${new Date().toLocaleDateString()}`,
+        notes: 'AI-generated stress assessment based on client form responses'
       })
       .select()
       .single();
