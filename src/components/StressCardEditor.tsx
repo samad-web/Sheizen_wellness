@@ -139,6 +139,49 @@ export function StressCardEditor({
     });
   };
 
+  const pssLabels0to4 = ['Never', 'Almost Never', 'Sometimes', 'Fairly Often', 'Very Often'];
+  const pssLabels1to5 = ['Never', 'Rarely', 'Sometimes', 'Often', 'Very Often'];
+
+  const pssQuestions = [
+    { key: 'pss_q1_upset_unexpectedly', text: 'How often have you been upset because of something that happened unexpectedly?', scale: '0-4' },
+    { key: 'pss_q2_unable_to_control', text: 'How often have you felt that you were unable to control the important things in your life?', scale: '0-4' },
+    { key: 'pss_q3_nervous_stressed', text: 'How often have you felt nervous and stressed?', scale: '1-5' },
+    { key: 'pss_q4_confident_handling_problems', text: 'How often have you felt confident about your ability to handle your personal problems?', scale: '1-5' },
+    { key: 'pss_q5_things_going_your_way', text: 'How often have you felt that things were going your way?', scale: '1-5' },
+    { key: 'pss_q6_could_not_cope', text: 'How often have you found that you could not cope with all the things that you had to do?', scale: '1-5' },
+    { key: 'pss_q7_control_irritations', text: 'How often have you been able to control irritations in your life?', scale: '1-5' },
+    { key: 'pss_q8_on_top_of_things', text: 'How often have you felt that you were on top of things?', scale: '1-5' },
+    { key: 'pss_q9_angered_outside_control', text: 'How often have you been angered because of things that were outside of your control?', scale: '1-5' },
+    { key: 'pss_q10_difficulties_piling_up', text: 'How often have you felt difficulties were piling up so high that you could not overcome them?', scale: '1-5' }
+  ];
+
+  const calculatePSSScore = () => {
+    const responses = formData.form_responses || {};
+    let total = 0;
+    
+    // Questions with 0-4 scale
+    total += parseInt(responses.pss_q1_upset_unexpectedly || '0');
+    total += parseInt(responses.pss_q2_unable_to_control || '0');
+    
+    // Questions with 1-5 scale (convert to 0-4)
+    total += Math.max(0, parseInt(responses.pss_q3_nervous_stressed || '1') - 1);
+    total += Math.max(0, parseInt(responses.pss_q4_confident_handling_problems || '1') - 1);
+    total += Math.max(0, parseInt(responses.pss_q5_things_going_your_way || '1') - 1);
+    total += Math.max(0, parseInt(responses.pss_q6_could_not_cope || '1') - 1);
+    total += Math.max(0, parseInt(responses.pss_q7_control_irritations || '1') - 1);
+    total += Math.max(0, parseInt(responses.pss_q8_on_top_of_things || '1') - 1);
+    total += Math.max(0, parseInt(responses.pss_q9_angered_outside_control || '1') - 1);
+    total += Math.max(0, parseInt(responses.pss_q10_difficulties_piling_up || '1') - 1);
+    
+    return total;
+  };
+
+  const interpretPSSScore = (score: number) => {
+    if (score <= 13) return 'Low stress';
+    if (score <= 26) return 'Moderate stress';
+    return 'High stress';
+  };
+
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -178,52 +221,33 @@ export function StressCardEditor({
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Form Responses</CardTitle>
+                <CardTitle className="text-lg">Perceived Stress Scale (PSS-10) Responses</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Total PSS Score: <span className="font-semibold">{calculatePSSScore()}</span> ({interpretPSSScore(calculatePSSScore())})
+                </p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Work Stress Level</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={formData.form_responses?.workStressLevel || ''}
-                      onChange={(e) => updateField('form_responses.workStressLevel', parseInt(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Sleep Quality</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={formData.form_responses?.sleepQuality || ''}
-                      onChange={(e) => updateField('form_responses.sleepQuality', parseInt(e.target.value))}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Stress Triggers</Label>
-                  <Textarea
-                    value={formData.form_responses?.stressTriggers || ''}
-                    onChange={(e) => updateField('form_responses.stressTriggers', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Coping Mechanisms</Label>
-                  <Textarea
-                    value={formData.form_responses?.copingMechanisms || ''}
-                    onChange={(e) => updateField('form_responses.copingMechanisms', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Physical Symptoms</Label>
-                  <Textarea
-                    value={formData.form_responses?.physicalSymptoms || ''}
-                    onChange={(e) => updateField('form_responses.physicalSymptoms', e.target.value)}
-                  />
-                </div>
+                {pssQuestions.map((q, idx) => {
+                  const value = formData.form_responses?.[q.key];
+                  const labels = q.scale === '0-4' ? pssLabels0to4 : pssLabels1to5;
+                  const labelText = value ? labels[parseInt(value) - (q.scale === '1-5' ? 1 : 0)] : 'Not answered';
+                  
+                  return (
+                    <div key={q.key} className="border-b pb-3 last:border-0">
+                      <Label className="text-sm font-medium">
+                        Q{idx + 1}. {q.text}
+                      </Label>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-sm font-semibold text-primary">
+                          Score: {value || 'N/A'}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          ({labelText})
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </CardContent>
             </Card>
 
@@ -256,23 +280,36 @@ export function StressCardEditor({
                   
                   <div className="space-y-4">
                     <div>
-                      <h4 className="font-medium mb-2">Assessment Summary</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                        <div>Work Stress: {formData.form_responses?.workStressLevel}/10</div>
-                        <div>Sleep Quality: {formData.form_responses?.sleepQuality}/10</div>
+                      <h4 className="font-medium mb-3">Perceived Stress Scale (PSS-10) Results</h4>
+                      <div className="bg-secondary/30 p-3 rounded-md mb-3">
+                        <p className="text-sm">
+                          <span className="font-semibold">Total PSS Score:</span> {calculatePSSScore()} / 40
+                        </p>
+                        <p className="text-sm mt-1">
+                          <span className="font-semibold">Interpretation:</span> {interpretPSSScore(calculatePSSScore())}
+                        </p>
                       </div>
-                      <div className="text-sm space-y-2">
-                        <div>
-                          <span className="font-medium">Triggers:</span> {formData.form_responses?.stressTriggers}
-                        </div>
-                        <div>
-                          <span className="font-medium">Coping:</span> {formData.form_responses?.copingMechanisms}
-                        </div>
+                      
+                      <div className="space-y-3 text-sm">
+                        {pssQuestions.map((q, idx) => {
+                          const value = formData.form_responses?.[q.key];
+                          const labels = q.scale === '0-4' ? pssLabels0to4 : pssLabels1to5;
+                          const labelText = value ? labels[parseInt(value) - (q.scale === '1-5' ? 1 : 0)] : 'Not answered';
+                          
+                          return (
+                            <div key={q.key} className="border-l-2 border-primary/20 pl-3">
+                              <p className="font-medium">Q{idx + 1}. {q.text}</p>
+                              <p className="text-muted-foreground mt-1">
+                                Score: <span className="font-semibold">{value || 'N/A'}</span> - {labelText}
+                              </p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
                     <div>
-                      <h4 className="font-medium mb-2">Professional Analysis</h4>
+                      <h4 className="font-medium mb-2">Professional Stress Assessment</h4>
                       <div className="text-sm whitespace-pre-wrap prose prose-sm max-w-none">
                         {formData.assessment_text}
                       </div>

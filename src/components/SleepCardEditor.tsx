@@ -139,6 +139,29 @@ export function SleepCardEditor({
     });
   };
 
+  const sleepFrequencyLabels: Record<string, string> = {
+    'not_during_past_month': 'Not during past month',
+    'once_a_week': 'Once a week',
+    'once_or_twice_a_week': 'Once or twice a week',
+    'three_plus_times_a_week': '3+ times a week',
+    'less_than_once_a_week': 'Less than once a week',
+    'one_to_two_times_a_week': '1-2 times a week'
+  };
+
+  const sleepQualityLabels: Record<string, string> = {
+    'very_good': 'Very Good',
+    'fairly_good': 'Fairly Good',
+    'fairly_bad': 'Fairly Bad',
+    'very_bad': 'Very Bad'
+  };
+
+  const problemLevelLabels: Record<string, string> = {
+    'no_problem': 'No problem at all',
+    'slight_problem': 'Only a very slight problem',
+    'somewhat_problem': 'Somewhat of a problem',
+    'big_problem': 'A very big problem'
+  };
+
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
@@ -178,75 +201,93 @@ export function SleepCardEditor({
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Form Responses</CardTitle>
+                <CardTitle className="text-lg">Sleep Quality Index (PSQI) Responses</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label>Sleep Hours</Label>
+                    <Label>Usual Bedtime</Label>
+                    <Input
+                      value={formData.form_responses?.bedtime_usual || ''}
+                      onChange={(e) => updateField('form_responses.bedtime_usual', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label>Usual Wake Time</Label>
+                    <Input
+                      value={formData.form_responses?.wake_time_usual || ''}
+                      onChange={(e) => updateField('form_responses.wake_time_usual', e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Sleep Latency (minutes)</Label>
+                    <Input
+                      type="number"
+                      value={formData.form_responses?.sleep_latency_minutes || ''}
+                      onChange={(e) => updateField('form_responses.sleep_latency_minutes', parseInt(e.target.value))}
+                    />
+                  </div>
+                  <div>
+                    <Label>Actual Sleep Hours</Label>
                     <Input
                       type="number"
                       step="0.5"
-                      value={formData.form_responses?.sleepHours || ''}
-                      onChange={(e) => updateField('form_responses.sleepHours', parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Sleep Quality</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={formData.form_responses?.sleepQuality || ''}
-                      onChange={(e) => updateField('form_responses.sleepQuality', parseInt(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Bedtime</Label>
-                    <Input
-                      value={formData.form_responses?.sleepTime || ''}
-                      onChange={(e) => updateField('form_responses.sleepTime', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Wake Time</Label>
-                    <Input
-                      value={formData.form_responses?.wakeTime || ''}
-                      onChange={(e) => updateField('form_responses.wakeTime', e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label>Energy Levels</Label>
-                    <Input
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={formData.form_responses?.energyLevels || ''}
-                      onChange={(e) => updateField('form_responses.energyLevels', parseInt(e.target.value))}
+                      value={formData.form_responses?.actual_sleep_hours || ''}
+                      onChange={(e) => updateField('form_responses.actual_sleep_hours', parseFloat(e.target.value))}
                     />
                   </div>
                 </div>
+
                 <div>
-                  <Label>Pre-Bed Routine</Label>
-                  <Textarea
-                    value={formData.form_responses?.preBedRoutine || ''}
-                    onChange={(e) => updateField('form_responses.preBedRoutine', e.target.value)}
-                  />
+                  <Label>Sleep Trouble Frequency</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {sleepFrequencyLabels[formData.form_responses?.sleep_trouble_frequency] || formData.form_responses?.sleep_trouble_frequency || 'Not specified'}
+                  </p>
                 </div>
+
                 <div>
-                  <Label>Screen Time Before Sleep</Label>
-                  <Input
-                    value={formData.form_responses?.screenTime || ''}
-                    onChange={(e) => updateField('form_responses.screenTime', e.target.value)}
-                  />
+                  <Label>Sleep Medicine Frequency</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {sleepFrequencyLabels[formData.form_responses?.sleep_medicine_frequency] || formData.form_responses?.sleep_medicine_frequency || 'Not specified'}
+                  </p>
                 </div>
+
                 <div>
-                  <Label>Sleep Disruptions</Label>
-                  <Textarea
-                    value={formData.form_responses?.sleepDisruptions || ''}
-                    onChange={(e) => updateField('form_responses.sleepDisruptions', e.target.value)}
-                  />
+                  <Label>Daytime Sleepiness Frequency</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {sleepFrequencyLabels[formData.form_responses?.daytime_sleepiness_frequency] || formData.form_responses?.daytime_sleepiness_frequency || 'Not specified'}
+                  </p>
                 </div>
+
+                <div>
+                  <Label>Enthusiasm Problem Level</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {problemLevelLabels[formData.form_responses?.enthusiasm_problem_level] || formData.form_responses?.enthusiasm_problem_level || 'Not specified'}
+                  </p>
+                </div>
+
+                <div>
+                  <Label>Overall Sleep Quality Rating</Label>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {sleepQualityLabels[formData.form_responses?.overall_sleep_quality_rating] || formData.form_responses?.overall_sleep_quality_rating || 'Not specified'}
+                  </p>
+                </div>
+
+                {formData.form_responses?.sleep_symptoms_observed && formData.form_responses.sleep_symptoms_observed.length > 0 && (
+                  <div>
+                    <Label>Sleep Symptoms Observed</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {formData.form_responses.sleep_symptoms_observed.map((symptom: string, idx: number) => (
+                        <span key={idx} className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-sm">
+                          {symptom}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -279,29 +320,72 @@ export function SleepCardEditor({
                   
                   <div className="space-y-4">
                     <div>
-                      <h4 className="font-medium mb-2">Sleep Pattern Summary</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                        <div>Sleep Hours: {formData.form_responses?.sleepHours} hrs</div>
-                        <div>Sleep Quality: {formData.form_responses?.sleepQuality}/10</div>
-                        <div>Bedtime: {formData.form_responses?.sleepTime}</div>
-                        <div>Wake Time: {formData.form_responses?.wakeTime}</div>
-                        <div>Energy Levels: {formData.form_responses?.energyLevels}/10</div>
-                      </div>
-                      <div className="text-sm space-y-2">
-                        <div>
-                          <span className="font-medium">Routine:</span> {formData.form_responses?.preBedRoutine}
+                      <h4 className="font-medium mb-3">Pittsburgh Sleep Quality Index (PSQI)</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="font-medium">Usual Bedtime:</span>
+                            <p className="text-muted-foreground">{formData.form_responses?.bedtime_usual || 'Not specified'}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium">Usual Wake Time:</span>
+                            <p className="text-muted-foreground">{formData.form_responses?.wake_time_usual || 'Not specified'}</p>
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-medium">Screen Time:</span> {formData.form_responses?.screenTime}
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="font-medium">Time to Fall Asleep:</span>
+                            <p className="text-muted-foreground">{formData.form_responses?.sleep_latency_minutes ? `${formData.form_responses.sleep_latency_minutes} minutes` : 'Not specified'}</p>
+                          </div>
+                          <div>
+                            <span className="font-medium">Actual Sleep Hours:</span>
+                            <p className="text-muted-foreground">{formData.form_responses?.actual_sleep_hours ? `${formData.form_responses.actual_sleep_hours} hours` : 'Not specified'}</p>
+                          </div>
                         </div>
+
                         <div>
-                          <span className="font-medium">Disruptions:</span> {formData.form_responses?.sleepDisruptions}
+                          <span className="font-medium">Sleep Trouble Frequency:</span>
+                          <p className="text-muted-foreground">{sleepFrequencyLabels[formData.form_responses?.sleep_trouble_frequency] || 'Not specified'}</p>
                         </div>
+
+                        <div>
+                          <span className="font-medium">Sleep Medicine Use:</span>
+                          <p className="text-muted-foreground">{sleepFrequencyLabels[formData.form_responses?.sleep_medicine_frequency] || 'Not specified'}</p>
+                        </div>
+
+                        <div>
+                          <span className="font-medium">Daytime Sleepiness:</span>
+                          <p className="text-muted-foreground">{sleepFrequencyLabels[formData.form_responses?.daytime_sleepiness_frequency] || 'Not specified'}</p>
+                        </div>
+
+                        <div>
+                          <span className="font-medium">Enthusiasm Level:</span>
+                          <p className="text-muted-foreground">{problemLevelLabels[formData.form_responses?.enthusiasm_problem_level] || 'Not specified'}</p>
+                        </div>
+
+                        <div>
+                          <span className="font-medium">Overall Sleep Quality:</span>
+                          <p className="text-muted-foreground">{sleepQualityLabels[formData.form_responses?.overall_sleep_quality_rating] || 'Not specified'}</p>
+                        </div>
+
+                        {formData.form_responses?.sleep_symptoms_observed && formData.form_responses.sleep_symptoms_observed.length > 0 && (
+                          <div>
+                            <span className="font-medium">Observed Symptoms:</span>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {formData.form_responses.sleep_symptoms_observed.map((symptom: string, idx: number) => (
+                                <span key={idx} className="px-2 py-1 bg-secondary/50 rounded text-xs">
+                                  {symptom}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
                     <div>
-                      <h4 className="font-medium mb-2">Professional Analysis</h4>
+                      <h4 className="font-medium mb-2">Professional Sleep Assessment</h4>
                       <div className="text-sm whitespace-pre-wrap prose prose-sm max-w-none">
                         {formData.assessment_text}
                       </div>
