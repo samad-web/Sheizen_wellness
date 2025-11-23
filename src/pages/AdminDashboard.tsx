@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { FoodItemsManager } from "@/components/FoodItemsManager";
 import { RecipeBuilder } from "@/components/RecipeBuilder";
+import { AdminClientEditor } from "@/components/AdminClientEditor";
+import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -29,6 +31,8 @@ export default function AdminDashboard() {
   });
   const [clients, setClients] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editorOpen, setEditorOpen] = useState(false);
+  const [editingClientId, setEditingClientId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user || userRole !== "admin") {
@@ -190,9 +194,11 @@ export default function AdminDashboard() {
 
           <TabsContent value="clients">
             <Card>
-              <CardHeader>
-                <CardTitle>All Clients</CardTitle>
-                <CardDescription>Manage your client roster</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>All Clients</CardTitle>
+                  <CardDescription>Manage your client roster</CardDescription>
+                </div>
               </CardHeader>
               <CardContent>
                 {clients.length === 0 ? (
@@ -214,21 +220,38 @@ export default function AdminDashboard() {
                                   {client.status}
                                 </Badge>
                               </div>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-muted-foreground">
+                              <div className="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm text-muted-foreground">
                                 <div>📧 {client.email}</div>
                                 <div>📱 {client.phone}</div>
+                                <div>
+                                  <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs border ${getServiceTypeBadgeColor(client.service_type)}`}>
+                                    {formatServiceType(client.service_type)}
+                                  </span>
+                                </div>
                                 <div>🎯 {client.program_type?.replace("_", " ")}</div>
                                 <div>⚖️ {client.last_weight ? `${client.last_weight} kg` : "Not set"}</div>
                               </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => navigate(`/admin/client/${client.id}`)}
-                            >
-                              <Eye className="mr-2 h-4 w-4" />
-                              View Details
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingClientId(client.id);
+                                  setEditorOpen(true);
+                                }}
+                              >
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => navigate(`/admin/client/${client.id}`)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </Button>
+                            </div>
                           </div>
                         </CardContent>
                       </Card>
@@ -263,6 +286,16 @@ export default function AdminDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        <AdminClientEditor
+          clientId={editingClientId}
+          open={editorOpen}
+          onOpenChange={(open) => {
+            setEditorOpen(open);
+            if (!open) setEditingClientId(null);
+          }}
+          onSuccess={fetchDashboardData}
+        />
       </div>
     </div>
   );

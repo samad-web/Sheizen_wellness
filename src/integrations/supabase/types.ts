@@ -64,6 +64,7 @@ export type Database = {
           name: string
           phone: string
           program_type: Database["public"]["Enums"]["program_type"] | null
+          service_type: Database["public"]["Enums"]["service_type"] | null
           status: Database["public"]["Enums"]["client_status"] | null
           target_kcal: number | null
           updated_at: string
@@ -80,6 +81,7 @@ export type Database = {
           name: string
           phone: string
           program_type?: Database["public"]["Enums"]["program_type"] | null
+          service_type?: Database["public"]["Enums"]["service_type"] | null
           status?: Database["public"]["Enums"]["client_status"] | null
           target_kcal?: number | null
           updated_at?: string
@@ -96,6 +98,7 @@ export type Database = {
           name?: string
           phone?: string
           program_type?: Database["public"]["Enums"]["program_type"] | null
+          service_type?: Database["public"]["Enums"]["service_type"] | null
           status?: Database["public"]["Enums"]["client_status"] | null
           target_kcal?: number | null
           updated_at?: string
@@ -579,6 +582,7 @@ export type Database = {
         | "maintenance"
         | "muscle_building"
         | "general_wellness"
+      service_type: "consultation" | "hundred_days"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -717,6 +721,7 @@ export const Constants = {
         "muscle_building",
         "general_wellness",
       ],
+      service_type: ["consultation", "hundred_days"],
     },
   },
 } as const
