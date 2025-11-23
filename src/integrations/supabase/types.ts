@@ -154,6 +154,65 @@ export type Database = {
           },
         ]
       }
+      assessment_requests: {
+        Row: {
+          assessment_type: string
+          client_id: string
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          metadata: Json | null
+          notes: string | null
+          requested_at: string | null
+          requested_by: string | null
+          started_at: string | null
+          status:
+            | Database["public"]["Enums"]["assessment_request_status"]
+            | null
+          updated_at: string | null
+        }
+        Insert: {
+          assessment_type: string
+          client_id: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          started_at?: string | null
+          status?:
+            | Database["public"]["Enums"]["assessment_request_status"]
+            | null
+          updated_at?: string | null
+        }
+        Update: {
+          assessment_type?: string
+          client_id?: string
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          metadata?: Json | null
+          notes?: string | null
+          requested_at?: string | null
+          requested_by?: string | null
+          started_at?: string | null
+          status?:
+            | Database["public"]["Enums"]["assessment_request_status"]
+            | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_requests_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessments: {
         Row: {
           ai_generated: boolean | null
@@ -1390,6 +1449,11 @@ export type Database = {
         | "early_bird"
         | "first_meal"
       app_role: "admin" | "client"
+      assessment_request_status:
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "cancelled"
       assessment_type: "health" | "stress" | "sleep" | "custom"
       client_status: "active" | "inactive" | "pending" | "completed"
       gender_type: "male" | "female" | "other"
@@ -1549,6 +1613,12 @@ export const Constants = {
         "first_meal",
       ],
       app_role: ["admin", "client"],
+      assessment_request_status: [
+        "pending",
+        "in_progress",
+        "completed",
+        "cancelled",
+      ],
       assessment_type: ["health", "stress", "sleep", "custom"],
       client_status: ["active", "inactive", "pending", "completed"],
       gender_type: ["male", "female", "other"],
