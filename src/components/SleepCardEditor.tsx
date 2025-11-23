@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Save, Send } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Moon, Clock, Star, Sparkles, Save, Send, AlertCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface SleepCardEditorProps {
   cardId: string;
@@ -94,10 +96,7 @@ export function SleepCardEditor({
   const handleSend = async () => {
     setSending(true);
     try {
-      // First save current changes
       await handleSave();
-
-      // Then send the card
       const { error } = await supabase.functions.invoke('send-card-to-client', {
         body: { card_id: cardId }
       });
@@ -149,25 +148,39 @@ export function SleepCardEditor({
   };
 
   const sleepQualityLabels: Record<string, string> = {
-    'very_good': 'Very Good',
-    'fairly_good': 'Fairly Good',
-    'fairly_bad': 'Fairly Bad',
-    'very_bad': 'Very Bad'
+    'very_good': 'Very Good 😊',
+    'fairly_good': 'Fairly Good 🙂',
+    'fairly_bad': 'Fairly Bad 😕',
+    'very_bad': 'Very Bad 😫'
   };
 
   const problemLevelLabels: Record<string, string> = {
-    'no_problem': 'No problem at all',
-    'slight_problem': 'Only a very slight problem',
-    'somewhat_problem': 'Somewhat of a problem',
-    'big_problem': 'A very big problem'
+    'no_problem': 'No Problem ✓',
+    'slight_problem': 'Slight Problem',
+    'moderate_problem': 'Moderate Problem',
+    'severe_problem': 'Severe Problem ⚠️'
+  };
+
+  const getQualityColor = (quality: string): string => {
+    switch (quality) {
+      case 'very_good': return 'bg-wellness-green/10 text-wellness-green border-wellness-green/20';
+      case 'fairly_good': return 'bg-wellness-mint/10 text-wellness-mint border-wellness-mint/20';
+      case 'fairly_bad': return 'bg-accent/10 text-accent-foreground border-accent/20';
+      case 'very_bad': return 'bg-destructive/10 text-destructive border-destructive/20';
+      default: return 'bg-muted text-muted-foreground border-border';
+    }
   };
 
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <DialogContent className="max-w-7xl max-h-[90vh]">
+          <div className="flex flex-col items-center justify-center p-12 gap-4">
+            <div className="relative">
+              <Moon className="h-16 w-16 text-primary animate-pulse" />
+              <Sparkles className="h-6 w-6 text-wellness-mint absolute -top-2 -right-2 animate-pulse" />
+            </div>
+            <p className="text-muted-foreground">Loading sleep assessment...</p>
           </div>
         </DialogContent>
       </Dialog>
@@ -176,241 +189,389 @@ export function SleepCardEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Sleep Assessment Card</DialogTitle>
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="bg-gradient-to-r from-wellness-green/10 via-wellness-mint/5 to-transparent border-b border-wellness-green/20 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-wellness-green/10 rounded-lg">
+              <Moon className="h-6 w-6 text-wellness-green" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-2xl flex items-center gap-2">
+                Sleep Quality Assessment
+                <Badge variant="outline" className="ml-2 border-wellness-mint text-wellness-mint">
+                  {cardData?.status === 'edited' ? 'Edited' : 'AI Generated'}
+                </Badge>
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Review and personalize the assessment before sending to client
+              </p>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6">
-          {/* Edit Form */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Client Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Name</Label>
+        <ScrollArea className="flex-1">
+          <div className="grid lg:grid-cols-2 gap-6 p-6">
+            {/* Edit Form Column */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 pb-2 border-b border-wellness-green/20">
+                <Star className="h-5 w-5 text-wellness-green" />
+                <h3 className="font-semibold text-lg">Edit Assessment Details</h3>
+              </div>
+
+              {/* Client Details Section */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-wellness-light/30 to-transparent rounded-xl border border-wellness-green/10 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-wellness-green/10 flex items-center justify-center text-wellness-green font-semibold">
+                    {formData.client_name?.charAt(0) || 'C'}
+                  </div>
+                  <h4 className="font-medium text-sm">Client Information</h4>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="client_name" className="text-xs text-muted-foreground">Full Name</Label>
                   <Input
+                    id="client_name"
                     value={formData.client_name || ''}
                     onChange={(e) => updateField('client_name', e.target.value)}
+                    className="transition-all duration-200 focus:ring-2 focus:ring-wellness-green/20"
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Sleep Quality Index (PSQI) Responses</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Usual Bedtime</Label>
+              {/* Sleep Timing Section */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-wellness-mint/5 to-transparent rounded-xl border border-wellness-mint/20 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-wellness-mint" />
+                  <h4 className="font-medium text-sm">Sleep Schedule</h4>
+                </div>
+                <div className="grid gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="bedtime" className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Moon className="h-3 w-3" /> Usual Bedtime
+                    </Label>
                     <Input
+                      id="bedtime"
+                      type="time"
                       value={formData.form_responses?.bedtime_usual || ''}
                       onChange={(e) => updateField('form_responses.bedtime_usual', e.target.value)}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-wellness-mint/20"
                     />
                   </div>
-                  <div>
-                    <Label>Usual Wake Time</Label>
+                  <div className="space-y-1">
+                    <Label htmlFor="wake_time" className="text-xs text-muted-foreground flex items-center gap-1">
+                      ☀️ Usual Wake Time
+                    </Label>
                     <Input
+                      id="wake_time"
+                      type="time"
                       value={formData.form_responses?.wake_time_usual || ''}
                       onChange={(e) => updateField('form_responses.wake_time_usual', e.target.value)}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-wellness-mint/20"
                     />
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Sleep Latency (minutes)</Label>
+              </div>
+
+              {/* Sleep Quality Metrics */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-primary/5 to-transparent rounded-xl border border-primary/20 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <Star className="h-4 w-4 text-primary" />
+                  <h4 className="font-medium text-sm">Sleep Quality Metrics</h4>
+                </div>
+                <div className="grid gap-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="actual_sleep" className="text-xs text-muted-foreground">
+                      💤 Actual Sleep Duration (hours)
+                    </Label>
                     <Input
-                      type="number"
-                      value={formData.form_responses?.sleep_latency_minutes || ''}
-                      onChange={(e) => updateField('form_responses.sleep_latency_minutes', parseInt(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Actual Sleep Hours</Label>
-                    <Input
+                      id="actual_sleep"
                       type="number"
                       step="0.5"
+                      min="0"
+                      max="24"
                       value={formData.form_responses?.actual_sleep_hours || ''}
                       onChange={(e) => updateField('form_responses.actual_sleep_hours', parseFloat(e.target.value))}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
                     />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="sleep_latency" className="text-xs text-muted-foreground">
+                      ⏱️ Time Taken to Fall Asleep (minutes)
+                    </Label>
+                    <Input
+                      id="sleep_latency"
+                      type="number"
+                      min="0"
+                      value={formData.form_responses?.sleep_latency_minutes || ''}
+                      onChange={(e) => updateField('form_responses.sleep_latency_minutes', parseInt(e.target.value))}
+                      className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="overall_quality" className="text-xs text-muted-foreground">
+                      Overall Sleep Quality Rating
+                    </Label>
+                    <div className={`px-3 py-2 rounded-md border ${getQualityColor(formData.form_responses?.overall_sleep_quality_rating || '')} font-medium transition-all duration-200`}>
+                      {sleepQualityLabels[formData.form_responses?.overall_sleep_quality_rating || ''] || formData.form_responses?.overall_sleep_quality_rating || 'Not specified'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sleep Challenges */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-accent/5 to-transparent rounded-xl border border-accent/20 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4 text-accent-foreground" />
+                  <h4 className="font-medium text-sm">Sleep Challenges</h4>
+                </div>
+                <div className="grid gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      🌙 How Often Do You Experience Sleep Difficulties?
+                    </Label>
+                    <Badge variant="outline" className="w-full justify-start py-2 font-normal">
+                      {sleepFrequencyLabels[formData.form_responses?.sleep_trouble_frequency || ''] || formData.form_responses?.sleep_trouble_frequency || 'Not specified'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      💊 Sleep Medication Usage Frequency
+                    </Label>
+                    <Badge variant="outline" className="w-full justify-start py-2 font-normal">
+                      {sleepFrequencyLabels[formData.form_responses?.sleep_medicine_frequency || ''] || formData.form_responses?.sleep_medicine_frequency || 'Not specified'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Daytime Impact */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-secondary/5 to-transparent rounded-xl border border-secondary/20 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-secondary" />
+                  <h4 className="font-medium text-sm">Daytime Impact</h4>
+                </div>
+                <div className="grid gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      ☀️ Daytime Sleepiness Level
+                    </Label>
+                    <Badge variant="secondary" className="w-full justify-start py-2 font-normal">
+                      {sleepFrequencyLabels[formData.form_responses?.daytime_sleepiness_frequency || ''] || formData.form_responses?.daytime_sleepiness_frequency || 'Not specified'}
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      ⚡ Energy & Motivation Level
+                    </Label>
+                    <Badge variant="secondary" className="w-full justify-start py-2 font-normal">
+                      {problemLevelLabels[formData.form_responses?.enthusiasm_problem_level || ''] || formData.form_responses?.enthusiasm_problem_level || 'Not specified'}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sleep Symptoms */}
+              {formData.form_responses?.sleep_symptoms_observed && Array.isArray(formData.form_responses.sleep_symptoms_observed) && formData.form_responses.sleep_symptoms_observed.length > 0 && (
+                <div className="space-y-4 p-5 bg-gradient-to-br from-destructive/5 to-transparent rounded-xl border border-destructive/20 transition-all duration-300 hover:shadow-md">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-destructive" />
+                    <h4 className="font-medium text-sm">Observed Sleep Symptoms</h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.form_responses.sleep_symptoms_observed.map((symptom: string, idx: number) => (
+                      <Badge key={idx} variant="destructive" className="px-3 py-1.5 font-normal">
+                        {symptom}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <Separator className="my-4" />
+
+              {/* AI Assessment */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-wellness-green/5 to-transparent rounded-xl border border-wellness-green/20 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-wellness-green" />
+                  <h4 className="font-medium text-sm">Professional Analysis & Recommendations</h4>
+                </div>
+                <Textarea
+                  value={formData.assessment_text || ''}
+                  onChange={(e) => updateField('assessment_text', e.target.value)}
+                  className="min-h-[240px] transition-all duration-200 focus:ring-2 focus:ring-wellness-green/20 leading-relaxed"
+                  placeholder="Provide personalized sleep analysis and recommendations based on the assessment data..."
+                />
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  💡 Tip: Use empathetic, clear language that helps the client understand their sleep patterns
+                </p>
+              </div>
+            </div>
+
+            {/* Preview Column */}
+            <div className="space-y-6 border-l border-wellness-mint/20 pl-6">
+              <div className="flex items-center gap-2 pb-2 border-b border-wellness-mint/20">
+                <Sparkles className="h-5 w-5 text-wellness-mint" />
+                <h3 className="font-semibold text-lg">Client Preview</h3>
+              </div>
+              
+              <div className="p-6 bg-gradient-to-br from-card to-muted/20 rounded-2xl shadow-lg space-y-6 border border-border/50">
+                {/* Header */}
+                <div className="text-center pb-6 border-b border-border/50">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-wellness-green/10 mb-4">
+                    <Moon className="h-8 w-8 text-wellness-green" />
+                  </div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-wellness-green to-wellness-mint bg-clip-text text-transparent">
+                    Sleep Quality Assessment
+                  </h2>
+                  <p className="text-lg text-foreground mt-2 font-medium">{formData.client_name}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Comprehensive Sleep Analysis</p>
+                </div>
+
+                {/* Key Metrics */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-wellness-green/10 rounded-xl border border-wellness-green/20">
+                    <div className="text-sm text-muted-foreground mb-1">Sleep Duration</div>
+                    <div className="text-2xl font-bold text-wellness-green">{formData.form_responses?.actual_sleep_hours || 0}h</div>
+                  </div>
+                  <div className="p-4 bg-wellness-mint/10 rounded-xl border border-wellness-mint/20">
+                    <div className="text-sm text-muted-foreground mb-1">Sleep Latency</div>
+                    <div className="text-2xl font-bold text-wellness-mint">{formData.form_responses?.sleep_latency_minutes || 0}m</div>
                   </div>
                 </div>
 
-                <div>
-                  <Label>Sleep Trouble Frequency</Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {sleepFrequencyLabels[formData.form_responses?.sleep_trouble_frequency] || formData.form_responses?.sleep_trouble_frequency || 'Not specified'}
-                  </p>
+                {/* Sleep Schedule */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-base flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-wellness-green" />
+                    Sleep Schedule
+                  </h3>
+                  <div className="grid gap-3">
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <span className="text-sm text-muted-foreground flex items-center gap-2">
+                        <Moon className="h-3 w-3" /> Bedtime
+                      </span>
+                      <span className="font-medium">{formData.form_responses?.bedtime_usual || 'Not specified'}</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                      <span className="text-sm text-muted-foreground">☀️ Wake Time</span>
+                      <span className="font-medium">{formData.form_responses?.wake_time_usual || 'Not specified'}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <Label>Sleep Medicine Frequency</Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {sleepFrequencyLabels[formData.form_responses?.sleep_medicine_frequency] || formData.form_responses?.sleep_medicine_frequency || 'Not specified'}
-                  </p>
+                {/* Sleep Quality Details */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-base flex items-center gap-2">
+                    <Star className="h-4 w-4 text-wellness-green" />
+                    Sleep Quality Assessment
+                  </h3>
+                  <div className={`p-4 rounded-xl border-2 ${getQualityColor(formData.form_responses?.overall_sleep_quality_rating || '')} transition-all duration-200`}>
+                    <div className="text-sm text-muted-foreground mb-1">Overall Sleep Quality</div>
+                    <div className="text-xl font-bold">
+                      {sleepQualityLabels[formData.form_responses?.overall_sleep_quality_rating || ''] || 'Not assessed'}
+                    </div>
+                  </div>
+                  
+                  <div className="grid gap-2 text-sm">
+                    <div className="flex justify-between p-3 bg-muted/30 rounded-lg">
+                      <span className="text-muted-foreground">Sleep Difficulties</span>
+                      <span className="font-medium">{sleepFrequencyLabels[formData.form_responses?.sleep_trouble_frequency || ''] || 'Not specified'}</span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-muted/30 rounded-lg">
+                      <span className="text-muted-foreground">Medication Usage</span>
+                      <span className="font-medium">{sleepFrequencyLabels[formData.form_responses?.sleep_medicine_frequency || ''] || 'Not specified'}</span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-muted/30 rounded-lg">
+                      <span className="text-muted-foreground">Daytime Sleepiness</span>
+                      <span className="font-medium">{sleepFrequencyLabels[formData.form_responses?.daytime_sleepiness_frequency || ''] || 'Not specified'}</span>
+                    </div>
+                    <div className="flex justify-between p-3 bg-muted/30 rounded-lg">
+                      <span className="text-muted-foreground">Energy & Motivation</span>
+                      <span className="font-medium">{problemLevelLabels[formData.form_responses?.enthusiasm_problem_level || ''] || 'Not specified'}</span>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <Label>Daytime Sleepiness Frequency</Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {sleepFrequencyLabels[formData.form_responses?.daytime_sleepiness_frequency] || formData.form_responses?.daytime_sleepiness_frequency || 'Not specified'}
-                  </p>
-                </div>
-
-                <div>
-                  <Label>Enthusiasm Problem Level</Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {problemLevelLabels[formData.form_responses?.enthusiasm_problem_level] || formData.form_responses?.enthusiasm_problem_level || 'Not specified'}
-                  </p>
-                </div>
-
-                <div>
-                  <Label>Overall Sleep Quality Rating</Label>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {sleepQualityLabels[formData.form_responses?.overall_sleep_quality_rating] || formData.form_responses?.overall_sleep_quality_rating || 'Not specified'}
-                  </p>
-                </div>
-
-                {formData.form_responses?.sleep_symptoms_observed && formData.form_responses.sleep_symptoms_observed.length > 0 && (
-                  <div>
-                    <Label>Sleep Symptoms Observed</Label>
-                    <div className="flex flex-wrap gap-2 mt-2">
+                {/* Symptoms */}
+                {formData.form_responses?.sleep_symptoms_observed && Array.isArray(formData.form_responses.sleep_symptoms_observed) && formData.form_responses.sleep_symptoms_observed.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="font-semibold text-base flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-destructive" />
+                      Observed Sleep Symptoms
+                    </h3>
+                    <div className="flex flex-wrap gap-2">
                       {formData.form_responses.sleep_symptoms_observed.map((symptom: string, idx: number) => (
-                        <span key={idx} className="px-2 py-1 bg-secondary text-secondary-foreground rounded-md text-sm">
+                        <Badge key={idx} variant="destructive" className="px-3 py-1.5">
                           {symptom}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">AI Assessment</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  rows={12}
-                  value={formData.assessment_text || ''}
-                  onChange={(e) => updateField('assessment_text', e.target.value)}
-                  placeholder="Edit AI-generated sleep assessment..."
-                />
-              </CardContent>
-            </Card>
-          </div>
+                <Separator />
 
-          {/* Preview */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Preview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-muted rounded-lg">
-                  <h3 className="font-semibold text-lg mb-4">
-                    {formData.client_name}'s Sleep Assessment
-                  </h3>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="font-medium mb-3">Pittsburgh Sleep Quality Index (PSQI)</h4>
-                      <div className="space-y-3 text-sm">
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <span className="font-medium">Usual Bedtime:</span>
-                            <p className="text-muted-foreground">{formData.form_responses?.bedtime_usual || 'Not specified'}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Usual Wake Time:</span>
-                            <p className="text-muted-foreground">{formData.form_responses?.wake_time_usual || 'Not specified'}</p>
-                          </div>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <div>
-                            <span className="font-medium">Time to Fall Asleep:</span>
-                            <p className="text-muted-foreground">{formData.form_responses?.sleep_latency_minutes ? `${formData.form_responses.sleep_latency_minutes} minutes` : 'Not specified'}</p>
-                          </div>
-                          <div>
-                            <span className="font-medium">Actual Sleep Hours:</span>
-                            <p className="text-muted-foreground">{formData.form_responses?.actual_sleep_hours ? `${formData.form_responses.actual_sleep_hours} hours` : 'Not specified'}</p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <span className="font-medium">Sleep Trouble Frequency:</span>
-                          <p className="text-muted-foreground">{sleepFrequencyLabels[formData.form_responses?.sleep_trouble_frequency] || 'Not specified'}</p>
-                        </div>
-
-                        <div>
-                          <span className="font-medium">Sleep Medicine Use:</span>
-                          <p className="text-muted-foreground">{sleepFrequencyLabels[formData.form_responses?.sleep_medicine_frequency] || 'Not specified'}</p>
-                        </div>
-
-                        <div>
-                          <span className="font-medium">Daytime Sleepiness:</span>
-                          <p className="text-muted-foreground">{sleepFrequencyLabels[formData.form_responses?.daytime_sleepiness_frequency] || 'Not specified'}</p>
-                        </div>
-
-                        <div>
-                          <span className="font-medium">Enthusiasm Level:</span>
-                          <p className="text-muted-foreground">{problemLevelLabels[formData.form_responses?.enthusiasm_problem_level] || 'Not specified'}</p>
-                        </div>
-
-                        <div>
-                          <span className="font-medium">Overall Sleep Quality:</span>
-                          <p className="text-muted-foreground">{sleepQualityLabels[formData.form_responses?.overall_sleep_quality_rating] || 'Not specified'}</p>
-                        </div>
-
-                        {formData.form_responses?.sleep_symptoms_observed && formData.form_responses.sleep_symptoms_observed.length > 0 && (
-                          <div>
-                            <span className="font-medium">Observed Symptoms:</span>
-                            <div className="flex flex-wrap gap-2 mt-1">
-                              {formData.form_responses.sleep_symptoms_observed.map((symptom: string, idx: number) => (
-                                <span key={idx} className="px-2 py-1 bg-secondary/50 rounded text-xs">
-                                  {symptom}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+                {/* Professional Assessment */}
+                {formData.assessment_text && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-wellness-green/10 rounded-lg">
+                        <Sparkles className="h-4 w-4 text-wellness-green" />
                       </div>
+                      <h3 className="font-semibold text-base">Professional Analysis & Recommendations</h3>
                     </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">Professional Sleep Assessment</h4>
-                      <div className="text-sm whitespace-pre-wrap prose prose-sm max-w-none">
-                        {formData.assessment_text}
+                    <div className="p-5 bg-gradient-to-br from-wellness-light/50 to-transparent rounded-xl border border-wellness-green/20">
+                      <div className="prose prose-sm max-w-none">
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                          {formData.assessment_text}
+                        </p>
                       </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                )}
 
-        <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="outline" onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className="mr-2 h-4 w-4" />
-            Save Draft
-          </Button>
-          <Button onClick={handleSend} disabled={sending}>
-            {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Send className="mr-2 h-4 w-4" />
-            Save & Send to Client
-          </Button>
+                {/* Footer Note */}
+                <div className="pt-4 border-t border-border/50 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    🔒 All information is confidential and used for your personalized care
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ScrollArea>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border/50 bg-muted/30">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            {cardData?.status === 'edited' && (
+              <Badge variant="outline" className="border-wellness-amber text-wellness-amber">
+                <Save className="h-3 w-3 mr-1" />
+                Draft Saved
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} className="transition-all duration-200 hover:bg-muted">
+              Cancel
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleSave} 
+              disabled={saving}
+              className="transition-all duration-200 hover:bg-wellness-mint/10 hover:border-wellness-mint hover:text-wellness-mint"
+            >
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save Draft
+            </Button>
+            <Button 
+              onClick={handleSend} 
+              disabled={sending || saving}
+              className="transition-all duration-200 bg-gradient-to-r from-wellness-green to-wellness-mint hover:shadow-lg"
+            >
+              {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Review & Send to Client
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

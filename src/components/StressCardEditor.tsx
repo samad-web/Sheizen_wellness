@@ -6,8 +6,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Save, Send } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2, Brain, Activity, Sparkles, Save, Send, TrendingUp, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 
 interface StressCardEditorProps {
   cardId: string;
@@ -94,10 +97,7 @@ export function StressCardEditor({
   const handleSend = async () => {
     setSending(true);
     try {
-      // First save current changes
       await handleSave();
-
-      // Then send the card
       const { error } = await supabase.functions.invoke('send-card-to-client', {
         body: { card_id: cardId }
       });
@@ -143,27 +143,24 @@ export function StressCardEditor({
   const pssLabels1to5 = ['Never', 'Rarely', 'Sometimes', 'Often', 'Very Often'];
 
   const pssQuestions = [
-    { key: 'pss_q1_upset_unexpectedly', text: 'How often have you been upset because of something that happened unexpectedly?', scale: '0-4' },
-    { key: 'pss_q2_unable_to_control', text: 'How often have you felt that you were unable to control the important things in your life?', scale: '0-4' },
-    { key: 'pss_q3_nervous_stressed', text: 'How often have you felt nervous and stressed?', scale: '1-5' },
-    { key: 'pss_q4_confident_handling_problems', text: 'How often have you felt confident about your ability to handle your personal problems?', scale: '1-5' },
-    { key: 'pss_q5_things_going_your_way', text: 'How often have you felt that things were going your way?', scale: '1-5' },
-    { key: 'pss_q6_could_not_cope', text: 'How often have you found that you could not cope with all the things that you had to do?', scale: '1-5' },
-    { key: 'pss_q7_control_irritations', text: 'How often have you been able to control irritations in your life?', scale: '1-5' },
-    { key: 'pss_q8_on_top_of_things', text: 'How often have you felt that you were on top of things?', scale: '1-5' },
-    { key: 'pss_q9_angered_outside_control', text: 'How often have you been angered because of things that were outside of your control?', scale: '1-5' },
-    { key: 'pss_q10_difficulties_piling_up', text: 'How often have you felt difficulties were piling up so high that you could not overcome them?', scale: '1-5' }
+    { id: 'Q1', field: 'pss_q1_upset_unexpectedly', text: 'How often have you been upset because of something that happened unexpectedly?', scale: '0-4' },
+    { id: 'Q2', field: 'pss_q2_unable_to_control', text: 'How often have you felt that you were unable to control the important things in your life?', scale: '0-4' },
+    { id: 'Q3', field: 'pss_q3_nervous_stressed', text: 'How often have you felt nervous and stressed?', scale: '1-5' },
+    { id: 'Q4', field: 'pss_q4_confident_handling_problems', text: 'How often have you felt confident about your ability to handle your personal problems?', scale: '1-5' },
+    { id: 'Q5', field: 'pss_q5_things_going_your_way', text: 'How often have you felt that things were going your way?', scale: '1-5' },
+    { id: 'Q6', field: 'pss_q6_could_not_cope', text: 'How often have you found that you could not cope with all the things that you had to do?', scale: '1-5' },
+    { id: 'Q7', field: 'pss_q7_control_irritations', text: 'How often have you been able to control irritations in your life?', scale: '1-5' },
+    { id: 'Q8', field: 'pss_q8_on_top_of_things', text: 'How often have you felt that you were on top of things?', scale: '1-5' },
+    { id: 'Q9', field: 'pss_q9_angered_outside_control', text: 'How often have you been angered because of things that were outside of your control?', scale: '1-5' },
+    { id: 'Q10', field: 'pss_q10_difficulties_piling_up', text: 'How often have you felt difficulties were piling up so high that you could not overcome them?', scale: '1-5' }
   ];
 
   const calculatePSSScore = () => {
     const responses = formData.form_responses || {};
     let total = 0;
     
-    // Questions with 0-4 scale
     total += parseInt(responses.pss_q1_upset_unexpectedly || '0');
     total += parseInt(responses.pss_q2_unable_to_control || '0');
-    
-    // Questions with 1-5 scale (convert to 0-4)
     total += Math.max(0, parseInt(responses.pss_q3_nervous_stressed || '1') - 1);
     total += Math.max(0, parseInt(responses.pss_q4_confident_handling_problems || '1') - 1);
     total += Math.max(0, parseInt(responses.pss_q5_things_going_your_way || '1') - 1);
@@ -176,165 +173,334 @@ export function StressCardEditor({
     return total;
   };
 
-  const interpretPSSScore = (score: number) => {
-    if (score <= 13) return 'Low stress';
-    if (score <= 26) return 'Moderate stress';
-    return 'High stress';
+  const interpretPSSScore = (score: number): { level: string; description: string; color: string; emoji: string } => {
+    if (score <= 13) return { 
+      level: "Low Stress", 
+      description: "You're managing stress well and maintaining good coping mechanisms", 
+      color: "text-wellness-green bg-wellness-green/10 border-wellness-green/20",
+      emoji: "😊"
+    };
+    if (score <= 26) return { 
+      level: "Moderate Stress", 
+      description: "Some stressors are present - let's work on coping strategies", 
+      color: "text-accent-foreground bg-accent/10 border-accent/20",
+      emoji: "😐"
+    };
+    return { 
+      level: "High Stress", 
+      description: "Significant stress levels detected - professional support recommended", 
+      color: "text-destructive bg-destructive/10 border-destructive/20",
+      emoji: "😰"
+    };
   };
 
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <DialogContent className="max-w-7xl max-h-[90vh]">
+          <div className="flex flex-col items-center justify-center p-12 gap-4">
+            <div className="relative">
+              <Brain className="h-16 w-16 text-primary animate-pulse" />
+              <Activity className="h-6 w-6 text-wellness-mint absolute -top-2 -right-2 animate-pulse" />
+            </div>
+            <p className="text-muted-foreground">Loading stress assessment...</p>
           </div>
         </DialogContent>
       </Dialog>
     );
   }
 
+  const pssScore = calculatePSSScore();
+  const interpretation = interpretPSSScore(pssScore);
+  const stressPercentage = (pssScore / 40) * 100;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Stress Assessment Card</DialogTitle>
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="bg-gradient-to-r from-accent/10 via-wellness-mint/5 to-transparent border-b border-accent/20 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-accent/10 rounded-lg">
+              <Brain className="h-6 w-6 text-accent-foreground" />
+            </div>
+            <div className="flex-1">
+              <DialogTitle className="text-2xl flex items-center gap-2">
+                Stress Assessment (PSS-10)
+                <Badge variant="outline" className="ml-2 border-wellness-mint text-wellness-mint">
+                  {cardData?.status === 'edited' ? 'Edited' : 'AI Generated'}
+                </Badge>
+              </DialogTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Perceived Stress Scale - Review and personalize before sending
+              </p>
+            </div>
+          </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6">
-          {/* Edit Form */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Client Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Name</Label>
+        <ScrollArea className="flex-1">
+          <div className="grid lg:grid-cols-2 gap-6 p-6">
+            {/* Edit Form Column */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 pb-2 border-b border-accent/20">
+                <Activity className="h-5 w-5 text-accent-foreground" />
+                <h3 className="font-semibold text-lg">Edit Assessment Details</h3>
+              </div>
+
+              {/* Client Details */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-wellness-light/30 to-transparent rounded-xl border border-wellness-green/10 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-wellness-green/10 flex items-center justify-center text-wellness-green font-semibold">
+                    {formData.client_name?.charAt(0) || 'C'}
+                  </div>
+                  <h4 className="font-medium text-sm">Client Information</h4>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="client_name" className="text-xs text-muted-foreground">Full Name</Label>
                   <Input
+                    id="client_name"
                     value={formData.client_name || ''}
                     onChange={(e) => updateField('client_name', e.target.value)}
+                    className="transition-all duration-200 focus:ring-2 focus:ring-wellness-green/20"
                   />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Perceived Stress Scale (PSS-10) Responses</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Total PSS Score: <span className="font-semibold">{calculatePSSScore()}</span> ({interpretPSSScore(calculatePSSScore())})
-                </p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {pssQuestions.map((q, idx) => {
-                  const value = formData.form_responses?.[q.key];
-                  const labels = q.scale === '0-4' ? pssLabels0to4 : pssLabels1to5;
-                  const labelText = value ? labels[parseInt(value) - (q.scale === '1-5' ? 1 : 0)] : 'Not answered';
-                  
-                  return (
-                    <div key={q.key} className="border-b pb-3 last:border-0">
-                      <Label className="text-sm font-medium">
-                        Q{idx + 1}. {q.text}
-                      </Label>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-sm font-semibold text-primary">
-                          Score: {value || 'N/A'}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          ({labelText})
-                        </span>
+              {/* PSS Score Display */}
+              <div className={`p-6 rounded-xl border-2 ${interpretation.color} transition-all duration-300 hover:shadow-lg`}>
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide opacity-70 mb-1">Total PSS-10 Score</p>
+                    <p className="text-4xl font-bold flex items-center gap-2">
+                      {pssScore} <span className="text-2xl opacity-50">/ 40</span>
+                    </p>
+                  </div>
+                  <div className="text-3xl">{interpretation.emoji}</div>
+                </div>
+                <Progress value={stressPercentage} className="h-2 mb-3" />
+                <div>
+                  <p className="font-semibold text-lg mb-1">{interpretation.level}</p>
+                  <p className="text-sm opacity-80">{interpretation.description}</p>
+                </div>
+              </div>
+
+              {/* PSS-10 Questions */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-accent/5 to-transparent rounded-xl border border-accent/20 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-accent-foreground" />
+                  <h4 className="font-medium text-sm">Perceived Stress Scale (PSS-10)</h4>
+                </div>
+                <div className="space-y-3">
+                  {pssQuestions.map((q, index) => {
+                    const score = formData.form_responses?.[q.field];
+                    const scoreValue = score !== undefined ? score : 0;
+                    const maxScore = q.scale === '0-4' ? 4 : 5;
+                    const percentage = (scoreValue / maxScore) * 100;
+                    const label = q.scale === '0-4' ? pssLabels0to4[scoreValue] : pssLabels1to5[scoreValue - 1];
+                    
+                    return (
+                      <div key={q.id} className="p-4 bg-background rounded-lg border border-border/50 transition-all duration-200 hover:border-accent/50 hover:shadow-sm">
+                        <div className="flex items-start gap-3 mb-3">
+                          <Badge variant="outline" className="shrink-0">{q.id}</Badge>
+                          <p className="text-sm leading-relaxed">{q.text}</p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Progress value={percentage} className="flex-1 h-1.5" />
+                          <Badge className={`shrink-0 ${percentage > 66 ? 'bg-destructive' : percentage > 33 ? 'bg-accent-foreground' : 'bg-wellness-green'}`}>
+                            {label || 'Not answered'}
+                          </Badge>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
+                    );
+                  })}
+                </div>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">AI Assessment</CardTitle>
-              </CardHeader>
-              <CardContent>
+              <Separator className="my-4" />
+
+              {/* AI Assessment */}
+              <div className="space-y-4 p-5 bg-gradient-to-br from-wellness-green/5 to-transparent rounded-xl border border-wellness-green/20 transition-all duration-300 hover:shadow-md">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-wellness-green" />
+                  <h4 className="font-medium text-sm">Professional Analysis & Coping Strategies</h4>
+                </div>
                 <Textarea
-                  rows={12}
                   value={formData.assessment_text || ''}
                   onChange={(e) => updateField('assessment_text', e.target.value)}
-                  placeholder="Edit AI-generated stress assessment..."
+                  className="min-h-[240px] transition-all duration-200 focus:ring-2 focus:ring-wellness-green/20 leading-relaxed"
+                  placeholder="Provide personalized stress analysis, coping strategies, and recommendations..."
                 />
-              </CardContent>
-            </Card>
-          </div>
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  💡 Tip: Include actionable stress-management techniques and encourage seeking support when needed
+                </p>
+              </div>
+            </div>
 
-          {/* Preview */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Preview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-muted rounded-lg">
-                  <h3 className="font-semibold text-lg mb-4">
-                    {formData.client_name}'s Stress Assessment
-                  </h3>
-                  
-                  <div className="space-y-4">
+            {/* Preview Column */}
+            <div className="space-y-6 border-l border-accent/20 pl-6">
+              <div className="flex items-center gap-2 pb-2 border-b border-accent/20">
+                <Sparkles className="h-5 w-5 text-wellness-mint" />
+                <h3 className="font-semibold text-lg">Client Preview</h3>
+              </div>
+              
+              <div className="p-6 bg-gradient-to-br from-card to-muted/20 rounded-2xl shadow-lg space-y-6 border border-border/50">
+                {/* Header */}
+                <div className="text-center pb-6 border-b border-border/50">
+                  <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/10 mb-4">
+                    <Brain className="h-8 w-8 text-accent-foreground" />
+                  </div>
+                  <h2 className="text-3xl font-bold bg-gradient-to-r from-accent-foreground to-wellness-green bg-clip-text text-transparent">
+                    Stress Assessment
+                  </h2>
+                  <p className="text-lg text-foreground mt-2 font-medium">{formData.client_name}</p>
+                  <p className="text-sm text-muted-foreground mt-1">Perceived Stress Scale (PSS-10)</p>
+                </div>
+
+                {/* Score Card */}
+                <div className={`p-6 rounded-xl border-2 ${interpretation.color} transition-all duration-300`}>
+                  <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h4 className="font-medium mb-3">Perceived Stress Scale (PSS-10) Results</h4>
-                      <div className="bg-secondary/30 p-3 rounded-md mb-3">
-                        <p className="text-sm">
-                          <span className="font-semibold">Total PSS Score:</span> {calculatePSSScore()} / 40
-                        </p>
-                        <p className="text-sm mt-1">
-                          <span className="font-semibold">Interpretation:</span> {interpretPSSScore(calculatePSSScore())}
-                        </p>
-                      </div>
-                      
-                      <div className="space-y-3 text-sm">
-                        {pssQuestions.map((q, idx) => {
-                          const value = formData.form_responses?.[q.key];
-                          const labels = q.scale === '0-4' ? pssLabels0to4 : pssLabels1to5;
-                          const labelText = value ? labels[parseInt(value) - (q.scale === '1-5' ? 1 : 0)] : 'Not answered';
-                          
-                          return (
-                            <div key={q.key} className="border-l-2 border-primary/20 pl-3">
-                              <p className="font-medium">Q{idx + 1}. {q.text}</p>
-                              <p className="text-muted-foreground mt-1">
-                                Score: <span className="font-semibold">{value || 'N/A'}</span> - {labelText}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <p className="text-xs uppercase tracking-wide opacity-70 mb-1">Your Stress Score</p>
+                      <p className="text-5xl font-bold flex items-center gap-2">
+                        {pssScore} <span className="text-3xl opacity-50">/ 40</span>
+                      </p>
                     </div>
-
+                    <div className="text-5xl">{interpretation.emoji}</div>
+                  </div>
+                  <div className="space-y-3">
+                    <Progress value={stressPercentage} className="h-3" />
                     <div>
-                      <h4 className="font-medium mb-2">Professional Stress Assessment</h4>
-                      <div className="text-sm whitespace-pre-wrap prose prose-sm max-w-none">
-                        {formData.assessment_text}
-                      </div>
+                      <p className="font-bold text-xl mb-2">{interpretation.level}</p>
+                      <p className="text-sm leading-relaxed">{interpretation.description}</p>
                     </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
 
-        <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="outline" onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className="mr-2 h-4 w-4" />
-            Save Draft
-          </Button>
-          <Button onClick={handleSend} disabled={sending}>
-            {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Send className="mr-2 h-4 w-4" />
-            Save & Send to Client
-          </Button>
+                {/* Score Breakdown */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-4 bg-wellness-green/10 rounded-xl text-center border border-wellness-green/20">
+                    <div className="text-sm text-muted-foreground mb-1">Low</div>
+                    <div className="text-lg font-bold text-wellness-green">0-13</div>
+                  </div>
+                  <div className="p-4 bg-accent/10 rounded-xl text-center border border-accent/20">
+                    <div className="text-sm text-muted-foreground mb-1">Moderate</div>
+                    <div className="text-lg font-bold text-accent-foreground">14-26</div>
+                  </div>
+                  <div className="p-4 bg-destructive/10 rounded-xl text-center border border-destructive/20">
+                    <div className="text-sm text-muted-foreground mb-1">High</div>
+                    <div className="text-lg font-bold text-destructive">27-40</div>
+                  </div>
+                </div>
+
+                {/* Detailed Responses */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-base flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-wellness-green" />
+                    Your Stress Assessment Responses
+                  </h3>
+                  <div className="space-y-2">
+                    {pssQuestions.map((q) => {
+                      const value = formData.form_responses?.[q.field];
+                      const score = value !== undefined ? value : 0;
+                      const maxScore = q.scale === '0-4' ? 4 : 5;
+                      const percentage = (score / maxScore) * 100;
+                      const label = value !== undefined ? 
+                        (q.scale === '0-4' ? pssLabels0to4[value] : pssLabels1to5[value - 1]) 
+                        : 'Not answered';
+                      
+                      return (
+                        <div key={q.id} className="p-4 bg-muted/30 rounded-lg border border-border/50">
+                          <div className="flex items-start gap-2 mb-2">
+                            <Badge variant="outline" className="shrink-0 text-xs">{q.id}</Badge>
+                            <p className="text-sm">{q.text}</p>
+                          </div>
+                          <div className="flex items-center gap-3 mt-2">
+                            <Progress value={percentage} className="flex-1 h-1.5" />
+                            <span className="text-xs font-medium text-muted-foreground min-w-[100px] text-right">
+                              {label}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Professional Assessment */}
+                {formData.assessment_text && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-wellness-green/10 rounded-lg">
+                        <Sparkles className="h-4 w-4 text-wellness-green" />
+                      </div>
+                      <h3 className="font-semibold text-base">Professional Analysis & Coping Strategies</h3>
+                    </div>
+                    <div className="p-5 bg-gradient-to-br from-wellness-light/50 to-transparent rounded-xl border border-wellness-green/20">
+                      <div className="prose prose-sm max-w-none">
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
+                          {formData.assessment_text}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Support Note */}
+                {pssScore > 26 && (
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-start gap-3">
+                    <AlertTriangle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium text-destructive mb-1">Important Notice</p>
+                      <p className="text-muted-foreground leading-relaxed">
+                        Your stress levels indicate you may benefit from additional support. Please don't hesitate to reach out to discuss stress management strategies.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer Note */}
+                <div className="pt-4 border-t border-border/50 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    🔒 All information is confidential and used for your personalized wellness plan
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </ScrollArea>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border/50 bg-muted/30">
+          <div className="text-sm text-muted-foreground flex items-center gap-2">
+            {cardData?.status === 'edited' && (
+              <Badge variant="outline" className="border-wellness-amber text-wellness-amber">
+                <Save className="h-3 w-3 mr-1" />
+                Draft Saved
+              </Badge>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button variant="ghost" onClick={() => onOpenChange(false)} className="transition-all duration-200 hover:bg-muted">
+              Cancel
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={handleSave} 
+              disabled={saving}
+              className="transition-all duration-200 hover:bg-wellness-mint/10 hover:border-wellness-mint hover:text-wellness-mint"
+            >
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Save Draft
+            </Button>
+            <Button 
+              onClick={handleSend} 
+              disabled={sending || saving}
+              className="transition-all duration-200 bg-gradient-to-r from-wellness-green to-wellness-mint hover:shadow-lg"
+            >
+              {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+              Review & Send to Client
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
