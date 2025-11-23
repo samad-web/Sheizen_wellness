@@ -239,8 +239,8 @@ export function SleepCardEditor({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1">
-          <div className="grid lg:grid-cols-2 gap-6 p-6">
+      <ScrollArea className="flex-1 min-h-0">
+        <div className="grid lg:grid-cols-2 gap-6 p-6">
             {/* Edit Form Column */}
             <div className="space-y-6">
               <div className="flex items-center gap-2 pb-2 border-b border-wellness-green/20">

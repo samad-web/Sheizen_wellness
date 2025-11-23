@@ -176,7 +176,7 @@ export function HealthAssessmentCardEditor({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6">
+        <ScrollArea className="flex-1 min-h-0 px-6">
           <div className="grid grid-cols-2 gap-6 pb-6">
           {/* Edit Form */}
           <div className="space-y-4">
