@@ -54,9 +54,9 @@ Deno.serve(async (req) => {
         client_id,
         sender_id: null,
         sender_type: 'system',
-        message_type: template.trigger_event || 'manual',
+        message_type: 'automated',
         content,
-        metadata: { template_name, variables },
+        metadata: { template_name, variables, trigger_event: template.trigger_event },
         is_read: false,
       })
       .select()
