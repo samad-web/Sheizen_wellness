@@ -11,6 +11,7 @@ import ClientDashboard from "./pages/ClientDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import ClientDetail from "./pages/ClientDetail";
 import SetupAdmin from "./pages/SetupAdmin";
+import InterestForm from "./pages/InterestForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/dashboard" element={<ClientDashboard />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/client/:id" element={<ClientDetail />} />
+            <Route path="/interest" element={<InterestForm />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

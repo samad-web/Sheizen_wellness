@@ -320,6 +320,45 @@ export type Database = {
         }
         Relationships: []
       }
+      interest_form_submissions: {
+        Row: {
+          age: number
+          contact_number: string
+          email: string
+          gender: Database["public"]["Enums"]["gender_type"]
+          health_goal: Database["public"]["Enums"]["health_goal_type"]
+          id: string
+          name: string
+          notes: string | null
+          status: string | null
+          submitted_at: string
+        }
+        Insert: {
+          age: number
+          contact_number: string
+          email: string
+          gender: Database["public"]["Enums"]["gender_type"]
+          health_goal: Database["public"]["Enums"]["health_goal_type"]
+          id?: string
+          name: string
+          notes?: string | null
+          status?: string | null
+          submitted_at?: string
+        }
+        Update: {
+          age?: number
+          contact_number?: string
+          email?: string
+          gender?: Database["public"]["Enums"]["gender_type"]
+          health_goal?: Database["public"]["Enums"]["health_goal_type"]
+          id?: string
+          name?: string
+          notes?: string | null
+          status?: string | null
+          submitted_at?: string
+        }
+        Relationships: []
+      }
       meal_cards: {
         Row: {
           created_at: string
@@ -720,6 +759,12 @@ export type Database = {
       app_role: "admin" | "client"
       client_status: "active" | "inactive" | "pending" | "completed"
       gender_type: "male" | "female" | "other"
+      health_goal_type:
+        | "weight_loss"
+        | "muscle_gain"
+        | "diabetes"
+        | "pcos"
+        | "lifestyle_correction"
       meal_type: "breakfast" | "lunch" | "evening_snack" | "dinner"
       program_type:
         | "weight_loss"
@@ -872,6 +917,13 @@ export const Constants = {
       app_role: ["admin", "client"],
       client_status: ["active", "inactive", "pending", "completed"],
       gender_type: ["male", "female", "other"],
+      health_goal_type: [
+        "weight_loss",
+        "muscle_gain",
+        "diabetes",
+        "pcos",
+        "lifestyle_correction",
+      ],
       meal_type: ["breakfast", "lunch", "evening_snack", "dinner"],
       program_type: [
         "weight_loss",

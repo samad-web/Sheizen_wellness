@@ -18,6 +18,7 @@ import {
 import { FoodItemsManager } from "@/components/FoodItemsManager";
 import { RecipeBuilder } from "@/components/RecipeBuilder";
 import { AdminClientEditor } from "@/components/AdminClientEditor";
+import { InterestSubmissionsManager } from "@/components/InterestSubmissionsManager";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 
 export default function AdminDashboard() {
@@ -185,8 +186,9 @@ export default function AdminDashboard() {
 
         {/* Main Content */}
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="clients">Clients</TabsTrigger>
+            <TabsTrigger value="leads">Leads</TabsTrigger>
             <TabsTrigger value="food">Food Items</TabsTrigger>
             <TabsTrigger value="recipes">Recipes</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -269,6 +271,10 @@ export default function AdminDashboard() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="leads">
+            <InterestSubmissionsManager />
           </TabsContent>
 
           <TabsContent value="food">
