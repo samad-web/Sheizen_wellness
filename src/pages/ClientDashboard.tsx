@@ -515,32 +515,35 @@ export default function ClientDashboard() {
                     <CardDescription>Recent meals you've logged</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      {mealLogs.map((log) => (
-                        <div key={log.id} className="flex gap-4 p-4 border rounded-lg">
-                          {log.photo_url && (
-                            <div className="w-24 h-24 flex-shrink-0">
-                              <img
-                                src={log.photo_url}
-                                alt={log.meal_name || "Meal"}
-                                className="w-full h-full object-cover rounded-lg cursor-pointer"
-                                onClick={() => window.open(log.photo_url, "_blank")}
-                              />
+                  <div className="space-y-4">
+                      {mealLogs.map((log) => {
+                        const signedUrl = log.photo_url ? signedUrls[log.photo_url] : null;
+                        return (
+                          <div key={log.id} className="flex gap-4 p-4 border rounded-lg">
+                            {signedUrl && (
+                              <div className="w-24 h-24 flex-shrink-0">
+                                <img
+                                  src={signedUrl}
+                                  alt={log.meal_name || "Meal"}
+                                  className="w-full h-full object-cover rounded-lg cursor-pointer"
+                                  onClick={() => window.open(signedUrl, "_blank")}
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-1">
+                                <p className="font-semibold capitalize">{log.meal_type.replace("_", " ")}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {new Date(log.logged_at).toLocaleString()}
+                                </p>
+                              </div>
+                              {log.meal_name && <p className="text-sm">{log.meal_name}</p>}
+                              {log.kcal && <p className="text-sm text-muted-foreground">{log.kcal} kcal</p>}
+                              {log.notes && <p className="text-sm text-muted-foreground mt-2">{log.notes}</p>}
                             </div>
-                          )}
-                          <div className="flex-1">
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="font-semibold capitalize">{log.meal_type.replace("_", " ")}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(log.logged_at).toLocaleString()}
-                              </p>
-                            </div>
-                            {log.meal_name && <p className="text-sm">{log.meal_name}</p>}
-                            {log.kcal && <p className="text-sm text-muted-foreground">{log.kcal} kcal</p>}
-                            {log.notes && <p className="text-sm text-muted-foreground mt-2">{log.notes}</p>}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </CardContent>
                 </Card>
