@@ -15,6 +15,8 @@ import { WeeklyPlanEditor } from "@/components/WeeklyPlanEditor";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 import { GroceryListGenerator } from "@/components/GroceryListGenerator";
+import { getSignedUrl } from "@/lib/storage";
+import { MealPhotoDisplay } from "@/components/MealPhotoDisplay";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -445,10 +447,19 @@ const ClientDetail = () => {
                           <TableCell>{new Date(assessment.created_at).toLocaleDateString()}</TableCell>
                           <TableCell className="text-right space-x-2">
                             {assessment.file_url && (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={assessment.file_url} target="_blank" rel="noopener noreferrer">
-                                  View
-                                </a>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    const signedUrl = await getSignedUrl("assessment-files", assessment.file_url);
+                                    window.open(signedUrl, "_blank");
+                                  } catch (error) {
+                                    toast.error("Failed to open assessment file");
+                                  }
+                                }}
+                              >
+                                View
                               </Button>
                             )}
                             <Button
@@ -513,10 +524,19 @@ const ClientDetail = () => {
                               endDate={plan.end_date}
                             />
                             {plan.pdf_url && (
-                              <Button variant="outline" size="sm" asChild>
-                                <a href={plan.pdf_url} target="_blank" rel="noopener noreferrer">
-                                  View PDF
-                                </a>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    const signedUrl = await getSignedUrl("weekly-plan-pdfs", plan.pdf_url);
+                                    window.open(signedUrl, "_blank");
+                                  } catch (error) {
+                                    toast.error("Failed to open plan PDF");
+                                  }
+                                }}
+                              >
+                                View PDF
                               </Button>
                             )}
                             <Button
@@ -588,16 +608,7 @@ const ClientDetail = () => {
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                       {mealLogs.map((log) => (
                         <div key={log.id} className="space-y-2">
-                          <div className="aspect-square rounded-lg overflow-hidden bg-muted">
-                            {log.photo_url && (
-                              <img
-                                src={log.photo_url}
-                                alt={log.meal_name || "Meal"}
-                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                onClick={() => window.open(log.photo_url!, "_blank")}
-                              />
-                            )}
-                          </div>
+                          <MealPhotoDisplay photoPath={log.photo_url} mealName={log.meal_name} />
                           <div className="text-sm">
                             <p className="font-medium capitalize">{log.meal_type.replace("_", " ")}</p>
                             {log.meal_name && <p className="text-muted-foreground">{log.meal_name}</p>}
@@ -643,10 +654,19 @@ const ClientDetail = () => {
                           <TableCell>{file.file_size ? `${(file.file_size / 1024).toFixed(2)} KB` : "—"}</TableCell>
                           <TableCell>{new Date(file.created_at).toLocaleDateString()}</TableCell>
                           <TableCell>
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={file.file_url} target="_blank" rel="noopener noreferrer">
-                                View
-                              </a>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  const signedUrl = await getSignedUrl("client-files", file.file_url);
+                                  window.open(signedUrl, "_blank");
+                                } catch (error) {
+                                  toast.error("Failed to open file");
+                                }
+                              }}
+                            >
+                              View
                             </Button>
                           </TableCell>
                         </TableRow>
