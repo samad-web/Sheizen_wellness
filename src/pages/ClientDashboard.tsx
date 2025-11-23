@@ -54,9 +54,22 @@ export default function ClientDashboard() {
       .eq("user_id", user?.id)
       .single();
 
-    if (clientError || !client) {
-      // If no client record, redirect to onboarding
-      navigate("/onboarding");
+    if (clientError) {
+      console.error("Error fetching client:", clientError);
+      if (clientError.code === 'PGRST116') {
+        // No rows returned - redirect to onboarding
+        navigate("/onboarding");
+        return;
+      }
+      toast.error("Failed to load your profile");
+      setLoading(false);
+      return;
+    }
+
+    if (!client?.id) {
+      console.error("Client record missing ID:", client);
+      toast.error("Your profile is incomplete. Please contact support.");
+      setLoading(false);
       return;
     }
 
@@ -395,7 +408,15 @@ export default function ClientDashboard() {
 
           <TabsContent value="logs">
             <div className="space-y-6">
-              <MealPhotoUpload clientId={clientData?.id} onSuccess={fetchClientData} />
+              {clientData?.id ? (
+                <MealPhotoUpload clientId={clientData.id} onSuccess={fetchClientData} />
+              ) : (
+                <Card>
+                  <CardContent className="py-8 text-center text-muted-foreground">
+                    Loading your meal logging form...
+                  </CardContent>
+                </Card>
+              )}
 
               {mealLogs.length > 0 && (
                 <Card>
