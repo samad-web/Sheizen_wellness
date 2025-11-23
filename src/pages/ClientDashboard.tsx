@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { 
   Leaf, 
@@ -41,6 +42,12 @@ import { HundredDayProgress } from "@/components/HundredDayProgress";
 import { UpcomingMeetingsBanner } from "@/components/UpcomingMeetingsBanner";
 import { NotificationBell } from "@/components/NotificationBell";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { HealthAssessmentCardView } from "@/components/client/HealthAssessmentCardView";
+import { StressCardView } from "@/components/client/StressCardView";
+import { SleepCardView } from "@/components/client/SleepCardView";
+import { ActionPlanCardView } from "@/components/client/ActionPlanCardView";
+import { DietPlanCardView } from "@/components/client/DietPlanCardView";
+import { ClipboardList } from "lucide-react";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -50,7 +57,9 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [mealLogs, setMealLogs] = useState<any[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
-  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "reports" | "messages" | "calendar" | "progress">("today");
+  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "assessments" | "reports" | "messages" | "calendar" | "progress">("today");
+  const [assessmentCards, setAssessmentCards] = useState<any[]>([]);
+  const [newCardNotification, setNewCardNotification] = useState<any>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [weightInput, setWeightInput] = useState<string>("");
   const [waterInput, setWaterInput] = useState<string>("");
@@ -100,6 +109,49 @@ export default function ClientDashboard() {
       supabase.removeChannel(channel);
     };
   }, [clientData?.id]);
+
+  // Real-time assessment cards subscription
+  useEffect(() => {
+    if (!clientData?.id) return;
+
+    fetchAssessmentCards();
+
+    const channel = supabase
+      .channel('assessment-cards-realtime')
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'pending_review_cards',
+        filter: `client_id=eq.${clientData.id}`
+      }, (payload) => {
+        const updatedCard = payload.new;
+        if (updatedCard.status === 'sent') {
+          setNewCardNotification(updatedCard);
+          fetchAssessmentCards();
+          toast.success(`New ${updatedCard.card_type.replace('_', ' ')} card received!`);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clientData?.id]);
+
+  const fetchAssessmentCards = async () => {
+    if (!clientData?.id) return;
+
+    const { data, error } = await supabase
+      .from('pending_review_cards')
+      .select('*')
+      .eq('client_id', clientData.id)
+      .eq('status', 'sent')
+      .order('sent_at', { ascending: false });
+
+    if (!error && data) {
+      setAssessmentCards(data);
+    }
+  };
 
   const fetchAchievements = async () => {
     // Fetch all achievements
@@ -558,12 +610,21 @@ export default function ClientDashboard() {
           onValueChange={(value) => setActiveTab(value as typeof activeTab)}
           className="space-y-6"
         >
-          <TabsList className={`grid w-full ${clientData?.service_type === 'hundred_days' ? 'grid-cols-9' : 'grid-cols-8'}`}>
+          <TabsList className={`grid w-full ${clientData?.service_type === 'hundred_days' ? 'grid-cols-10' : 'grid-cols-9'}`}>
             <TabsTrigger value="today">Today</TabsTrigger>
             <TabsTrigger value="plan">Plan</TabsTrigger>
             <TabsTrigger value="logs">Meals</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
+            <TabsTrigger value="assessments" className="relative">
+              <ClipboardList className="w-4 h-4 mr-1" />
+              Assessments
+              {assessmentCards.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {assessmentCards.length}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
             <TabsTrigger value="messages" className="relative" onClick={handleMessagesTabOpen}>
               Messages
@@ -871,6 +932,78 @@ export default function ClientDashboard() {
               earnedAchievements={userAchievements}
               progress={achievementProgress}
             />
+          </TabsContent>
+
+          <TabsContent value="assessments">
+            <div className="space-y-6">
+              {assessmentCards.length === 0 ? (
+                <Card>
+                  <CardContent className="py-12 text-center">
+                    <ClipboardList className="w-16 h-16 mx-auto mb-4 opacity-50 text-muted-foreground" />
+                    <p className="text-lg mb-2 font-medium">No Assessment Cards Yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      Your personalized assessment cards will appear here once reviewed and sent by your dietitian
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-4">
+                  {assessmentCards.map((card) => {
+                    const isNew = card.sent_at && new Date(card.sent_at) > new Date(Date.now() - 24 * 60 * 60 * 1000);
+                    
+                    return (
+                      <div key={card.id} className="space-y-4">
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              card.card_type === 'health_assessment' ? 'bg-primary/10' :
+                              card.card_type === 'stress_card' ? 'bg-purple-500/10' :
+                              card.card_type === 'sleep_card' ? 'bg-blue-500/10' :
+                              card.card_type === 'action_plan' ? 'bg-orange-500/10' :
+                              'bg-green-500/10'
+                            }`}>
+                              <ClipboardList className={`w-5 h-5 ${
+                                card.card_type === 'health_assessment' ? 'text-primary' :
+                                card.card_type === 'stress_card' ? 'text-purple-600' :
+                                card.card_type === 'sleep_card' ? 'text-blue-600' :
+                                card.card_type === 'action_plan' ? 'text-orange-600' :
+                                'text-green-600'
+                              }`} />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold capitalize flex items-center gap-2">
+                                {card.card_type.replace(/_/g, ' ')}
+                                {isNew && <Badge variant="default" className="text-xs">NEW</Badge>}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                Sent {new Date(card.sent_at).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Render the appropriate card view */}
+                        {card.card_type === 'health_assessment' && (
+                          <HealthAssessmentCardView data={card.generated_content} />
+                        )}
+                        {card.card_type === 'stress_card' && (
+                          <StressCardView data={card.generated_content} />
+                        )}
+                        {card.card_type === 'sleep_card' && (
+                          <SleepCardView data={card.generated_content} />
+                        )}
+                        {card.card_type === 'action_plan' && (
+                          <ActionPlanCardView data={card.generated_content} />
+                        )}
+                        {card.card_type === 'diet_plan' && (
+                          <DietPlanCardView data={card.generated_content} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="reports">
