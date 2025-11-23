@@ -197,8 +197,15 @@ export function StressCardEditor({
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-7xl max-h-[90vh]">
-          <div className="flex flex-col items-center justify-center p-12 gap-4">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Loading Stress Assessment</DialogTitle>
+            <DialogDescription>
+              Please wait while we prepare the stress card for review.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-1 flex-col items-center justify-center p-12 gap-4">
             <div className="relative">
               <Brain className="h-16 w-16 text-primary animate-pulse" />
               <Activity className="h-6 w-6 text-wellness-mint absolute -top-2 -right-2 animate-pulse" />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -165,9 +165,9 @@ export const GroceryListGenerator = ({
             <ShoppingCart className="h-5 w-5" />
             Grocery List - Week {weekNumber}
           </DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          <DialogDescription>
             {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
-          </p>
+          </DialogDescription>
         </DialogHeader>
 
         {loading ? (
