@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Brain, Activity, Sparkles, Save, Send, TrendingUp, AlertTriangle } from "lucide-react";
@@ -298,10 +299,11 @@ export function StressCardEditor({
                 <div className="space-y-3">
                   {pssQuestions.map((q, index) => {
                     const score = formData.form_responses?.[q.field];
-                    const scoreValue = score !== undefined ? score : 0;
+                    const scoreValue = score !== undefined ? score : (q.scale === '0-4' ? 0 : 1);
                     const maxScore = q.scale === '0-4' ? 4 : 5;
-                    const percentage = (scoreValue / maxScore) * 100;
-                    const label = q.scale === '0-4' ? pssLabels0to4[scoreValue] : pssLabels1to5[scoreValue - 1];
+                    const percentage = ((scoreValue - (q.scale === '1-5' ? 1 : 0)) / (maxScore - (q.scale === '1-5' ? 1 : 0))) * 100;
+                    const labels = q.scale === '0-4' ? pssLabels0to4 : pssLabels1to5;
+                    const label = q.scale === '0-4' ? labels[scoreValue] : labels[scoreValue - 1];
                     
                     return (
                       <div key={q.id} className="p-4 bg-background rounded-lg border border-border/50 transition-all duration-200 hover:border-accent/50 hover:shadow-sm">
@@ -309,11 +311,31 @@ export function StressCardEditor({
                           <Badge variant="outline" className="shrink-0">{q.id}</Badge>
                           <p className="text-sm leading-relaxed">{q.text}</p>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <Progress value={percentage} className="flex-1 h-1.5" />
-                          <Badge className={`shrink-0 ${percentage > 66 ? 'bg-destructive' : percentage > 33 ? 'bg-accent-foreground' : 'bg-wellness-green'}`}>
-                            {label || 'Not answered'}
-                          </Badge>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <Progress value={percentage} className="flex-1 h-1.5" />
+                            <Badge className={`shrink-0 ${percentage > 66 ? 'bg-destructive' : percentage > 33 ? 'bg-accent-foreground' : 'bg-wellness-green'}`}>
+                              {label || 'Not answered'}
+                            </Badge>
+                          </div>
+                          <Select 
+                            value={scoreValue?.toString() || ''} 
+                            onValueChange={(value) => updateField(`form_responses.${q.field}`, parseInt(value))}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select response" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {labels.map((label, idx) => {
+                                const value = q.scale === '0-4' ? idx : idx + 1;
+                                return (
+                                  <SelectItem key={value} value={value.toString()}>
+                                    {label}
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
                     );
