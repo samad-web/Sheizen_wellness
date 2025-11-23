@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// VAPID public key - will be set as a secret
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "";
+// VAPID public key - hardcoded for frontend use (public keys are meant to be public!)
+const VAPID_PUBLIC_KEY = "BFv9gpJ_NgTQYz93Tlw9Wru5K9-QHiAyhxrj_3DDRJWyk24_cum6G3q5fu8lmsmjdpnADJizI9iHQq-aU88Fxts";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
