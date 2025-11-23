@@ -59,3 +59,9 @@ verify_jwt = true
 
 [functions.send-meeting-reminders]
 verify_jwt = false
+
+[functions.request-assessment]
+verify_jwt = true
+
+[functions.submit-client-assessment]
+verify_jwt = true

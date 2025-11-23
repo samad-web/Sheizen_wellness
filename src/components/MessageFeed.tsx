@@ -4,7 +4,7 @@ import { format, isToday, isYesterday } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Bot, User, Download } from "lucide-react";
+import { Bot, User, Download, ExternalLink } from "lucide-react";
 import type { Message } from "@/lib/messages";
 import { getSignedUrl } from "@/lib/storage";
 import { formatFileSize, isImageFile, getFileIcon } from "@/lib/fileUtils";
@@ -13,9 +13,10 @@ import { toast } from "@/hooks/use-toast";
 interface MessageFeedProps {
   messages: Message[];
   currentUserType: 'admin' | 'client';
+  onStartAssessment?: (requestId: string, type: string) => void;
 }
 
-export function MessageFeed({ messages, currentUserType }: MessageFeedProps) {
+export function MessageFeed({ messages, currentUserType, onStartAssessment }: MessageFeedProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
@@ -135,6 +136,27 @@ export function MessageFeed({ messages, currentUserType }: MessageFeedProps) {
                       }`}
                     >
                       <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+
+                      {/* Assessment Request Action Button */}
+                      {message.message_type === 'assessment_request' && onStartAssessment && currentUserType === 'client' && (
+                        <div className="mt-3">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => {
+                              const requestId = message.metadata?.request_id;
+                              const assessmentType = message.metadata?.assessment_type;
+                              if (requestId && assessmentType) {
+                                onStartAssessment(requestId, assessmentType);
+                              }
+                            }}
+                            className="w-full"
+                          >
+                            <ExternalLink className="mr-2 h-3 w-3" />
+                            Complete Assessment
+                          </Button>
+                        </div>
+                      )}
 
                       {/* File Attachment Display */}
                       {message.attachment_url && (

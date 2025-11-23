@@ -48,6 +48,11 @@ import { SleepCardView } from "@/components/client/SleepCardView";
 import { ActionPlanCardView } from "@/components/client/ActionPlanCardView";
 import { DietPlanCardView } from "@/components/client/DietPlanCardView";
 import { ClipboardList } from "lucide-react";
+import { PendingAssessmentRequests } from "@/components/PendingAssessmentRequests";
+import { ClientHealthAssessmentForm } from "@/components/client/ClientHealthAssessmentForm";
+import { ClientStressAssessmentForm } from "@/components/client/ClientStressAssessmentForm";
+import { ClientSleepAssessmentForm } from "@/components/client/ClientSleepAssessmentForm";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -72,6 +77,8 @@ export default function ClientDashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [newMessage, setNewMessage] = useState<Message | null>(null);
   const { isSupported: pushSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications(clientData?.id || null);
+  const [showAssessmentForm, setShowAssessmentForm] = useState(false);
+  const [selectedAssessmentRequest, setSelectedAssessmentRequest] = useState<{ requestId: string; type: string } | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -644,6 +651,17 @@ export default function ClientDashboard() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Quick Actions Column */}
               <div className="lg:col-span-2 space-y-6">
+                {/* Pending Assessment Requests */}
+                {clientData?.id && (
+                  <PendingAssessmentRequests
+                    clientId={clientData.id}
+                    onStartAssessment={(requestId, type) => {
+                      setSelectedAssessmentRequest({ requestId, type });
+                      setShowAssessmentForm(true);
+                    }}
+                  />
+                )}
+                
                 <Card className="animate-fade-in">
                   <CardHeader>
                     <CardTitle>Quick Actions</CardTitle>
@@ -1031,7 +1049,14 @@ export default function ClientDashboard() {
                 </CardTitle>
                 <CardDescription>Chat with your nutritionist and receive updates</CardDescription>
               </CardHeader>
-              <MessageFeed messages={messages} currentUserType="client" />
+              <MessageFeed 
+                messages={messages} 
+                currentUserType="client"
+                onStartAssessment={(requestId, type) => {
+                  setSelectedAssessmentRequest({ requestId, type });
+                  setShowAssessmentForm(true);
+                }}
+              />
               {clientData && user && (
                 <MessageComposer
                   clientId={clientData.id}
@@ -1066,10 +1091,45 @@ export default function ClientDashboard() {
           onClose={() => setNewMessage(null)}
           onOpen={handleMessagesTabOpen}
         />
-        <AchievementNotification
-          newAchievements={newAchievements}
-          onDismiss={() => setNewAchievements([])}
-        />
+
+        {/* Assessment Form Dialog */}
+        <Dialog open={showAssessmentForm} onOpenChange={setShowAssessmentForm}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            {selectedAssessmentRequest?.type === 'health_assessment' && clientData && (
+              <ClientHealthAssessmentForm 
+                requestId={selectedAssessmentRequest.requestId}
+                clientId={clientData.id}
+                clientName={clientData.name}
+                onComplete={() => {
+                  setShowAssessmentForm(false);
+                  toast.success('Assessment submitted! Your results will be ready shortly.');
+                }}
+              />
+            )}
+            {selectedAssessmentRequest?.type === 'stress_assessment' && clientData && (
+              <ClientStressAssessmentForm 
+                requestId={selectedAssessmentRequest.requestId}
+                clientId={clientData.id}
+                clientName={clientData.name}
+                onComplete={() => {
+                  setShowAssessmentForm(false);
+                  toast.success('Assessment submitted! Your results will be ready shortly.');
+                }}
+              />
+            )}
+            {selectedAssessmentRequest?.type === 'sleep_assessment' && clientData && (
+              <ClientSleepAssessmentForm 
+                requestId={selectedAssessmentRequest.requestId}
+                clientId={clientData.id}
+                clientName={clientData.name}
+                onComplete={() => {
+                  setShowAssessmentForm(false);
+                  toast.success('Assessment submitted! Your results will be ready shortly.');
+                }}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

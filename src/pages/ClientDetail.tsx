@@ -26,6 +26,7 @@ import { WorkflowTimeline } from "@/components/WorkflowTimeline";
 import { StressAssessmentForm } from "@/components/StressAssessmentForm";
 import { SleepAssessmentForm } from "@/components/SleepAssessmentForm";
 import { exportDietPlanToExcel } from "@/lib/excelExport";
+import { FileText, Brain, Moon } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -126,6 +127,7 @@ const ClientDetail = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [deleteAssessmentId, setDeleteAssessmentId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
+  const [isRequestingAssessment, setIsRequestingAssessment] = useState(false);
 
   useEffect(() => {
     if (userRole !== "admin") {
@@ -277,6 +279,28 @@ const ClientDetail = () => {
       toast.error(error.message || "Failed to delete plan");
     } finally {
       setDeletePlanId(null);
+    }
+  };
+
+  const handleRequestAssessment = async (assessmentType: string) => {
+    setIsRequestingAssessment(true);
+    try {
+      const { error } = await supabase.functions.invoke('request-assessment', {
+        body: {
+          client_id: id,
+          assessment_type: assessmentType,
+          notes: `Requested via admin dashboard`
+        }
+      });
+
+      if (error) throw error;
+      
+      toast.success('Assessment request sent to client');
+    } catch (error: any) {
+      console.error('Error requesting assessment:', error);
+      toast.error(error.message || 'Failed to send assessment request');
+    } finally {
+      setIsRequestingAssessment(false);
     }
   };
 
@@ -822,6 +846,44 @@ const ClientDetail = () => {
 
           <TabsContent value="workflow">
             {id && <WorkflowTimeline clientId={id} />}
+            
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Request Assessments</CardTitle>
+                <CardDescription>Send assessment forms to client</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Button 
+                  onClick={() => handleRequestAssessment('health_assessment')}
+                  disabled={isRequestingAssessment}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Request Health Assessment
+                </Button>
+                
+                <Button 
+                  onClick={() => handleRequestAssessment('stress_assessment')}
+                  disabled={isRequestingAssessment}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Brain className="mr-2 h-4 w-4" />
+                  Request Stress Assessment
+                </Button>
+                
+                <Button 
+                  onClick={() => handleRequestAssessment('sleep_assessment')}
+                  disabled={isRequestingAssessment}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <Moon className="mr-2 h-4 w-4" />
+                  Request Sleep Assessment
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {client?.service_type === 'hundred_days' && (
