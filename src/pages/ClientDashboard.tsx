@@ -28,6 +28,9 @@ import { MotivationCard } from "@/components/MotivationCard";
 import { WeeklyGoals } from "@/components/WeeklyGoals";
 import { getSignedUrls } from "@/lib/storage";
 import { getFileIcon, getFileDisplayName, handleFileClick } from "@/lib/fileUtils";
+import { AchievementList } from "@/components/AchievementList";
+import { AchievementProgress } from "@/components/AchievementProgress";
+import { AchievementNotification } from "@/components/AchievementNotification";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -37,11 +40,15 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [mealLogs, setMealLogs] = useState<any[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
-  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "reports">("today");
+  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "reports">("today");
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [weightInput, setWeightInput] = useState<string>("");
   const [waterInput, setWaterInput] = useState<string>("");
   const [activityInput, setActivityInput] = useState<string>("");
+  const [achievements, setAchievements] = useState<any[]>([]);
+  const [userAchievements, setUserAchievements] = useState<any[]>([]);
+  const [achievementProgress, setAchievementProgress] = useState<any[]>([]);
+  const [newAchievements, setNewAchievements] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -50,7 +57,21 @@ export default function ClientDashboard() {
     }
 
     fetchClientData();
+    fetchAchievements();
   }, [user, navigate]);
+
+  const fetchAchievements = async () => {
+    // Fetch all achievements
+    const { data: allAchievements } = await supabase
+      .from("achievements")
+      .select("*")
+      .eq("is_active", true)
+      .order("points", { ascending: false });
+
+    if (allAchievements) {
+      setAchievements(allAchievements);
+    }
+  };
 
   const fetchClientData = async () => {
     setLoading(true);
@@ -82,6 +103,27 @@ export default function ClientDashboard() {
     }
 
     setClientData(client);
+
+    // Fetch user achievements
+    const { data: earned } = await supabase
+      .from("user_achievements")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("earned_at", { ascending: false });
+
+    if (earned) {
+      setUserAchievements(earned);
+    }
+
+    // Fetch achievement progress
+    const { data: progress } = await supabase
+      .from("achievement_progress")
+      .select("*")
+      .eq("client_id", client.id);
+
+    if (progress) {
+      setAchievementProgress(progress);
+    }
 
     // Fetch today's log
     const todayDate = new Date().toISOString().split("T")[0];
@@ -157,6 +199,11 @@ export default function ClientDashboard() {
     toast.success(`Added ${amount}ml water`);
     setWaterInput("");
     fetchClientData();
+    
+    // Check for achievements
+    if (clientData?.id) {
+      checkAchievements(clientData.id, "water_log");
+    }
   };
 
   const quickAddActivity = async (minutes: number) => {
@@ -182,6 +229,11 @@ export default function ClientDashboard() {
     toast.success(`Added ${minutes} minutes`);
     setActivityInput("");
     fetchClientData();
+    
+    // Check for achievements
+    if (clientData?.id) {
+      checkAchievements(clientData.id, "activity_log");
+    }
   };
 
   const logWeight = async (weight: number) => {
@@ -207,9 +259,37 @@ export default function ClientDashboard() {
 
       toast.success(`Weight logged: ${weight} kg`);
       fetchClientData();
+      
+      // Check for achievements
+      checkAchievements(clientData.id, "weight_log");
     } catch (error) {
       console.error("Error logging weight:", error);
       toast.error("Failed to log weight");
+    }
+  };
+
+  const checkAchievements = async (clientId: string, actionType: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("check-achievements", {
+        body: { client_id: clientId, action_type: actionType },
+      });
+
+      if (error) {
+        console.error("Error checking achievements:", error);
+        return;
+      }
+
+      if (data?.newAchievements && data.newAchievements.length > 0) {
+        setNewAchievements(data.newAchievements);
+        // Refresh achievement data
+        fetchClientData();
+      }
+
+      if (data?.updatedProgress) {
+        setAchievementProgress(data.updatedProgress);
+      }
+    } catch (error) {
+      console.error("Error checking achievements:", error);
     }
   };
 
@@ -354,11 +434,12 @@ export default function ClientDashboard() {
           onValueChange={(value) => setActiveTab(value as typeof activeTab)}
           className="space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="today">Today</TabsTrigger>
-            <TabsTrigger value="plan">Weekly Plan</TabsTrigger>
-            <TabsTrigger value="logs">Meal Logs</TabsTrigger>
+            <TabsTrigger value="plan">Plan</TabsTrigger>
+            <TabsTrigger value="logs">Meals</TabsTrigger>
             <TabsTrigger value="files">Files</TabsTrigger>
+            <TabsTrigger value="achievements">Achievements</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
@@ -531,9 +612,22 @@ export default function ClientDashboard() {
                 <ProgressCharts clientId={clientData?.id} daysToShow={14} />
               </div>
 
-              {/* Weekly Goals Column */}
+              {/* Weekly Goals & Achievements Column */}
               <div className="space-y-6">
                 <WeeklyGoals clientId={clientData?.id} />
+
+                <Card className="animate-fade-in">
+                  <CardHeader>
+                    <CardTitle>Achievement Progress</CardTitle>
+                    <CardDescription>You're almost there!</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AchievementProgress 
+                      achievements={achievements}
+                      progress={achievementProgress}
+                    />
+                  </CardContent>
+                </Card>
 
                 <Card className="animate-fade-in">
                   <CardHeader>
@@ -558,7 +652,13 @@ export default function ClientDashboard() {
           <TabsContent value="logs">
             <div className="space-y-6">
               {clientData?.id ? (
-                <MealPhotoUpload clientId={clientData.id} onSuccess={fetchClientData} />
+                <MealPhotoUpload 
+                  clientId={clientData.id} 
+                  onSuccess={() => {
+                    fetchClientData();
+                    checkAchievements(clientData.id, "meal_log");
+                  }} 
+                />
               ) : (
                 <Card>
                   <CardContent className="py-8 text-center text-muted-foreground">
@@ -629,6 +729,14 @@ export default function ClientDashboard() {
             {clientData && <FileUploadSection clientId={clientData.id} />}
           </TabsContent>
 
+          <TabsContent value="achievements">
+            <AchievementList
+              achievements={achievements}
+              earnedAchievements={userAchievements}
+              progress={achievementProgress}
+            />
+          </TabsContent>
+
           <TabsContent value="reports">
             <Card>
               <CardHeader>
@@ -645,6 +753,12 @@ export default function ClientDashboard() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* Achievement Notifications */}
+        <AchievementNotification
+          newAchievements={newAchievements}
+          onDismiss={() => setNewAchievements([])}
+        />
       </div>
     </div>
   );

@@ -14,6 +14,93 @@ export type Database = {
   }
   public: {
     Tables: {
+      achievement_progress: {
+        Row: {
+          achievement_id: string
+          client_id: string
+          current_value: number | null
+          id: string
+          last_updated: string
+          metadata: Json | null
+          target_value: number
+        }
+        Insert: {
+          achievement_id: string
+          client_id: string
+          current_value?: number | null
+          id?: string
+          last_updated?: string
+          metadata?: Json | null
+          target_value: number
+        }
+        Update: {
+          achievement_id?: string
+          client_id?: string
+          current_value?: number | null
+          id?: string
+          last_updated?: string
+          metadata?: Json | null
+          target_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "achievement_progress_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "achievement_progress_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      achievements: {
+        Row: {
+          badge_color: string
+          category: Database["public"]["Enums"]["achievement_category"]
+          created_at: string
+          criteria_type: Database["public"]["Enums"]["achievement_criteria_type"]
+          criteria_value: number
+          description: string
+          icon: string
+          id: string
+          is_active: boolean | null
+          name: string
+          points: number
+        }
+        Insert: {
+          badge_color: string
+          category: Database["public"]["Enums"]["achievement_category"]
+          created_at?: string
+          criteria_type: Database["public"]["Enums"]["achievement_criteria_type"]
+          criteria_value: number
+          description: string
+          icon: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          points?: number
+        }
+        Update: {
+          badge_color?: string
+          category?: Database["public"]["Enums"]["achievement_category"]
+          created_at?: string
+          criteria_type?: Database["public"]["Enums"]["achievement_criteria_type"]
+          criteria_value?: number
+          description?: string
+          icon?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          points?: number
+        }
+        Relationships: []
+      }
       assessments: {
         Row: {
           client_id: string
@@ -448,6 +535,45 @@ export type Database = {
         }
         Relationships: []
       }
+      user_achievements: {
+        Row: {
+          achievement_id: string
+          client_id: string
+          earned_at: string
+          id: string
+          progress: Json | null
+        }
+        Insert: {
+          achievement_id: string
+          client_id: string
+          earned_at?: string
+          id?: string
+          progress?: Json | null
+        }
+        Update: {
+          achievement_id?: string
+          client_id?: string
+          earned_at?: string
+          id?: string
+          progress?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_achievements_achievement_id_fkey"
+            columns: ["achievement_id"]
+            isOneToOne: false
+            referencedRelation: "achievements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_achievements_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string
@@ -578,6 +704,19 @@ export type Database = {
       }
     }
     Enums: {
+      achievement_category: "consistency" | "milestone" | "streak" | "special"
+      achievement_criteria_type:
+        | "meal_log_streak"
+        | "meal_log_count"
+        | "hydration_streak"
+        | "hydration_perfect_week"
+        | "weight_loss_milestone"
+        | "weight_consistency"
+        | "activity_streak"
+        | "activity_total_minutes"
+        | "perfect_week"
+        | "early_bird"
+        | "first_meal"
       app_role: "admin" | "client"
       client_status: "active" | "inactive" | "pending" | "completed"
       gender_type: "male" | "female" | "other"
@@ -716,6 +855,20 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      achievement_category: ["consistency", "milestone", "streak", "special"],
+      achievement_criteria_type: [
+        "meal_log_streak",
+        "meal_log_count",
+        "hydration_streak",
+        "hydration_perfect_week",
+        "weight_loss_milestone",
+        "weight_consistency",
+        "activity_streak",
+        "activity_total_minutes",
+        "perfect_week",
+        "early_bird",
+        "first_meal",
+      ],
       app_role: ["admin", "client"],
       client_status: ["active", "inactive", "pending", "completed"],
       gender_type: ["male", "female", "other"],
