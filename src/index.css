@@ -43,6 +43,22 @@ All colors MUST be HSL.
     --wellness-light: 150 30% 95%;
     --wellness-amber: 45 95% 75%;
     
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--wellness-green)) 0%, hsl(var(--wellness-mint)) 100%);
+    --gradient-surface: linear-gradient(to bottom right, hsl(var(--wellness-light)) 0%, transparent 100%);
+    --gradient-accent: linear-gradient(90deg, hsl(var(--wellness-amber)) 0%, hsl(45 100% 85%) 100%);
+    --gradient-wellness: linear-gradient(to right, hsl(var(--wellness-green)), hsl(var(--wellness-mint)));
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+    --shadow-wellness: 0 10px 30px -5px hsl(var(--wellness-green) / 0.15);
+    
+    /* Interactive states */
+    --ring-wellness: 0 0 0 3px hsl(var(--wellness-green) / 0.1);
+    
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
     --sidebar-background: 0 0% 98%;
@@ -116,8 +132,28 @@ All colors MUST be HSL.
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-semibold tracking-tight;
+  h1 { 
+    @apply text-4xl font-bold tracking-tight; 
+  }
+  
+  h2 { 
+    @apply text-3xl font-semibold tracking-tight; 
+  }
+  
+  h3 { 
+    @apply text-2xl font-semibold tracking-tight; 
+  }
+  
+  h4 { 
+    @apply text-xl font-medium; 
+  }
+  
+  .text-gradient-primary {
+    @apply bg-gradient-to-r from-wellness-green to-wellness-mint bg-clip-text text-transparent;
+  }
+  
+  .text-gradient-wellness {
+    @apply bg-gradient-to-r from-wellness-green via-wellness-mint to-wellness-green bg-clip-text text-transparent;
   }
 }
 
@@ -130,8 +166,20 @@ All colors MUST be HSL.
     animation: slide-up 0.4s ease-out;
   }
   
+  .animate-scale-in {
+    animation: scale-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+    @apply transition-all duration-300 hover:shadow-wellness hover:-translate-y-1 hover:border-wellness-green/40;
+  }
+  
+  .interactive-button {
+    @apply transition-all duration-200 hover:scale-105 active:scale-95;
+  }
+  
+  .gradient-border {
+    @apply relative before:absolute before:inset-0 before:rounded-lg before:p-[2px] before:bg-gradient-to-r before:from-wellness-green before:to-wellness-mint before:-z-10;
   }
 }
 
@@ -154,5 +202,16 @@ All colors MUST be HSL.
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
   }
 }

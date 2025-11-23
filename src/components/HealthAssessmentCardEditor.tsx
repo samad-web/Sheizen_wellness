@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Save, Send } from "lucide-react";
+import { Loader2, Save, Send, FileText, Activity } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 interface HealthAssessmentCardEditorProps {
   cardId: string;
@@ -142,9 +144,9 @@ export function HealthAssessmentCardEditor({
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <Activity className="h-8 w-8 animate-spin text-wellness-green" />
           </div>
         </DialogContent>
       </Dialog>
@@ -153,12 +155,22 @@ export function HealthAssessmentCardEditor({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Edit Health Assessment Card</DialogTitle>
+      <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogHeader className="px-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-wellness-green/20 to-wellness-mint/20 rounded-lg">
+              <FileText className="h-5 w-5 text-wellness-green" />
+            </div>
+            <div>
+              <DialogTitle>Review Health Assessment Card</DialogTitle>
+              <DialogDescription>Review and edit AI-generated health assessment</DialogDescription>
+            </div>
+            <Badge variant="outline" className="ml-auto">Draft</Badge>
+          </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-6">
+        <ScrollArea className="flex-1 px-6">
+          <div className="grid grid-cols-2 gap-6 pb-6">
           {/* Edit Form */}
           <div className="space-y-4">
             <Card>
@@ -320,19 +332,20 @@ export function HealthAssessmentCardEditor({
             </Card>
           </div>
         </div>
+        </ScrollArea>
 
-        <div className="flex justify-end gap-2 mt-6">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t bg-muted/30">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button variant="outline" onClick={handleSave} disabled={saving}>
+          <Button variant="outline" onClick={handleSave} disabled={saving} className="group">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className="mr-2 h-4 w-4" />
+            <Save className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
             Save Draft
           </Button>
-          <Button onClick={handleSend} disabled={sending}>
+          <Button onClick={handleSend} disabled={sending} className="bg-wellness-green hover:bg-wellness-green/90 group">
             {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Send className="mr-2 h-4 w-4" />
+            <Send className="mr-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             Save & Send to Client
           </Button>
         </div>
