@@ -17,9 +17,10 @@ import {
   Calendar,
   TrendingDown,
   LogOut,
-  Camera,
   FileText
 } from "lucide-react";
+import { MealPhotoUpload } from "@/components/MealPhotoUpload";
+import { FileUploadSection } from "@/components/FileUploadSection";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ export default function ClientDashboard() {
   const [weight, setWeight] = useState("");
   const [water, setWater] = useState("");
   const [activity, setActivity] = useState("");
+  const [mealLogs, setMealLogs] = useState<any[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -73,6 +75,16 @@ export default function ClientDashboard() {
       setWater(log.water_intake?.toString() || "");
       setActivity(log.activity_minutes?.toString() || "");
     }
+
+    // Fetch meal logs
+    const { data: meals } = await supabase
+      .from("meal_logs")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("logged_at", { ascending: false })
+      .limit(20);
+
+    setMealLogs(meals || []);
 
     setLoading(false);
   };
@@ -188,10 +200,11 @@ export default function ClientDashboard() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="today" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="today">Today</TabsTrigger>
             <TabsTrigger value="plan">Weekly Plan</TabsTrigger>
             <TabsTrigger value="logs">Meal Logs</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
           </TabsList>
 
@@ -287,19 +300,51 @@ export default function ClientDashboard() {
           </TabsContent>
 
           <TabsContent value="logs">
-            <Card>
-              <CardHeader>
-                <CardTitle>Meal Logs</CardTitle>
-                <CardDescription>Track your meals with photos</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <Camera className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">No meal logs yet</p>
-                  <p className="text-sm">Start logging your meals to track your progress</p>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-6">
+              <MealPhotoUpload clientId={clientData?.id} onSuccess={fetchClientData} />
+
+              {mealLogs.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Your Meal History</CardTitle>
+                    <CardDescription>Recent meals you've logged</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {mealLogs.map((log) => (
+                        <div key={log.id} className="flex gap-4 p-4 border rounded-lg">
+                          {log.photo_url && (
+                            <div className="w-24 h-24 flex-shrink-0">
+                              <img
+                                src={log.photo_url}
+                                alt={log.meal_name || "Meal"}
+                                className="w-full h-full object-cover rounded-lg cursor-pointer"
+                                onClick={() => window.open(log.photo_url, "_blank")}
+                              />
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="font-semibold capitalize">{log.meal_type.replace("_", " ")}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {new Date(log.logged_at).toLocaleString()}
+                              </p>
+                            </div>
+                            {log.meal_name && <p className="text-sm">{log.meal_name}</p>}
+                            {log.kcal && <p className="text-sm text-muted-foreground">{log.kcal} kcal</p>}
+                            {log.notes && <p className="text-sm text-muted-foreground mt-2">{log.notes}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="files">
+            {clientData && <FileUploadSection clientId={clientData.id} />}
           </TabsContent>
 
           <TabsContent value="reports">

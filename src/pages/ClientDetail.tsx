@@ -8,8 +8,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Phone, Mail, Target, Weight, Calendar } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Target, Weight, Calendar, Trash2, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { AssessmentUploadDialog } from "@/components/AssessmentUploadDialog";
+import { WeeklyPlanEditor } from "@/components/WeeklyPlanEditor";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Client {
   id: string;
@@ -74,6 +86,16 @@ interface WeeklyReport {
   created_at: string;
 }
 
+interface MealLog {
+  id: string;
+  meal_type: string;
+  meal_name: string | null;
+  photo_url: string | null;
+  kcal: number | null;
+  notes: string | null;
+  logged_at: string;
+}
+
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -85,6 +107,9 @@ const ClientDetail = () => {
   const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
   const [files, setFiles] = useState<FileRecord[]>([]);
   const [reports, setReports] = useState<WeeklyReport[]>([]);
+  const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
+  const [deleteAssessmentId, setDeleteAssessmentId] = useState<string | null>(null);
+  const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userRole !== "admin") {
@@ -156,6 +181,16 @@ const ClientDetail = () => {
         .order("week_number", { ascending: false });
       setReports(reportsData || []);
 
+      // Fetch meal logs with photos
+      const { data: mealLogsData } = await supabase
+        .from("meal_logs")
+        .select("*")
+        .eq("client_id", id)
+        .not("photo_url", "is", null)
+        .order("logged_at", { ascending: false })
+        .limit(50);
+      setMealLogs(mealLogsData || []);
+
     } catch (error: any) {
       toast.error(error.message || "Failed to load client data");
       navigate("/admin");
@@ -176,6 +211,48 @@ const ClientDetail = () => {
         return "bg-blue-100 text-blue-800";
       default:
         return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const handleDeleteAssessment = async (assessmentId: string, fileUrl: string | null) => {
+    try {
+      if (fileUrl) {
+        const urlParts = fileUrl.split("/");
+        const filePath = urlParts.slice(-2).join("/");
+        await supabase.storage.from("assessment-files").remove([filePath]);
+      }
+
+      const { error } = await supabase
+        .from("assessments")
+        .delete()
+        .eq("id", assessmentId);
+
+      if (error) throw error;
+
+      toast.success("Assessment deleted successfully!");
+      fetchClientData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete assessment");
+    } finally {
+      setDeleteAssessmentId(null);
+    }
+  };
+
+  const handleDeletePlan = async (planId: string) => {
+    try {
+      const { error } = await supabase
+        .from("weekly_plans")
+        .delete()
+        .eq("id", planId);
+
+      if (error) throw error;
+
+      toast.success("Plan deleted successfully!");
+      fetchClientData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete plan");
+    } finally {
+      setDeletePlanId(null);
     }
   };
 
@@ -316,9 +393,12 @@ const ClientDetail = () => {
 
           <TabsContent value="assessments">
             <Card>
-              <CardHeader>
-                <CardTitle>Assessments</CardTitle>
-                <CardDescription>View and manage client assessments</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Assessments</CardTitle>
+                  <CardDescription>View and manage client assessments</CardDescription>
+                </div>
+                <AssessmentUploadDialog clientId={id!} onSuccess={fetchClientData} />
               </CardHeader>
               <CardContent>
                 {assessments.length === 0 ? (
@@ -330,7 +410,7 @@ const ClientDetail = () => {
                         <TableHead>File Name</TableHead>
                         <TableHead>Notes</TableHead>
                         <TableHead>Created</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -339,7 +419,7 @@ const ClientDetail = () => {
                           <TableCell>{assessment.file_name || "—"}</TableCell>
                           <TableCell className="max-w-xs truncate">{assessment.notes || "—"}</TableCell>
                           <TableCell>{new Date(assessment.created_at).toLocaleDateString()}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-right space-x-2">
                             {assessment.file_url && (
                               <Button variant="outline" size="sm" asChild>
                                 <a href={assessment.file_url} target="_blank" rel="noopener noreferrer">
@@ -347,6 +427,13 @@ const ClientDetail = () => {
                                 </a>
                               </Button>
                             )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeleteAssessmentId(assessment.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -359,9 +446,12 @@ const ClientDetail = () => {
 
           <TabsContent value="plans">
             <Card>
-              <CardHeader>
-                <CardTitle>Weekly Plans</CardTitle>
-                <CardDescription>Manage client meal plans</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Weekly Plans</CardTitle>
+                  <CardDescription>Manage client meal plans</CardDescription>
+                </div>
+                <WeeklyPlanEditor clientId={id!} onSuccess={fetchClientData} />
               </CardHeader>
               <CardContent>
                 {plans.length === 0 ? (
@@ -374,7 +464,7 @@ const ClientDetail = () => {
                         <TableHead>Date Range</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Total Kcal</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -390,7 +480,8 @@ const ClientDetail = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>{plan.total_kcal || "—"}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <WeeklyPlanEditor clientId={id!} planId={plan.id} onSuccess={fetchClientData} />
                             {plan.pdf_url && (
                               <Button variant="outline" size="sm" asChild>
                                 <a href={plan.pdf_url} target="_blank" rel="noopener noreferrer">
@@ -398,6 +489,13 @@ const ClientDetail = () => {
                                 </a>
                               </Button>
                             )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeletePlanId(plan.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -409,40 +507,82 @@ const ClientDetail = () => {
           </TabsContent>
 
           <TabsContent value="logs">
-            <Card>
-              <CardHeader>
-                <CardTitle>Daily Logs</CardTitle>
-                <CardDescription>Track daily progress and activities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {dailyLogs.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No logs yet</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Weight (kg)</TableHead>
-                        <TableHead>Water (ml)</TableHead>
-                        <TableHead>Activity (min)</TableHead>
-                        <TableHead>Notes</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {dailyLogs.map((log) => (
-                        <TableRow key={log.id}>
-                          <TableCell>{new Date(log.log_date).toLocaleDateString()}</TableCell>
-                          <TableCell>{log.weight || "—"}</TableCell>
-                          <TableCell>{log.water_intake || "—"}</TableCell>
-                          <TableCell>{log.activity_minutes || "—"}</TableCell>
-                          <TableCell className="max-w-xs truncate">{log.notes || "—"}</TableCell>
+            <div className="space-y-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Daily Logs</CardTitle>
+                  <CardDescription>Track daily progress and activities</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {dailyLogs.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No logs yet</p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Weight (kg)</TableHead>
+                          <TableHead>Water (ml)</TableHead>
+                          <TableHead>Activity (min)</TableHead>
+                          <TableHead>Notes</TableHead>
                         </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dailyLogs.map((log) => (
+                          <TableRow key={log.id}>
+                            <TableCell>{new Date(log.log_date).toLocaleDateString()}</TableCell>
+                            <TableCell>{log.weight || "—"}</TableCell>
+                            <TableCell>{log.water_intake || "—"}</TableCell>
+                            <TableCell>{log.activity_minutes || "—"}</TableCell>
+                            <TableCell className="max-w-xs truncate">{log.notes || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <ImageIcon className="h-5 w-5" />
+                    Meal Photos
+                  </CardTitle>
+                  <CardDescription>View client meal photos and logs</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {mealLogs.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-8">No meal photos yet</p>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {mealLogs.map((log) => (
+                        <div key={log.id} className="space-y-2">
+                          <div className="aspect-square rounded-lg overflow-hidden bg-muted">
+                            {log.photo_url && (
+                              <img
+                                src={log.photo_url}
+                                alt={log.meal_name || "Meal"}
+                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                onClick={() => window.open(log.photo_url!, "_blank")}
+                              />
+                            )}
+                          </div>
+                          <div className="text-sm">
+                            <p className="font-medium capitalize">{log.meal_type.replace("_", " ")}</p>
+                            {log.meal_name && <p className="text-muted-foreground">{log.meal_name}</p>}
+                            {log.kcal && <p className="text-muted-foreground">{log.kcal} kcal</p>}
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(log.logged_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
                       ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           <TabsContent value="files">
@@ -543,6 +683,49 @@ const ClientDetail = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AlertDialog open={!!deleteAssessmentId} onOpenChange={() => setDeleteAssessmentId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assessment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this assessment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const assessment = assessments.find(a => a.id === deleteAssessmentId);
+                if (assessment) handleDeleteAssessment(assessment.id, assessment.file_url);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletePlanId} onOpenChange={() => setDeletePlanId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Plan</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this plan? All associated meal cards will also be deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deletePlanId) handleDeletePlan(deletePlanId);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
