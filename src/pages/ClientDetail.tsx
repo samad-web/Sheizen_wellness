@@ -14,6 +14,7 @@ import { AssessmentUploadDialog } from "@/components/AssessmentUploadDialog";
 import { WeeklyPlanEditor } from "@/components/WeeklyPlanEditor";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
+import { GroceryListGenerator } from "@/components/GroceryListGenerator";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -505,6 +506,12 @@ const ClientDetail = () => {
                           <TableCell>{plan.total_kcal || "—"}</TableCell>
                           <TableCell className="text-right space-x-2">
                             <WeeklyPlanEditor clientId={id!} planId={plan.id} onSuccess={fetchClientData} />
+                            <GroceryListGenerator
+                              planId={plan.id}
+                              weekNumber={plan.week_number}
+                              startDate={plan.start_date}
+                              endDate={plan.end_date}
+                            />
                             {plan.pdf_url && (
                               <Button variant="outline" size="sm" asChild>
                                 <a href={plan.pdf_url} target="_blank" rel="noopener noreferrer">
