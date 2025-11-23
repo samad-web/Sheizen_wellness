@@ -23,8 +23,6 @@ import { type Message } from "@/lib/messages";
 import { CalendarView } from "@/components/CalendarView";
 import { HundredDayProgress } from "@/components/HundredDayProgress";
 import { WorkflowTimeline } from "@/components/WorkflowTimeline";
-import { StressAssessmentForm } from "@/components/StressAssessmentForm";
-import { SleepAssessmentForm } from "@/components/SleepAssessmentForm";
 import { exportDietPlanToExcel } from "@/lib/excelExport";
 import { FileText, Brain, Moon } from "lucide-react";
 import {
@@ -530,18 +528,14 @@ const ClientDetail = () => {
                 </CardContent>
               </Card>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <StressAssessmentForm 
-                  clientId={id!} 
-                  clientName={client.name}
-                  onComplete={fetchClientData}
-                />
-                <SleepAssessmentForm 
-                  clientId={id!} 
-                  clientName={client.name}
-                  onComplete={fetchClientData}
-                />
-              </div>
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Request New Assessments</CardTitle>
+                  <CardDescription>
+                    To request assessments from this client, go to the <strong>Workflow</strong> tab and click the appropriate "Request Assessment" button.
+                  </CardDescription>
+                </CardHeader>
+              </Card>
             </div>
           </TabsContent>
 
