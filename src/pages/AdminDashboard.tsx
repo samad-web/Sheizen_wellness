@@ -42,11 +42,27 @@ export default function AdminDashboard() {
   const fetchDashboardData = async () => {
     setLoading(true);
 
-    // Fetch all clients
-    const { data: clientsData, error: clientsError } = await supabase
+    // Fetch only clients (exclude admins)
+    // First get all admin user_ids
+    const { data: adminRoles } = await supabase
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "admin");
+
+    const adminUserIds = adminRoles?.map((r) => r.user_id) || [];
+
+    // Fetch clients excluding admins
+    let query = supabase
       .from("clients")
       .select("*")
       .order("created_at", { ascending: false });
+
+    // Exclude admin user_ids if any exist
+    if (adminUserIds.length > 0) {
+      query = query.not("user_id", "in", `(${adminUserIds.join(",")})`);
+    }
+
+    const { data: clientsData, error: clientsError } = await query;
 
     if (!clientsError && clientsData) {
       setClients(clientsData);
