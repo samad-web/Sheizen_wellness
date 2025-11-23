@@ -1,53 +1,14 @@
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, ChevronLeft, ChevronRight, FileText } from "lucide-react";
-
-const assessmentSchema = z.object({
-  // Step 1: Diet Recall
-  breakfast: z.string().min(5, "Please describe your typical breakfast"),
-  lunch: z.string().min(5, "Please describe your typical lunch"),
-  dinner: z.string().min(5, "Please describe your typical dinner"),
-  snacks: z.string().optional(),
-  eatingPatterns: z.string().min(10, "Please describe your eating patterns"),
-  
-  // Step 2: Sleep Quality
-  sleepHours: z.string().min(1, "Sleep hours required"),
-  sleepSchedule: z.string().min(5, "Please describe your sleep schedule"),
-  sleepQuality: z.enum(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"]),
-  
-  // Step 3: Hydration
-  dailyWater: z.string().min(1, "Water intake required"),
-  beverageHabits: z.string().min(5, "Please describe beverage habits"),
-  
-  // Step 4: Physical Activity
-  activityType: z.string().min(3, "Activity type required"),
-  activityFrequency: z.string().min(1, "Frequency required"),
-  activityDuration: z.string().min(1, "Duration required"),
-  activityIntensity: z.enum(["low", "moderate", "high"]),
-  
-  // Step 5: Medical History
-  medicalConditions: z.string().optional(),
-  medications: z.string().optional(),
-  supplements: z.string().optional(),
-  allergies: z.string().optional(),
-  
-  // Step 6: Goals
-  weightGoals: z.string().min(5, "Please describe your goals"),
-  timeline: z.string().min(1, "Timeline required"),
-  dietaryRestrictions: z.string().optional(),
-});
-
-type AssessmentFormData = z.infer<typeof assessmentSchema>;
+import { toast } from "sonner";
+import { Loader2, FileText } from "lucide-react";
 
 interface HealthAssessmentFormProps {
   clientId: string;
@@ -55,496 +16,405 @@ interface HealthAssessmentFormProps {
   onComplete?: () => void;
 }
 
-const steps = [
-  { title: "Diet Recall", description: "Your typical daily meals" },
-  { title: "Sleep Quality", description: "Your sleep patterns" },
-  { title: "Hydration", description: "Water and beverage intake" },
-  { title: "Physical Activity", description: "Exercise and movement" },
-  { title: "Medical History", description: "Health conditions and medications" },
-  { title: "Goals & Preferences", description: "Your wellness objectives" },
-];
-
 export function HealthAssessmentForm({ clientId, clientName, onComplete }: HealthAssessmentFormProps) {
-  const [currentStep, setCurrentStep] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
-
-  const form = useForm<AssessmentFormData>({
-    resolver: zodResolver(assessmentSchema),
-    defaultValues: {
-      breakfast: "",
-      lunch: "",
-      dinner: "",
-      snacks: "",
-      eatingPatterns: "",
-      sleepHours: "",
-      sleepSchedule: "",
-      sleepQuality: "5",
-      dailyWater: "",
-      beverageHabits: "",
-      activityType: "",
-      activityFrequency: "",
-      activityDuration: "",
-      activityIntensity: "moderate",
-      medicalConditions: "",
-      medications: "",
-      supplements: "",
-      allergies: "",
-      weightGoals: "",
-      timeline: "",
-      dietaryRestrictions: "",
-    },
+  const [formData, setFormData] = useState({
+    client_name: clientName,
+    age: "",
+    gender: "",
+    height_cm: "",
+    weight_kg: "",
+    bmi: "",
+    ideal_body_weight_kg: "",
+    bmr_kcal: "",
+    recommended_calorie_intake_kcal: "",
+    recommended_protein_intake_g: "",
+    medical_condition: "",
+    physical_activity_description: "",
+    sleep_hours_per_night: "",
+    stress_level_1_to_10: "",
+    water_intake_liters_per_day: "",
+    cbc_done: false,
+    lipid_profile_done: false,
+    blood_sugar_done: false,
+    liver_function_test_done: false,
+    kidney_function_test_done: false,
+    vitamin_d_done: false,
+    vitamin_b12_done: false,
+    goal_weight_loss_kg: "",
+    goal_correct_sleep_pattern: "",
+    goal_other: "",
+    meal_preparation_self: false,
+    meal_preparation_family: false,
+    meal_preparation_outsourced: false,
+    eating_outside_frequency: "",
+    eating_habit_stress_eater: false,
+    bowel_movements: "",
+    skip_breakfast: false,
+    skip_lunch: false,
+    skip_dinner: false,
+    skip_never: false,
+    diet_pattern_vegetarian: false,
+    diet_pattern_non_vegetarian: false,
+    diet_pattern_vegan: false,
+    diet_pattern_other: "",
+    food_recall_details: "",
+    finding_low_protein_intake: false,
+    finding_high_refined_carbs: false,
+    finding_irregular_meal_timings: false,
+    finding_high_mayonnaise_intake: false,
+    client_acknowledgment_signed: false,
+    client_acknowledgment_date: "",
+    next_steps_notes: "",
   });
 
-  const onSubmit = async (data: AssessmentFormData) => {
+  const handleSubmit = async () => {
+    // Validate required fields
+    if (!formData.age || !formData.gender || !formData.height_cm || !formData.weight_kg) {
+      toast.error("Please fill in all required client details");
+      return;
+    }
+
     setIsGenerating(true);
     try {
-      // Call edge function to generate health assessment
-      const { data: result, error } = await supabase.functions.invoke('generate-health-assessment', {
+      const { data, error } = await supabase.functions.invoke('generate-health-assessment', {
         body: {
           client_id: clientId,
           client_name: clientName,
-          form_data: data,
+          form_data: formData,
         },
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Assessment Generated",
-        description: "Health assessment has been created successfully.",
-      });
-
+      toast.success("Health assessment generated successfully!");
       onComplete?.();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error generating assessment:', error);
-      if (error.message?.includes('429')) {
-        toast({
-          title: "Rate Limit Reached",
-          description: "AI service is busy. Please try again in a few minutes.",
-          variant: "destructive",
-        });
-      } else if (error.message?.includes('402')) {
-        toast({
-          title: "Credits Depleted",
-          description: "AI credits depleted. Please contact support.",
-          variant: "destructive",
-        });
-      } else {
-        toast({
-          title: "Generation Failed",
-          description: "Failed to generate assessment. Please try again.",
-          variant: "destructive",
-        });
-      }
+      toast.error("Failed to generate health assessment");
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const nextStep = async () => {
-    const fieldsToValidate = getFieldsForStep(currentStep);
-    const isValid = await form.trigger(fieldsToValidate);
-    if (isValid && currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const getFieldsForStep = (step: number): (keyof AssessmentFormData)[] => {
-    switch (step) {
-      case 0: return ["breakfast", "lunch", "dinner", "snacks", "eatingPatterns"];
-      case 1: return ["sleepHours", "sleepSchedule", "sleepQuality"];
-      case 2: return ["dailyWater", "beverageHabits"];
-      case 3: return ["activityType", "activityFrequency", "activityDuration", "activityIntensity"];
-      case 4: return ["medicalConditions", "medications", "supplements", "allergies"];
-      case 5: return ["weightGoals", "timeline", "dietaryRestrictions"];
-      default: return [];
-    }
-  };
-
   return (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Health Assessment for {clientName}
-        </CardTitle>
-        <CardDescription>
-          Step {currentStep + 1} of {steps.length}: {steps[currentStep].title}
-        </CardDescription>
-        <div className="flex gap-1 mt-4">
-          {steps.map((_, index) => (
-            <div
-              key={index}
-              className={`h-2 flex-1 rounded-full transition-colors ${
-                index <= currentStep ? "bg-primary" : "bg-muted"
-              }`}
-            />
-          ))}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Step 1: Diet Recall */}
-            {currentStep === 0 && (
-              <div className="space-y-4 animate-in fade-in-50 duration-300">
-                <FormField
-                  control={form.control}
-                  name="breakfast"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Typical Breakfast</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="e.g., Oats with milk, banana, 2 eggs" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="lunch"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Typical Lunch</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="e.g., Roti, dal, rice, salad" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="dinner"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Typical Dinner</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="e.g., Grilled chicken, vegetables, quinoa" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="snacks"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Snacks (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Fruits, nuts, protein bar" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="eatingPatterns"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Eating Patterns & Habits</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Meal timings, eating out frequency, portion sizes, etc." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
+    <Card className="p-6 space-y-6 max-w-4xl mx-auto">
+      <div className="flex items-center gap-2 mb-4">
+        <FileText className="h-5 w-5 text-primary" />
+        <h3 className="text-lg font-semibold">Comprehensive Health Assessment</h3>
+      </div>
 
-            {/* Step 2: Sleep Quality */}
-            {currentStep === 1 && (
-              <div className="space-y-4 animate-in fade-in-50 duration-300">
-                <FormField
-                  control={form.control}
-                  name="sleepHours"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Average Sleep Hours</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g., 7" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="sleepSchedule"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sleep Schedule</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="e.g., Sleep at 11 PM, wake at 6 AM" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="sleepQuality"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Sleep Quality (1-10)</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Rate your sleep quality" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {[...Array(10)].map((_, i) => (
-                            <SelectItem key={i + 1} value={`${i + 1}`}>
-                              {i + 1} {i < 3 ? "- Poor" : i < 7 ? "- Fair" : "- Excellent"}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Step 3: Hydration */}
-            {currentStep === 2 && (
-              <div className="space-y-4 animate-in fade-in-50 duration-300">
-                <FormField
-                  control={form.control}
-                  name="dailyWater"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Daily Water Intake (ml)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g., 2000" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="beverageHabits"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Other Beverage Habits</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Coffee, tea, soft drinks, alcohol consumption, etc." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Step 4: Physical Activity */}
-            {currentStep === 3 && (
-              <div className="space-y-4 animate-in fade-in-50 duration-300">
-                <FormField
-                  control={form.control}
-                  name="activityType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Type of Activities</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Walking, gym, yoga, sports" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="activityFrequency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Frequency (times per week)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g., 5" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="activityDuration"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Duration (minutes per session)</FormLabel>
-                      <FormControl>
-                        <Input type="number" placeholder="e.g., 30" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="activityIntensity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Intensity Level</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="low">Low (light walking, stretching)</SelectItem>
-                          <SelectItem value="moderate">Moderate (brisk walking, cycling)</SelectItem>
-                          <SelectItem value="high">High (running, HIIT, sports)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Step 5: Medical History */}
-            {currentStep === 4 && (
-              <div className="space-y-4 animate-in fade-in-50 duration-300">
-                <FormField
-                  control={form.control}
-                  name="medicalConditions"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Medical Conditions (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Diabetes, hypertension, PCOS, thyroid, etc." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="medications"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Current Medications (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="List any medications you're taking" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="supplements"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Supplements (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Vitamins, protein powder, etc." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="allergies"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Food Allergies (Optional)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Nuts, dairy, gluten, etc." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            {/* Step 6: Goals & Preferences */}
-            {currentStep === 5 && (
-              <div className="space-y-4 animate-in fade-in-50 duration-300">
-                <FormField
-                  control={form.control}
-                  name="weightGoals"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Weight & Health Goals</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="e.g., Lose 10kg, improve energy, build muscle" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="timeline"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Timeline</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., 3 months, 100 days" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="dietaryRestrictions"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Dietary Restrictions (Optional)</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Vegetarian, vegan, religious restrictions, etc." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            )}
-
-            <div className="flex justify-between pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={prevStep}
-                disabled={currentStep === 0 || isGenerating}
-              >
-                <ChevronLeft className="mr-2 h-4 w-4" />
-                Previous
-              </Button>
-              {currentStep < steps.length - 1 ? (
-                <Button type="button" onClick={nextStep} disabled={isGenerating}>
-                  Next
-                  <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
-              ) : (
-                <Button type="submit" disabled={isGenerating}>
-                  {isGenerating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {isGenerating ? "Generating..." : "Generate Assessment"}
-                </Button>
-              )}
+      <div className="space-y-6">
+        {/* Client Details */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm">Client Details</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="age">Age *</Label>
+              <Input id="age" type="number" value={formData.age} onChange={(e) => setFormData({ ...formData, age: e.target.value })} className="mt-1" />
             </div>
-          </form>
-        </Form>
-      </CardContent>
+            <div>
+              <Label htmlFor="gender">Gender *</Label>
+              <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Male</SelectItem>
+                  <SelectItem value="female">Female</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </div>
+
+        {/* Key Findings */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm">Key Findings</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="height">Height (cm) *</Label>
+              <Input id="height" type="number" value={formData.height_cm} onChange={(e) => setFormData({ ...formData, height_cm: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="weight">Weight (kg) *</Label>
+              <Input id="weight" type="number" value={formData.weight_kg} onChange={(e) => setFormData({ ...formData, weight_kg: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="bmi">BMI</Label>
+              <Input id="bmi" type="number" value={formData.bmi} onChange={(e) => setFormData({ ...formData, bmi: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="ideal_weight">Ideal Body Weight (kg)</Label>
+              <Input id="ideal_weight" type="number" value={formData.ideal_body_weight_kg} onChange={(e) => setFormData({ ...formData, ideal_body_weight_kg: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="bmr">BMR (kcal)</Label>
+              <Input id="bmr" type="number" value={formData.bmr_kcal} onChange={(e) => setFormData({ ...formData, bmr_kcal: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="calorie">Recommended Calorie Intake (kcal)</Label>
+              <Input id="calorie" type="number" value={formData.recommended_calorie_intake_kcal} onChange={(e) => setFormData({ ...formData, recommended_calorie_intake_kcal: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="protein">Recommended Protein Intake (g)</Label>
+              <Input id="protein" value={formData.recommended_protein_intake_g} onChange={(e) => setFormData({ ...formData, recommended_protein_intake_g: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="medical">Medical Condition</Label>
+              <Input id="medical" value={formData.medical_condition} onChange={(e) => setFormData({ ...formData, medical_condition: e.target.value })} className="mt-1" />
+            </div>
+          </div>
+        </div>
+
+        {/* Lifestyle Pattern */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm">Lifestyle Pattern</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="activity">Physical Activity Description</Label>
+              <Input id="activity" value={formData.physical_activity_description} onChange={(e) => setFormData({ ...formData, physical_activity_description: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="sleep">Sleep Hours per Night</Label>
+              <Input id="sleep" value={formData.sleep_hours_per_night} onChange={(e) => setFormData({ ...formData, sleep_hours_per_night: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="stress">Stress Level (1-10)</Label>
+              <Input id="stress" type="number" min="1" max="10" value={formData.stress_level_1_to_10} onChange={(e) => setFormData({ ...formData, stress_level_1_to_10: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="water">Water Intake (Liters/Day)</Label>
+              <Input id="water" value={formData.water_intake_liters_per_day} onChange={(e) => setFormData({ ...formData, water_intake_liters_per_day: e.target.value })} className="mt-1" />
+            </div>
+          </div>
+        </div>
+
+        {/* Biochemical Investigations */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm">Biochemical Investigations</h4>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {[
+              { key: "cbc_done", label: "CBC" },
+              { key: "lipid_profile_done", label: "Lipid Profile" },
+              { key: "blood_sugar_done", label: "Blood Sugar" },
+              { key: "liver_function_test_done", label: "Liver Function Test" },
+              { key: "kidney_function_test_done", label: "Kidney Function Test" },
+              { key: "vitamin_d_done", label: "Vitamin D" },
+              { key: "vitamin_b12_done", label: "Vitamin B12" },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center space-x-2">
+                <Checkbox
+                  id={key}
+                  checked={formData[key as keyof typeof formData] as boolean}
+                  onCheckedChange={(checked) => setFormData({ ...formData, [key]: checked })}
+                />
+                <Label htmlFor={key} className="font-normal cursor-pointer">{label}</Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Health Goals */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm">Health Goals</h4>
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <Label htmlFor="weight_goal">Goal Weight Loss (kg)</Label>
+              <Input id="weight_goal" type="number" value={formData.goal_weight_loss_kg} onChange={(e) => setFormData({ ...formData, goal_weight_loss_kg: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="sleep_goal">Goal: Correct Sleep Pattern</Label>
+              <Input id="sleep_goal" value={formData.goal_correct_sleep_pattern} onChange={(e) => setFormData({ ...formData, goal_correct_sleep_pattern: e.target.value })} className="mt-1" />
+            </div>
+            <div>
+              <Label htmlFor="other_goal">Other Goals</Label>
+              <Input id="other_goal" value={formData.goal_other} onChange={(e) => setFormData({ ...formData, goal_other: e.target.value })} className="mt-1" />
+            </div>
+          </div>
+        </div>
+
+        {/* Dietary Assessment */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm">Dietary Assessment</h4>
+          
+          <div>
+            <Label className="mb-2">Meal Preparation</Label>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { key: "meal_preparation_self", label: "Self" },
+                { key: "meal_preparation_family", label: "Family" },
+                { key: "meal_preparation_outsourced", label: "Outsourced" },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={key}
+                    checked={formData[key as keyof typeof formData] as boolean}
+                    onCheckedChange={(checked) => setFormData({ ...formData, [key]: checked })}
+                  />
+                  <Label htmlFor={key} className="font-normal cursor-pointer">{label}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="eating_out">Eating Outside Frequency</Label>
+            <Input id="eating_out" value={formData.eating_outside_frequency} onChange={(e) => setFormData({ ...formData, eating_outside_frequency: e.target.value })} className="mt-1" />
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="stress_eater"
+              checked={formData.eating_habit_stress_eater}
+              onCheckedChange={(checked) => setFormData({ ...formData, eating_habit_stress_eater: checked as boolean })}
+            />
+            <Label htmlFor="stress_eater" className="font-normal cursor-pointer">Stress Eater</Label>
+          </div>
+
+          <div>
+            <Label htmlFor="bowel">Bowel Movements</Label>
+            <Input id="bowel" value={formData.bowel_movements} onChange={(e) => setFormData({ ...formData, bowel_movements: e.target.value })} className="mt-1" />
+          </div>
+
+          <div>
+            <Label className="mb-2">Meals Skipped</Label>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { key: "skip_breakfast", label: "Breakfast" },
+                { key: "skip_lunch", label: "Lunch" },
+                { key: "skip_dinner", label: "Dinner" },
+                { key: "skip_never", label: "Never" },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={key}
+                    checked={formData[key as keyof typeof formData] as boolean}
+                    onCheckedChange={(checked) => setFormData({ ...formData, [key]: checked })}
+                  />
+                  <Label htmlFor={key} className="font-normal cursor-pointer">{label}</Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-2">Diet Pattern</Label>
+            <div className="flex flex-wrap gap-3">
+              {[
+                { key: "diet_pattern_vegetarian", label: "Vegetarian" },
+                { key: "diet_pattern_non_vegetarian", label: "Non-Vegetarian" },
+                { key: "diet_pattern_vegan", label: "Vegan" },
+              ].map(({ key, label }) => (
+                <div key={key} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={key}
+                    checked={formData[key as keyof typeof formData] as boolean}
+                    onCheckedChange={(checked) => setFormData({ ...formData, [key]: checked })}
+                  />
+                  <Label htmlFor={key} className="font-normal cursor-pointer">{label}</Label>
+                </div>
+              ))}
+            </div>
+            <Input 
+              placeholder="Other diet pattern" 
+              value={formData.diet_pattern_other} 
+              onChange={(e) => setFormData({ ...formData, diet_pattern_other: e.target.value })} 
+              className="mt-2" 
+            />
+          </div>
+        </div>
+
+        {/* Food Recall */}
+        <div>
+          <Label htmlFor="food_recall">Food Recall Details</Label>
+          <Textarea 
+            id="food_recall" 
+            rows={4} 
+            placeholder="Describe typical daily meals and eating patterns..." 
+            value={formData.food_recall_details} 
+            onChange={(e) => setFormData({ ...formData, food_recall_details: e.target.value })} 
+            className="mt-1" 
+          />
+        </div>
+
+        {/* Assessment Findings */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm">Assessment Findings</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[
+              { key: "finding_low_protein_intake", label: "Low Protein Intake" },
+              { key: "finding_high_refined_carbs", label: "High Refined Carbs" },
+              { key: "finding_irregular_meal_timings", label: "Irregular Meal Timings" },
+              { key: "finding_high_mayonnaise_intake", label: "High Mayonnaise Intake" },
+            ].map(({ key, label }) => (
+              <div key={key} className="flex items-center space-x-2">
+                <Checkbox
+                  id={key}
+                  checked={formData[key as keyof typeof formData] as boolean}
+                  onCheckedChange={(checked) => setFormData({ ...formData, [key]: checked })}
+                />
+                <Label htmlFor={key} className="font-normal cursor-pointer">{label}</Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Client Acknowledgment */}
+        <div className="space-y-4">
+          <h4 className="font-semibold text-sm">Client Acknowledgment</h4>
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="acknowledgment"
+              checked={formData.client_acknowledgment_signed}
+              onCheckedChange={(checked) => setFormData({ ...formData, client_acknowledgment_signed: checked as boolean })}
+            />
+            <Label htmlFor="acknowledgment" className="font-normal cursor-pointer">Client has signed acknowledgment</Label>
+          </div>
+          <div>
+            <Label htmlFor="ack_date">Acknowledgment Date</Label>
+            <Input 
+              id="ack_date" 
+              type="date" 
+              value={formData.client_acknowledgment_date} 
+              onChange={(e) => setFormData({ ...formData, client_acknowledgment_date: e.target.value })} 
+              className="mt-1" 
+            />
+          </div>
+        </div>
+
+        {/* Next Steps */}
+        <div>
+          <Label htmlFor="next_steps">Next Steps Notes (Optional)</Label>
+          <Textarea 
+            id="next_steps" 
+            rows={3} 
+            placeholder="Any additional notes or next steps..." 
+            value={formData.next_steps_notes} 
+            onChange={(e) => setFormData({ ...formData, next_steps_notes: e.target.value })} 
+            className="mt-1" 
+          />
+        </div>
+      </div>
+
+      <Button
+        onClick={handleSubmit}
+        disabled={isGenerating}
+        className="w-full"
+      >
+        {isGenerating ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Generating Assessment...
+          </>
+        ) : (
+          <>
+            <FileText className="mr-2 h-4 w-4" />
+            Generate Health Assessment
+          </>
+        )}
+      </Button>
     </Card>
   );
 }
