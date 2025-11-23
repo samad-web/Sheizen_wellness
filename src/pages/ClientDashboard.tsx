@@ -22,6 +22,7 @@ import {
 import { MealPhotoUpload } from "@/components/MealPhotoUpload";
 import { FileUploadSection } from "@/components/FileUploadSection";
 import { WeeklyPlanViewer } from "@/components/WeeklyPlanViewer";
+import { ProgressCharts } from "@/components/ProgressCharts";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -268,6 +269,8 @@ export default function ClientDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            <ProgressCharts clientId={clientData?.id} daysToShow={14} />
 
             <Card>
               <CardHeader>
