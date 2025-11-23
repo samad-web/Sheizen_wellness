@@ -19,6 +19,7 @@ import { FoodItemsManager } from "@/components/FoodItemsManager";
 import { RecipeBuilder } from "@/components/RecipeBuilder";
 import { AdminClientEditor } from "@/components/AdminClientEditor";
 import { InterestSubmissionsManager } from "@/components/InterestSubmissionsManager";
+import { BulkMessageButton } from "@/components/BulkMessageButton";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 
 export default function AdminDashboard() {
@@ -201,15 +202,18 @@ export default function AdminDashboard() {
                   <CardTitle>All Clients</CardTitle>
                   <CardDescription>Manage your client roster</CardDescription>
                 </div>
-                <Button
-                  onClick={() => {
-                    setEditingClientId(null);
-                    setEditorOpen(true);
-                  }}
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  New Client
-                </Button>
+                <div className="flex gap-2">
+                  <BulkMessageButton clients={clients} onSuccess={fetchDashboardData} />
+                  <Button
+                    onClick={() => {
+                      setEditingClientId(null);
+                      setEditorOpen(true);
+                    }}
+                  >
+                    <Users className="mr-2 h-4 w-4" />
+                    New Client
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {clients.length === 0 ? (
