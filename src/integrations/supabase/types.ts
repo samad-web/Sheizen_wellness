@@ -114,6 +114,7 @@ export type Database = {
           id: string
           log_date: string
           notes: string | null
+          steps: number | null
           updated_at: string
           water_intake: number | null
           weight: number | null
@@ -125,6 +126,7 @@ export type Database = {
           id?: string
           log_date: string
           notes?: string | null
+          steps?: number | null
           updated_at?: string
           water_intake?: number | null
           weight?: number | null
@@ -136,6 +138,7 @@ export type Database = {
           id?: string
           log_date?: string
           notes?: string | null
+          steps?: number | null
           updated_at?: string
           water_intake?: number | null
           weight?: number | null
