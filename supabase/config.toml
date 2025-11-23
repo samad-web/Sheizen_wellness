@@ -1,5 +1,17 @@
 project_id = "wnthdwfllxhhjaxchjnl"
 
+[functions.generate-health-assessment-card]
+verify_jwt = true
+
+[functions.generate-action-plan-card]
+verify_jwt = true
+
+[functions.generate-diet-plan-card]
+verify_jwt = true
+
+[functions.send-card-to-client]
+verify_jwt = true
+
 [functions.generate-grocery-list]
 verify_jwt = false
 

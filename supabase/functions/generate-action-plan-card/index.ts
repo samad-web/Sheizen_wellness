@@ -1,0 +1,116 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { client_id, client_name } = await req.json();
+
+    console.log(`Generating action plan card for client ${client_id}`);
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Fetch client data
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('*')
+      .eq('id', client_id)
+      .single();
+
+    if (clientError) throw clientError;
+
+    // Generate AI action plan using Lovable AI with image generation
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    
+    const prompt = `Create a visual action plan pictogram for ${client_name}'s health goals: ${client.goals || 'General wellness'}.
+
+Generate a clean, professional Napkin AI style pictogram with 5-7 key action items. Each item should have:
+- A simple icon representation
+- Short actionable text (3-5 words)
+- Clear visual flow from top to bottom
+
+Focus on: nutrition, exercise, sleep, hydration, stress management.
+
+Style: Minimalist, professional, wellness-themed colors (greens, blues), easy to understand at a glance.`;
+
+    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image',
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+        modalities: ['image', 'text']
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      const errorText = await aiResponse.text();
+      console.error('AI API error:', aiResponse.status, errorText);
+      throw new Error(`AI generation failed: ${aiResponse.status}`);
+    }
+
+    const aiData = await aiResponse.json();
+    const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+    if (!imageUrl) {
+      throw new Error('No image generated from AI');
+    }
+
+    // Structure the card data
+    const cardData = {
+      client_name: client_name,
+      goals: client.goals,
+      action_plan_image: imageUrl,
+      generated_at: new Date().toISOString()
+    };
+
+    // Save to pending review cards
+    const { data: card, error: cardError } = await supabase
+      .from('pending_review_cards')
+      .insert({
+        client_id: client_id,
+        card_type: 'action_plan',
+        generated_content: cardData,
+        workflow_stage: 'action_plan_generated',
+        status: 'pending'
+      })
+      .select()
+      .single();
+
+    if (cardError) throw cardError;
+
+    console.log(`Action plan card generated for client ${client_id}, card ID: ${card.id}`);
+
+    return new Response(
+      JSON.stringify({ 
+        success: true, 
+        card_id: card.id,
+        message: 'Action plan card generated and pending admin review'
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error) {
+    console.error('Error in generate-action-plan-card:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

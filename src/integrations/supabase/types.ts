@@ -963,6 +963,69 @@ export type Database = {
           },
         ]
       }
+      pending_review_cards: {
+        Row: {
+          ai_generated_at: string | null
+          card_type: string
+          client_id: string
+          created_at: string | null
+          generated_content: Json
+          id: string
+          notes: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sent_at: string | null
+          status: string | null
+          updated_at: string | null
+          workflow_stage: string
+        }
+        Insert: {
+          ai_generated_at?: string | null
+          card_type: string
+          client_id: string
+          created_at?: string | null
+          generated_content: Json
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          workflow_stage: string
+        }
+        Update: {
+          ai_generated_at?: string | null
+          card_type?: string
+          client_id?: string
+          created_at?: string | null
+          generated_content?: Json
+          id?: string
+          notes?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sent_at?: string | null
+          status?: string | null
+          updated_at?: string | null
+          workflow_stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_review_cards_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_review_cards_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
