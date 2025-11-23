@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
-import { ChevronLeft, UtensilsCrossed, Phone, Trophy, Activity, Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { ChevronLeft, UtensilsCrossed, Phone, Trophy, Activity, Calendar as CalendarIcon, Loader2, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { EventScheduleDialog } from "./EventScheduleDialog";
 
 interface CalendarEvent {
   id: string;
@@ -24,9 +26,11 @@ interface CalendarDayDetailProps {
 }
 
 export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDayDetailProps) {
+  const { userRole } = useAuth();
   const [mealPlanDetails, setMealPlanDetails] = useState<any[]>([]);
   const [dailyLogDetails, setDailyLogDetails] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showScheduleDialog, setShowScheduleDialog] = useState(false);
 
   useEffect(() => {
     loadDayDetails();
@@ -118,16 +122,24 @@ export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDa
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onBack}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <CardTitle>{format(date, 'EEEE, MMMM d, yyyy')}</CardTitle>
-            <CardDescription>
-              {events.length} {events.length === 1 ? 'event' : 'events'} on this day
-            </CardDescription>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={onBack}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <CardTitle>{format(date, 'EEEE, MMMM d, yyyy')}</CardTitle>
+              <CardDescription>
+                {events.length} {events.length === 1 ? 'event' : 'events'} on this day
+              </CardDescription>
+            </div>
           </div>
+          {userRole === 'admin' && (
+            <Button onClick={() => setShowScheduleDialog(true)} size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Schedule Meeting
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -144,15 +156,28 @@ export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDa
                 <p className="text-sm text-muted-foreground">No events scheduled</p>
               ) : (
                 <div className="space-y-3">
-                  {events.map(event => (
+                   {events.map(event => (
                     <div key={event.id} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
                       <Badge variant="outline" className={`${getEventColor(event.type)} shrink-0`}>
                         {getEventIcon(event.type)}
                       </Badge>
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm">{event.title}</h4>
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-medium text-sm">{event.title}</h4>
+                          {event.metadata?.time && (
+                            <span className="text-xs text-muted-foreground shrink-0">
+                              {event.metadata.time}
+                              {event.metadata.duration && ` (${event.metadata.duration} min)`}
+                            </span>
+                          )}
+                        </div>
                         {event.description && (
                           <p className="text-xs text-muted-foreground mt-1">{event.description}</p>
+                        )}
+                        {event.metadata?.meeting_type && (
+                          <Badge variant="secondary" className="mt-2 text-xs">
+                            {event.metadata.meeting_type}
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -269,6 +294,14 @@ export function CalendarDayDetail({ date, events, clientId, onBack }: CalendarDa
           </>
         )}
       </CardContent>
+
+      <EventScheduleDialog
+        open={showScheduleDialog}
+        onOpenChange={setShowScheduleDialog}
+        date={date}
+        clientId={clientId}
+        onEventCreated={loadDayDetails}
+      />
     </Card>
   );
 }
