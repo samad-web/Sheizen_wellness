@@ -12,6 +12,7 @@ import { ArrowLeft, Phone, Mail, Target, Weight, Calendar, Trash2, Image as Imag
 import { toast } from "sonner";
 import { AssessmentUploadDialog } from "@/components/AssessmentUploadDialog";
 import { WeeklyPlanEditor } from "@/components/WeeklyPlanEditor";
+import { ProgressCharts } from "@/components/ProgressCharts";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -361,34 +362,46 @@ const ClientDetail = () => {
             <TabsTrigger value="reports">Reports ({reports.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview">
-            <Card>
-              <CardHeader>
-                <CardTitle>Client Overview</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm font-medium">Recent Activity</p>
-                    <p className="text-sm text-muted-foreground">
-                      {dailyLogs.length > 0 
-                        ? `Last log: ${new Date(dailyLogs[0].log_date).toLocaleDateString()}`
-                        : "No logs yet"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Active Plans</p>
-                    <p className="text-sm text-muted-foreground">
-                      {plans.filter(p => p.status === "published").length} published plan(s)
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Total Assessments</p>
-                    <p className="text-sm text-muted-foreground">{assessments.length} assessment(s)</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">
+                    {dailyLogs.length > 0 
+                      ? new Date(dailyLogs[0].log_date).toLocaleDateString()
+                      : "No logs"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Last log date</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Active Plans</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">
+                    {plans.filter(p => p.status === "published").length}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">Published plans</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Total Assessments</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-2xl font-bold">{assessments.length}</p>
+                  <p className="text-xs text-muted-foreground mt-1">Assessment files</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <ProgressCharts clientId={id!} daysToShow={30} />
           </TabsContent>
 
           <TabsContent value="assessments">
