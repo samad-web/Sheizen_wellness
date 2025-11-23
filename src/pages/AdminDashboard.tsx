@@ -23,6 +23,8 @@ import { InterestSubmissionsManager } from "@/components/InterestSubmissionsMana
 import { BulkMessageButton } from "@/components/BulkMessageButton";
 import { CronJobsManager } from "@/components/CronJobsManager";
 import { WorkflowStatusWidget } from "@/components/WorkflowStatusWidget";
+import { PendingReviewDashboard } from "@/components/PendingReviewDashboard";
+import { HealthAssessmentCardEditor } from "@/components/HealthAssessmentCardEditor";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 
 export default function AdminDashboard() {
@@ -38,6 +40,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
+  const [reviewCardId, setReviewCardId] = useState<string | null>(null);
+  const [reviewCardType, setReviewCardType] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!user || userRole !== "admin") {
@@ -192,6 +197,16 @@ export default function AdminDashboard() {
           <WorkflowStatusWidget />
         </div>
 
+        <div className="mb-8">
+          <PendingReviewDashboard 
+            key={refreshKey}
+            onReviewCard={(cardId, cardType) => {
+              setReviewCardId(cardId);
+              setReviewCardType(cardType);
+            }}
+          />
+        </div>
+
         {/* Main Content */}
         <Tabs defaultValue="clients" className="space-y-6">
           <TabsList className="grid w-full grid-cols-6">
@@ -327,6 +342,20 @@ export default function AdminDashboard() {
           }}
           onSuccess={fetchDashboardData}
         />
+
+        {reviewCardId && reviewCardType === 'health_assessment' && (
+          <HealthAssessmentCardEditor
+            cardId={reviewCardId}
+            open={!!reviewCardId}
+            onOpenChange={(open) => {
+              if (!open) {
+                setReviewCardId(null);
+                setReviewCardType(null);
+              }
+            }}
+            onSave={() => setRefreshKey(prev => prev + 1)}
+          />
+        )}
       </div>
     </div>
   );

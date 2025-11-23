@@ -89,6 +89,22 @@ Format the response as a professional assessment report in markdown.`;
       throw dbError;
     }
 
+    // Also save to pending review cards for admin review workflow
+    await supabase
+      .from('pending_review_cards')
+      .insert({
+        client_id: client_id,
+        card_type: 'sleep_card',
+        generated_content: {
+          client_name: client_name,
+          form_responses: form_data,
+          assessment_text: assessmentText,
+          generated_at: new Date().toISOString()
+        },
+        workflow_stage: 'sleep_card_sent',
+        status: 'pending'
+      });
+
     console.log('Sleep assessment generated successfully:', assessment.id);
 
     return new Response(
