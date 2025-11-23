@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Calendar } from "lucide-react";
 
 const eventSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
@@ -53,12 +53,21 @@ export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEven
       if (data.duration) metadata.duration = data.duration;
       metadata.meeting_type = data.eventType;
 
+      // Map meeting types to allowed event_type values
+      const eventTypeMap: Record<string, string> = {
+        'consultation': 'follow_up',
+        'follow_up': 'follow_up',
+        'meeting': 'follow_up',
+        'appointment': 'follow_up',
+        'other': 'milestone'
+      };
+
       const { error } = await supabase
         .from('calendar_events')
         .insert({
           client_id: clientId,
           event_date: format(date, 'yyyy-MM-dd'),
-          event_type: 'custom',
+          event_type: eventTypeMap[data.eventType] || 'follow_up',
           title: data.title,
           description: data.description || null,
           metadata: Object.keys(metadata).length > 0 ? metadata : null,
@@ -84,9 +93,19 @@ export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEven
         <DialogHeader>
           <DialogTitle>Schedule Meeting</DialogTitle>
           <DialogDescription>
-            Create a new meeting or event for {format(date, 'MMMM d, yyyy')}
+            Create a new meeting or event for your client
           </DialogDescription>
         </DialogHeader>
+
+        <div className="bg-muted p-3 rounded-lg mb-4">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Meeting Date</p>
+              <p className="text-lg font-semibold">{format(date, 'EEEE, MMMM d, yyyy')}</p>
+            </div>
+          </div>
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
