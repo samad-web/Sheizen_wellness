@@ -1,1 +1,4 @@
 project_id = "wnthdwfllxhhjaxchjnl"
+
+[functions.generate-grocery-list]
+verify_jwt = false

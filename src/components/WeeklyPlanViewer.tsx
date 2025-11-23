@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, FileText, Utensils } from "lucide-react";
 import { toast } from "sonner";
+import { GroceryListGenerator } from "@/components/GroceryListGenerator";
 
 interface WeeklyPlan {
   id: string;
@@ -184,7 +185,7 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
       {selectedPlan && (
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
@@ -194,9 +195,17 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
                   {new Date(selectedPlan.start_date).toLocaleDateString()} - {new Date(selectedPlan.end_date).toLocaleDateString()}
                 </CardDescription>
               </div>
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Total Weekly</p>
-                <p className="text-2xl font-bold">{selectedPlan.total_kcal || 0} kcal</p>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total Weekly</p>
+                  <p className="text-2xl font-bold">{selectedPlan.total_kcal || 0} kcal</p>
+                </div>
+                <GroceryListGenerator
+                  planId={selectedPlan.id}
+                  weekNumber={selectedPlan.week_number}
+                  startDate={selectedPlan.start_date}
+                  endDate={selectedPlan.end_date}
+                />
               </div>
             </div>
           </CardHeader>
