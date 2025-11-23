@@ -171,11 +171,39 @@ export function SleepCardEditor({
     }
   };
 
+  // Helper function to convert 12-hour time format to 24-hour format
+  const to24HourTime = (value: string | undefined | null): string => {
+    if (!value) return '';
+    // If already in "HH:mm" format, just return it
+    if (/^\d{2}:\d{2}(:\d{2})?$/.test(value)) return value.slice(0, 5);
+
+    // Handle "hh:mm AM/PM"
+    const match = value.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return '';
+
+    let [_, hRaw, m, period] = match;
+    let h = parseInt(hRaw, 10);
+    const isPM = period.toUpperCase() === 'PM';
+
+    if (isPM && h < 12) h += 12;
+    if (!isPM && h === 12) h = 0;
+
+    const hh = String(h).padStart(2, '0');
+    return `${hh}:${m}`;
+  };
+
   if (loading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-7xl max-h-[90vh]">
-          <div className="flex flex-col items-center justify-center p-12 gap-4">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Loading Sleep Assessment</DialogTitle>
+            <DialogDescription>
+              Please wait while we prepare the sleep card for review.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-1 flex-col items-center justify-center p-12 gap-4">
             <div className="relative">
               <Moon className="h-16 w-16 text-primary animate-pulse" />
               <Sparkles className="h-6 w-6 text-wellness-mint absolute -top-2 -right-2 animate-pulse" />
@@ -251,7 +279,7 @@ export function SleepCardEditor({
                     <Input
                       id="bedtime"
                       type="time"
-                      value={formData.form_responses?.bedtime_usual || ''}
+                      value={to24HourTime(formData.form_responses?.bedtime_usual)}
                       onChange={(e) => updateField('form_responses.bedtime_usual', e.target.value)}
                       className="transition-all duration-200 focus:ring-2 focus:ring-wellness-mint/20"
                     />
@@ -263,7 +291,7 @@ export function SleepCardEditor({
                     <Input
                       id="wake_time"
                       type="time"
-                      value={formData.form_responses?.wake_time_usual || ''}
+                      value={to24HourTime(formData.form_responses?.wake_time_usual)}
                       onChange={(e) => updateField('form_responses.wake_time_usual', e.target.value)}
                       className="transition-all duration-200 focus:ring-2 focus:ring-wellness-mint/20"
                     />

@@ -145,7 +145,14 @@ export function HealthAssessmentCardEditor({
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
-          <div className="flex items-center justify-center py-12">
+          <DialogHeader>
+            <DialogTitle>Loading Health Assessment</DialogTitle>
+            <DialogDescription>
+              We're preparing the health assessment card for your review.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex flex-1 items-center justify-center py-12">
             <Activity className="h-8 w-8 animate-spin text-wellness-green" />
           </div>
         </DialogContent>
