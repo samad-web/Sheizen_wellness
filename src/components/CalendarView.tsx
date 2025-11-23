@@ -223,6 +223,7 @@ export function CalendarView({ clientId }: CalendarViewProps) {
         events={getEventsForDate(selectedDate)}
         clientId={clientId}
         onBack={() => setShowDayDetail(false)}
+        onEventsChanged={loadEvents}
       />
     );
   }

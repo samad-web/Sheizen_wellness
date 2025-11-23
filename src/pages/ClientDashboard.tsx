@@ -38,6 +38,9 @@ import { sendAutomatedMessage, getUnreadCount, markMessagesAsRead, type Message 
 import { MessageCircle } from "lucide-react";
 import { CalendarView } from "@/components/CalendarView";
 import { HundredDayProgress } from "@/components/HundredDayProgress";
+import { UpcomingMeetingsBanner } from "@/components/UpcomingMeetingsBanner";
+import { NotificationBell } from "@/components/NotificationBell";
+import { usePushNotifications } from "@/hooks/usePushNotifications";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -59,6 +62,7 @@ export default function ClientDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [newMessage, setNewMessage] = useState<Message | null>(null);
+  const { isSupported: pushSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications(clientData?.id || null);
 
   useEffect(() => {
     if (!user) {
@@ -393,6 +397,10 @@ export default function ClientDashboard() {
     }
   };
 
+  const handleNavigateToCalendar = (date: Date) => {
+    setActiveTab('calendar');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -422,14 +430,30 @@ export default function ClientDashboard() {
               </div>
             </div>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex items-center gap-2">
+            <NotificationBell clientId={clientData?.id} onNavigate={handleNavigateToCalendar} />
+            {pushSupported && !isSubscribed && (
+              <Button variant="outline" onClick={subscribe} disabled={pushLoading} size="sm">
+                Enable Notifications
+              </Button>
+            )}
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Motivation Card */}
         <MotivationCard />
+
+        {/* Upcoming Meetings Banner */}
+        {clientData?.id && (
+          <UpcomingMeetingsBanner 
+            clientId={clientData.id} 
+            onNavigate={handleNavigateToCalendar}
+          />
+        )}
 
         {/* Enhanced Metric Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 my-6">

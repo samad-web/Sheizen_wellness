@@ -29,9 +29,10 @@ interface EventScheduleDialogProps {
   date: Date;
   clientId: string;
   onEventCreated?: () => void;
+  onEventsChanged?: () => void;
 }
 
-export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEventCreated }: EventScheduleDialogProps) {
+export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEventCreated, onEventsChanged }: EventScheduleDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<EventFormData>({
@@ -79,6 +80,7 @@ export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEven
       form.reset();
       onOpenChange(false);
       onEventCreated?.();
+      onEventsChanged?.();
     } catch (error: any) {
       console.error('Error scheduling meeting:', error);
       toast.error(error.message || "Failed to schedule meeting");
