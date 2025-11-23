@@ -27,6 +27,7 @@ import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 import { MotivationCard } from "@/components/MotivationCard";
 import { WeeklyGoals } from "@/components/WeeklyGoals";
 import { getSignedUrls } from "@/lib/storage";
+import { getFileIcon, getFileDisplayName, handleFileClick } from "@/lib/fileUtils";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -518,28 +519,43 @@ export default function ClientDashboard() {
                   <div className="space-y-4">
                       {mealLogs.map((log) => {
                         const signedUrl = log.photo_url ? signedUrls[log.photo_url] : null;
+                        const isImage = log.file_type?.startsWith('image/');
+                        const FileIcon = getFileIcon(log.file_type);
+                        
                         return (
-                          <div key={log.id} className="flex gap-4 p-4 border rounded-lg">
+                          <div key={log.id} className="flex gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                             {signedUrl && (
                               <div className="w-24 h-24 flex-shrink-0">
-                                <img
-                                  src={signedUrl}
-                                  alt={log.meal_name || "Meal"}
-                                  className="w-full h-full object-cover rounded-lg cursor-pointer"
-                                  onClick={() => window.open(signedUrl, "_blank")}
-                                />
+                                {isImage ? (
+                                  <img
+                                    src={signedUrl}
+                                    alt={log.meal_name || "Meal"}
+                                    className="w-full h-full object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => handleFileClick(signedUrl, log.file_type, log.meal_name || undefined)}
+                                  />
+                                ) : (
+                                  <div 
+                                    className="w-full h-full flex flex-col items-center justify-center bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
+                                    onClick={() => handleFileClick(signedUrl, log.file_type, log.meal_name || undefined)}
+                                  >
+                                    <FileIcon className="h-8 w-8 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground mt-1">
+                                      {getFileDisplayName(log.file_type)}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             )}
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-1">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between mb-1 gap-2">
                                 <p className="font-semibold capitalize">{log.meal_type.replace("_", " ")}</p>
-                                <p className="text-sm text-muted-foreground">
+                                <p className="text-sm text-muted-foreground whitespace-nowrap">
                                   {new Date(log.logged_at).toLocaleString()}
                                 </p>
                               </div>
-                              {log.meal_name && <p className="text-sm">{log.meal_name}</p>}
+                              {log.meal_name && <p className="text-sm truncate">{log.meal_name}</p>}
                               {log.kcal && <p className="text-sm text-muted-foreground">{log.kcal} kcal</p>}
-                              {log.notes && <p className="text-sm text-muted-foreground mt-2">{log.notes}</p>}
+                              {log.notes && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{log.notes}</p>}
                             </div>
                           </div>
                         );
