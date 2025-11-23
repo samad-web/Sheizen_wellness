@@ -20,7 +20,8 @@ import { MealPhotoDisplay } from "@/components/MealPhotoDisplay";
 import { MessageFeed } from "@/components/MessageFeed";
 import { MessageComposer } from "@/components/MessageComposer";
 import { type Message } from "@/lib/messages";
-import { useAuth as useAuthContext } from "@/contexts/AuthContext";
+import { CalendarView } from "@/components/CalendarView";
+import { HundredDayProgress } from "@/components/HundredDayProgress";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -387,6 +388,10 @@ const ClientDetail = () => {
             <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
             <TabsTrigger value="reports">Reports ({reports.length})</TabsTrigger>
             <TabsTrigger value="messages">Messages ({messages.length})</TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            {client?.service_type === 'hundred_days' && (
+              <TabsTrigger value="progress">100-Day Progress</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
@@ -763,6 +768,16 @@ const ClientDetail = () => {
               )}
             </Card>
           </TabsContent>
+
+          <TabsContent value="calendar">
+            {id && <CalendarView clientId={id} />}
+          </TabsContent>
+
+          {client?.service_type === 'hundred_days' && (
+            <TabsContent value="progress">
+              {id && <HundredDayProgress clientId={id} />}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
 
