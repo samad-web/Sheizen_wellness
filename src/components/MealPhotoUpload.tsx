@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Camera, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
+import { MAX_FILE_SIZE, getAcceptString, getFileIcon, getFileDisplayName } from "@/lib/fileUtils";
 
 interface MealPhotoUploadProps {
   clientId: string;
@@ -33,22 +34,23 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      if (selectedFile.size > 10 * 1024 * 1024) {
-        toast.error("Image size must be less than 10MB");
+      if (selectedFile.size > MAX_FILE_SIZE) {
+        toast.error("File size must be less than 50MB");
         return;
       }
-      if (!selectedFile.type.startsWith("image/")) {
-        toast.error("Only image files are allowed");
-        return;
-      }
+      
       setFile(selectedFile);
       
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreview(reader.result as string);
-      };
-      reader.readAsDataURL(selectedFile);
+      // Create preview for images only
+      if (selectedFile.type.startsWith("image/")) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPreview(reader.result as string);
+        };
+        reader.readAsDataURL(selectedFile);
+      } else {
+        setPreview(null);
+      }
     }
   };
 
@@ -70,7 +72,7 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
     }
 
     if (!file || !mealType) {
-      toast.error("Please select an image and meal type");
+      toast.error("Please select a file and meal type");
       return;
     }
 
@@ -106,7 +108,7 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
         dailyLogId = existingLog.id;
       }
 
-      // Insert meal log with file path (not public URL)
+      // Insert meal log with file path and file type
       const { error: dbError } = await supabase
         .from("meal_logs")
         .insert({
@@ -115,6 +117,7 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
           meal_type: mealType as "breakfast" | "lunch" | "evening_snack" | "dinner",
           meal_name: mealName || null,
           photo_url: fileName, // Store path, not public URL
+          file_type: file.type, // Store file MIME type
           notes: notes || null,
           kcal: kcal ? parseInt(kcal) : null,
           logged_at: new Date().toISOString(),
@@ -122,12 +125,12 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
 
       if (dbError) throw dbError;
 
-      toast.success("Meal photo uploaded successfully!");
+      toast.success("Meal file uploaded successfully!");
       clearForm();
       onSuccess();
     } catch (error: any) {
       console.error("Meal log error:", error);
-      toast.error(error.message || "Failed to upload meal photo");
+      toast.error(error.message || "Failed to upload meal file");
     } finally {
       setUploading(false);
     }
@@ -143,32 +146,59 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
-          <Label htmlFor="photo">Meal Photo</Label>
+          <Label htmlFor="photo">Meal File (Photo, PDF, Document, etc.)</Label>
           <div className="mt-2">
-            {preview ? (
-              <div className="relative inline-block">
-                <img src={preview} alt="Preview" className="max-w-full h-48 rounded-lg object-cover" />
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="absolute top-2 right-2"
-                  onClick={() => {
-                    setFile(null);
-                    setPreview(null);
-                  }}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+            {file ? (
+              <div className="relative">
+                {preview ? (
+                  <div className="relative inline-block">
+                    <img src={preview} alt="Preview" className="max-w-full h-48 rounded-lg object-cover" />
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="absolute top-2 right-2"
+                      onClick={() => {
+                        setFile(null);
+                        setPreview(null);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 p-4 border rounded-lg bg-muted">
+                    {(() => {
+                      const FileIcon = getFileIcon(file.type);
+                      return <FileIcon className="h-8 w-8 text-muted-foreground flex-shrink-0" />;
+                    })()}
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{file.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {getFileDisplayName(file.type)} • {(file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setFile(null);
+                        setPreview(null);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : (
               <label className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg cursor-pointer hover:border-primary transition-colors">
-                <ImageIcon className="h-12 w-12 text-muted-foreground mb-2" />
-                <span className="text-sm text-muted-foreground">Click to select photo</span>
+                <Upload className="h-12 w-12 text-muted-foreground mb-2" />
+                <span className="text-sm text-muted-foreground mb-1">Click to select file</span>
+                <span className="text-xs text-muted-foreground">Images, PDFs, Documents, Audio, Video (max 50MB)</span>
                 <Input
                   id="photo"
                   type="file"
-                  accept="image/*"
-                  capture="environment"
+                  accept={getAcceptString()}
                   onChange={handleFileChange}
                   className="hidden"
                   disabled={uploading}

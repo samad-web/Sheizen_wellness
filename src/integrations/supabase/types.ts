@@ -288,6 +288,7 @@ export type Database = {
           client_id: string
           created_at: string
           daily_log_id: string | null
+          file_type: string | null
           id: string
           kcal: number | null
           logged_at: string
@@ -302,6 +303,7 @@ export type Database = {
           client_id: string
           created_at?: string
           daily_log_id?: string | null
+          file_type?: string | null
           id?: string
           kcal?: number | null
           logged_at?: string
@@ -316,6 +318,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           daily_log_id?: string | null
+          file_type?: string | null
           id?: string
           kcal?: number | null
           logged_at?: string
