@@ -62,10 +62,23 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
   };
 
   const handleUpload = async () => {
+    // Validate clientId first
+    if (!clientId || clientId === "undefined") {
+      console.error("Invalid clientId:", clientId);
+      toast.error("Unable to identify your account. Please refresh the page.");
+      return;
+    }
+
     if (!file || !mealType) {
       toast.error("Please select an image and meal type");
       return;
     }
+
+    console.log("Attempting to log meal:", {
+      clientId,
+      mealType,
+      hasFile: !!file,
+    });
 
     setUploading(true);
 
@@ -113,6 +126,7 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
       clearForm();
       onSuccess();
     } catch (error: any) {
+      console.error("Meal log error:", error);
       toast.error(error.message || "Failed to upload meal photo");
     } finally {
       setUploading(false);
