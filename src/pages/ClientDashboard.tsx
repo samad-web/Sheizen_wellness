@@ -36,6 +36,8 @@ import { MessageComposer } from "@/components/MessageComposer";
 import { MessageNotification } from "@/components/MessageNotification";
 import { sendAutomatedMessage, getUnreadCount, markMessagesAsRead, type Message } from "@/lib/messages";
 import { MessageCircle } from "lucide-react";
+import { CalendarView } from "@/components/CalendarView";
+import { HundredDayProgress } from "@/components/HundredDayProgress";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -45,7 +47,7 @@ export default function ClientDashboard() {
   const [loading, setLoading] = useState(true);
   const [mealLogs, setMealLogs] = useState<any[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
-  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "reports" | "messages">("today");
+  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "reports" | "messages" | "calendar" | "progress">("today");
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [weightInput, setWeightInput] = useState<string>("");
   const [waterInput, setWaterInput] = useState<string>("");
@@ -532,7 +534,7 @@ export default function ClientDashboard() {
           onValueChange={(value) => setActiveTab(value as typeof activeTab)}
           className="space-y-6"
         >
-          <TabsList className="grid w-full grid-cols-7">
+          <TabsList className={`grid w-full ${clientData?.service_type === 'hundred_days' ? 'grid-cols-9' : 'grid-cols-8'}`}>
             <TabsTrigger value="today">Today</TabsTrigger>
             <TabsTrigger value="plan">Plan</TabsTrigger>
             <TabsTrigger value="logs">Meals</TabsTrigger>
@@ -547,6 +549,10 @@ export default function ClientDashboard() {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="calendar">Calendar</TabsTrigger>
+            {clientData?.service_type === 'hundred_days' && (
+              <TabsTrigger value="progress">100-Day</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="today" className="space-y-6">
@@ -879,6 +885,16 @@ export default function ClientDashboard() {
               )}
             </Card>
           </TabsContent>
+
+          <TabsContent value="calendar">
+            {clientData?.id && <CalendarView clientId={clientData.id} />}
+          </TabsContent>
+
+          {clientData?.service_type === 'hundred_days' && (
+            <TabsContent value="progress">
+              {clientData?.id && <HundredDayProgress clientId={clientData.id} />}
+            </TabsContent>
+          )}
         </Tabs>
         
         {/* Achievement Notifications */}
