@@ -23,6 +23,7 @@ import { MealPhotoUpload } from "@/components/MealPhotoUpload";
 import { FileUploadSection } from "@/components/FileUploadSection";
 import { WeeklyPlanViewer } from "@/components/WeeklyPlanViewer";
 import { ProgressCharts } from "@/components/ProgressCharts";
+import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -148,7 +149,14 @@ export default function ClientDashboard() {
             </div>
             <div>
               <h1 className="text-3xl font-bold">Welcome, {clientData?.name}!</h1>
-              <p className="text-muted-foreground">Your wellness dashboard</p>
+              <div className="flex items-center gap-2">
+                <p className="text-muted-foreground">Your wellness dashboard</p>
+                {clientData?.service_type && (
+                  <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs border ${getServiceTypeBadgeColor(clientData.service_type)}`}>
+                    {formatServiceType(clientData.service_type)}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <Button variant="outline" onClick={signOut}>

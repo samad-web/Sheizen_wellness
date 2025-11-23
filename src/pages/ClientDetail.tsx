@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { AssessmentUploadDialog } from "@/components/AssessmentUploadDialog";
 import { WeeklyPlanEditor } from "@/components/WeeklyPlanEditor";
 import { ProgressCharts } from "@/components/ProgressCharts";
+import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +34,7 @@ interface Client {
   gender: string | null;
   goals: string | null;
   program_type: string | null;
+  service_type: string | null;
   status: string | null;
   target_kcal: number | null;
   last_weight: number | null;
@@ -315,6 +317,14 @@ const ClientDetail = () => {
             </div>
           </CardHeader>
           <CardContent>
+            {client.service_type && (
+              <div className="mb-4 pb-4 border-b">
+                <p className="text-sm text-muted-foreground mb-2">Service Type</p>
+                <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm border ${getServiceTypeBadgeColor(client.service_type)}`}>
+                  {formatServiceType(client.service_type)}
+                </span>
+              </div>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="flex items-center gap-2">
                 <Target className="h-5 w-5 text-muted-foreground" />
