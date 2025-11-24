@@ -220,6 +220,7 @@ export type Database = {
           assessment_type: Database["public"]["Enums"]["assessment_type"] | null
           client_id: string
           created_at: string
+          display_name: string | null
           file_name: string | null
           file_url: string | null
           form_responses: Json | null
@@ -235,6 +236,7 @@ export type Database = {
             | null
           client_id: string
           created_at?: string
+          display_name?: string | null
           file_name?: string | null
           file_url?: string | null
           form_responses?: Json | null
@@ -250,6 +252,7 @@ export type Database = {
             | null
           client_id?: string
           created_at?: string
+          display_name?: string | null
           file_name?: string | null
           file_url?: string | null
           form_responses?: Json | null

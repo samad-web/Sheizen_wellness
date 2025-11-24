@@ -7,7 +7,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Brain, Activity, Sparkles, Save, Send, TrendingUp, AlertTriangle } from "lucide-react";
+import { Loader2, Brain, Activity, Sparkles, Save, Send, TrendingUp, AlertTriangle, FileText } from "lucide-react";
+import { createDisplayName, validateDisplayName } from "@/lib/assessmentUtils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -31,6 +32,7 @@ export function StressCardEditor({
   const [sending, setSending] = useState(false);
   const [cardData, setCardData] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
+  const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
     if (open && cardId) {
@@ -43,7 +45,7 @@ export function StressCardEditor({
     try {
       const { data, error } = await supabase
         .from('pending_review_cards')
-        .select('*')
+        .select('*, clients(name)')
         .eq('id', cardId)
         .single();
 
@@ -51,6 +53,26 @@ export function StressCardEditor({
 
       setCardData(data);
       setFormData(data.generated_content);
+      
+      // Generate display name if not exists
+      const cardWithDisplayName = data as any;
+      if (!cardWithDisplayName.display_name && data.clients) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', (await supabase.auth.getUser()).data.user?.id)
+          .maybeSingle();
+        
+        const adminName = profileData?.name || 'Admin';
+        const generatedName = createDisplayName(
+          (data.clients as any).name,
+          'stress-card',
+          adminName
+        );
+        setDisplayName(generatedName);
+      } else {
+        setDisplayName(cardWithDisplayName.display_name || '');
+      }
     } catch (error) {
       console.error('Error fetching card:', error);
       toast({
@@ -98,9 +120,24 @@ export function StressCardEditor({
   const handleSend = async () => {
     setSending(true);
     try {
+      // Validate display name
+      const validation = validateDisplayName(displayName);
+      if (!validation.valid) {
+        toast({
+          title: "Invalid Display Name",
+          description: validation.error,
+          variant: "destructive",
+        });
+        setSending(false);
+        return;
+      }
+
       await handleSave();
       const { error } = await supabase.functions.invoke('send-card-to-client', {
-        body: { card_id: cardId }
+        body: { 
+          card_id: cardId,
+          display_name: displayName
+        }
       });
 
       if (error) throw error;
@@ -499,36 +536,56 @@ export function StressCardEditor({
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border/50 bg-muted/30">
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            {cardData?.status === 'edited' && (
-              <Badge variant="outline" className="border-wellness-amber text-wellness-amber">
-                <Save className="h-3 w-3 mr-1" />
-                Draft Saved
-              </Badge>
-            )}
+        <div className="space-y-3 px-6 py-4 border-t border-border/50 bg-muted/30">
+          <div className="space-y-2">
+            <Label htmlFor="display-name-stress" className="text-sm font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4 text-accent-foreground" />
+              Display File Name
+            </Label>
+            <Input
+              id="display-name-stress"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="filename.pdf"
+              className="transition-all duration-200 focus:ring-2 focus:ring-accent/20"
+              maxLength={200}
+            />
+            <p className="text-xs text-muted-foreground">
+              This name will be shown to the client when downloading the assessment
+            </p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} className="transition-all duration-200 hover:bg-muted">
-              Cancel
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleSave} 
-              disabled={saving}
-              className="transition-all duration-200 hover:bg-wellness-mint/10 hover:border-wellness-mint hover:text-wellness-mint"
-            >
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Draft
-            </Button>
-            <Button 
-              onClick={handleSend} 
-              disabled={sending || saving}
-              className="transition-all duration-200 bg-gradient-to-r from-wellness-green to-wellness-mint hover:shadow-lg"
-            >
-              {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Review & Send to Client
-            </Button>
+          
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              {cardData?.status === 'edited' && (
+                <Badge variant="outline" className="border-wellness-amber text-wellness-amber">
+                  <Save className="h-3 w-3 mr-1" />
+                  Draft Saved
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="ghost" onClick={() => onOpenChange(false)} className="transition-all duration-200 hover:bg-muted">
+                Cancel
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleSave} 
+                disabled={saving}
+                className="transition-all duration-200 hover:bg-wellness-mint/10 hover:border-wellness-mint hover:text-wellness-mint"
+              >
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Draft
+              </Button>
+              <Button 
+                onClick={handleSend} 
+                disabled={sending || saving}
+                className="transition-all duration-200 bg-gradient-to-r from-wellness-green to-wellness-mint hover:shadow-lg"
+              >
+                {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Review & Send to Client
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

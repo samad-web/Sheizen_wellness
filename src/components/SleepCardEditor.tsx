@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Loader2, Moon, Clock, Star, Sparkles, Save, Send, AlertCircle } from "lucide-react";
+import { Loader2, Moon, Clock, Star, Sparkles, Save, Send, AlertCircle, FileText } from "lucide-react";
+import { createDisplayName, validateDisplayName } from "@/lib/assessmentUtils";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 
@@ -31,6 +32,7 @@ export function SleepCardEditor({
   const [sending, setSending] = useState(false);
   const [cardData, setCardData] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
+  const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
     if (open && cardId) {
@@ -43,7 +45,7 @@ export function SleepCardEditor({
     try {
       const { data, error } = await supabase
         .from('pending_review_cards')
-        .select('*')
+        .select('*, clients(name)')
         .eq('id', cardId)
         .single();
 
@@ -51,6 +53,26 @@ export function SleepCardEditor({
 
       setCardData(data);
       setFormData(data.generated_content);
+      
+      // Generate display name if not exists
+      const cardWithDisplayName = data as any;
+      if (!cardWithDisplayName.display_name && data.clients) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', (await supabase.auth.getUser()).data.user?.id)
+          .maybeSingle();
+        
+        const adminName = profileData?.name || 'Admin';
+        const generatedName = createDisplayName(
+          (data.clients as any).name,
+          'sleep-card',
+          adminName
+        );
+        setDisplayName(generatedName);
+      } else {
+        setDisplayName(cardWithDisplayName.display_name || '');
+      }
     } catch (error) {
       console.error('Error fetching card:', error);
       toast({
