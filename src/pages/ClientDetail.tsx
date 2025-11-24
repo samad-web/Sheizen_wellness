@@ -483,7 +483,7 @@ const ClientDetail = () => {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>File Name</TableHead>
+                          <TableHead>Display Name</TableHead>
                           <TableHead>Notes</TableHead>
                           <TableHead>Created</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
@@ -492,7 +492,9 @@ const ClientDetail = () => {
                       <TableBody>
                         {assessments.map((assessment) => (
                           <TableRow key={assessment.id}>
-                            <TableCell>{assessment.file_name || "—"}</TableCell>
+                            <TableCell>
+                              {(assessment as any).display_name || assessment.file_name || "—"}
+                            </TableCell>
                             <TableCell className="max-w-xs truncate">{assessment.notes || "—"}</TableCell>
                             <TableCell>{new Date(assessment.created_at).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right space-x-2">

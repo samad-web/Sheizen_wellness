@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { createDisplayNameFromUpload } from "@/lib/assessmentUtils";
 
 interface AssessmentUploadDialogProps {
   clientId: string;
@@ -59,15 +60,19 @@ export function AssessmentUploadDialog({ clientId, onSuccess }: AssessmentUpload
 
       if (uploadError) throw uploadError;
 
-      // Insert assessment record with file path (not public URL)
+      // Generate display name from uploaded file
+      const displayName = createDisplayNameFromUpload(file.name);
+
+      // Insert assessment record with file path (not public URL) and display_name
       const { error: dbError } = await supabase
         .from("assessments")
         .insert({
           client_id: clientId,
           file_name: file.name,
           file_url: fileName, // Store path, not public URL
+          display_name: displayName,
           notes: notes || null,
-        });
+        } as any);
 
       if (dbError) throw dbError;
 

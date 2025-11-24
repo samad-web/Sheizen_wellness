@@ -12,9 +12,9 @@ serve(async (req) => {
   }
 
   try {
-    const { card_id } = await req.json();
+    const { card_id, display_name } = await req.json();
 
-    console.log(`Sending card ${card_id} to client`);
+    console.log(`Sending card ${card_id} to client with display name: ${display_name}`);
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -88,6 +88,29 @@ serve(async (req) => {
       .eq('client_id', card.client_id);
 
     if (workflowError) console.error('Error updating workflow:', workflowError);
+
+    // Create assessment record with display_name for tracking
+    if (display_name) {
+      const { error: assessmentError } = await supabase
+        .from('assessments')
+        .insert({
+          client_id: card.client_id,
+          assessment_type: card.card_type.includes('health') ? 'health' : 
+                           card.card_type.includes('stress') ? 'stress' : 
+                           card.card_type.includes('sleep') ? 'sleep' : 'custom',
+          display_name: display_name,
+          file_name: display_name,
+          ai_generated: true,
+          assessment_data: {
+            card_id: card_id,
+            card_type: card.card_type,
+            generated_content: card.generated_content,
+            sent_at: new Date().toISOString()
+          }
+        });
+
+      if (assessmentError) console.error('Error creating assessment record:', assessmentError);
+    }
 
     console.log(`Card ${card_id} sent to client successfully`);
 

@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Loader2, Save, Send, FileText, Activity } from "lucide-react";
+import { createDisplayName, validateDisplayName } from "@/lib/assessmentUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +30,7 @@ export function HealthAssessmentCardEditor({
   const [sending, setSending] = useState(false);
   const [cardData, setCardData] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
+  const [displayName, setDisplayName] = useState('');
 
   useEffect(() => {
     if (open && cardId) {
@@ -41,7 +43,7 @@ export function HealthAssessmentCardEditor({
     try {
       const { data, error } = await supabase
         .from('pending_review_cards')
-        .select('*')
+        .select('*, clients(name)')
         .eq('id', cardId)
         .single();
 
@@ -49,6 +51,26 @@ export function HealthAssessmentCardEditor({
 
       setCardData(data);
       setFormData(data.generated_content);
+      
+      // Generate display name if not exists
+      const cardWithDisplayName = data as any;
+      if (!cardWithDisplayName.display_name && data.clients) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('name')
+          .eq('id', (await supabase.auth.getUser()).data.user?.id)
+          .maybeSingle();
+        
+        const adminName = profileData?.name || 'Admin';
+        const generatedName = createDisplayName(
+          (data.clients as any).name,
+          'health-assessment',
+          adminName
+        );
+        setDisplayName(generatedName);
+      } else {
+        setDisplayName(cardWithDisplayName.display_name || '');
+      }
     } catch (error) {
       console.error('Error fetching card:', error);
       toast({
@@ -96,12 +118,27 @@ export function HealthAssessmentCardEditor({
   const handleSend = async () => {
     setSending(true);
     try {
+      // Validate display name
+      const validation = validateDisplayName(displayName);
+      if (!validation.valid) {
+        toast({
+          title: "Invalid Display Name",
+          description: validation.error,
+          variant: "destructive",
+        });
+        setSending(false);
+        return;
+      }
+
       // First save current changes
       await handleSave();
 
       // Then send the card
       const { error } = await supabase.functions.invoke('send-card-to-client', {
-        body: { card_id: cardId }
+        body: { 
+          card_id: cardId,
+          display_name: displayName
+        }
       });
 
       if (error) throw error;
@@ -341,20 +378,40 @@ export function HealthAssessmentCardEditor({
         </div>
         </div>
 
-        <div className="flex justify-end gap-2 px-6 py-4 border-t bg-muted/30">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button variant="outline" onClick={handleSave} disabled={saving} className="group">
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Save className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
-            Save Draft
-          </Button>
-          <Button onClick={handleSend} disabled={sending} className="bg-wellness-green hover:bg-wellness-green/90 group">
-            {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            <Send className="mr-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            Save & Send to Client
-          </Button>
+        <div className="space-y-3 px-6 py-4 border-t bg-muted/30">
+          <div className="space-y-2">
+            <Label htmlFor="display-name-health" className="text-sm font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4 text-wellness-green" />
+              Display File Name
+            </Label>
+            <Input
+              id="display-name-health"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="filename.pdf"
+              className="transition-all duration-200 focus:ring-2 focus:ring-wellness-green/20"
+              maxLength={200}
+            />
+            <p className="text-xs text-muted-foreground">
+              This name will be shown to the client when downloading the assessment
+            </p>
+          </div>
+          
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="outline" onClick={handleSave} disabled={saving} className="group">
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Save className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />
+              Save Draft
+            </Button>
+            <Button onClick={handleSend} disabled={sending} className="bg-wellness-green hover:bg-wellness-green/90 group">
+              {sending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Send className="mr-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
+              Save & Send to Client
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
