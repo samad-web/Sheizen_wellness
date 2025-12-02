@@ -46,10 +46,10 @@ interface ParsedRecipe extends RecipeImport {
 
 interface RecipeImportProps {
   onImportComplete: () => void;
-  existingFoodItems: { id: string; name: string }[];
+  existingIngredients: { id: string; name: string }[];
 }
 
-export function RecipeImport({ onImportComplete, existingFoodItems }: RecipeImportProps) {
+export function RecipeImport({ onImportComplete, existingIngredients }: RecipeImportProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [parsedRecipes, setParsedRecipes] = useState<ParsedRecipe[]>([]);
   const [importing, setImporting] = useState(false);
@@ -72,7 +72,7 @@ export function RecipeImport({ onImportComplete, existingFoodItems }: RecipeImpo
 
   const matchIngredientToFoodItem = (ingredientName: string): string | null => {
     const normalized = ingredientName.toLowerCase().trim();
-    const match = existingFoodItems.find(
+    const match = existingIngredients.find(
       item => item.name.toLowerCase().trim() === normalized
     );
     return match?.id || null;
@@ -147,7 +147,7 @@ export function RecipeImport({ onImportComplete, existingFoodItems }: RecipeImpo
       
       if (!foodItemId) {
         unmatchedIngredients.push(ingredientName);
-        warnings.push(`Ingredient "${ingredientName}" not found in food items database`);
+        warnings.push(`Ingredient "${ingredientName}" not found in ingredients database`);
       }
 
       ingredients.push({
@@ -237,24 +237,24 @@ export function RecipeImport({ onImportComplete, existingFoodItems }: RecipeImpo
           const foodItemId = matchIngredientToFoodItem(ing.ingredient_name);
           if (!foodItemId) continue;
 
-          const foodItem = existingFoodItems.find(f => f.id === foodItemId);
-          if (foodItem) {
-            // Fetch full food item data for kcal calculation
-            const { data: foodData } = await supabase
-              .from('food_items')
+          const ingredient = existingIngredients.find(f => f.id === foodItemId);
+          if (ingredient) {
+            // Fetch full ingredient data for kcal calculation
+            const { data: ingredientData } = await supabase
+              .from('ingredients')
               .select('kcal_per_serving, serving_size')
               .eq('id', foodItemId)
               .single();
 
-            if (foodData) {
-              const servingSizeNum = parseFloat(foodData.serving_size);
+            if (ingredientData) {
+              const servingSizeNum = parseFloat(ingredientData.serving_size);
               const multiplier = ing.quantity / servingSizeNum;
-              totalKcal += foodData.kcal_per_serving * multiplier;
+              totalKcal += ingredientData.kcal_per_serving * multiplier;
             }
           }
 
           ingredientsData.push({
-            food_item_id: foodItemId,
+            ingredient_id: foodItemId,
             quantity: ing.quantity,
             unit: ing.unit,
           });
@@ -339,7 +339,7 @@ export function RecipeImport({ onImportComplete, existingFoodItems }: RecipeImpo
           <DialogHeader>
             <DialogTitle>Import Recipes Preview</DialogTitle>
             <DialogDescription>
-              Review the recipes below. All ingredients must match existing food items.
+              Review the recipes below. All ingredients must match existing ingredients in your database.
             </DialogDescription>
           </DialogHeader>
 

@@ -781,6 +781,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ingredients: {
+        Row: {
+          carbs: number | null
+          category: string | null
+          created_at: string
+          fats: number | null
+          id: string
+          kcal_per_serving: number
+          name: string
+          protein: number | null
+          serving_size: string
+          serving_unit: string
+          updated_at: string
+        }
+        Insert: {
+          carbs?: number | null
+          category?: string | null
+          created_at?: string
+          fats?: number | null
+          id?: string
+          kcal_per_serving: number
+          name: string
+          protein?: number | null
+          serving_size: string
+          serving_unit: string
+          updated_at?: string
+        }
+        Update: {
+          carbs?: number | null
+          category?: string | null
+          created_at?: string
+          fats?: number | null
+          id?: string
+          kcal_per_serving?: number
+          name?: string
+          protein?: number | null
+          serving_size?: string
+          serving_unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       interest_form_submissions: {
         Row: {
           age: number
@@ -1209,34 +1251,34 @@ export type Database = {
       recipe_ingredients: {
         Row: {
           created_at: string
-          food_item_id: string
           id: string
+          ingredient_id: string
           quantity: number
           recipe_id: string
           unit: string
         }
         Insert: {
           created_at?: string
-          food_item_id: string
           id?: string
+          ingredient_id: string
           quantity: number
           recipe_id: string
           unit: string
         }
         Update: {
           created_at?: string
-          food_item_id?: string
           id?: string
+          ingredient_id?: string
           quantity?: number
           recipe_id?: string
           unit?: string
         }
         Relationships: [
           {
-            foreignKeyName: "recipe_ingredients_food_item_id_fkey"
-            columns: ["food_item_id"]
+            foreignKeyName: "recipe_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
             isOneToOne: false
-            referencedRelation: "food_items"
+            referencedRelation: "ingredients"
             referencedColumns: ["id"]
           },
           {

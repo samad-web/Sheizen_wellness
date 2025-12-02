@@ -18,6 +18,7 @@ import {
   Calendar
 } from "lucide-react";
 import { FoodItemsManager } from "@/components/FoodItemsManager";
+import { IngredientsManager } from "@/components/IngredientsManager";
 import { RecipeBuilder } from "@/components/RecipeBuilder";
 import { AdminClientEditor } from "@/components/AdminClientEditor";
 import { InterestSubmissionsManager } from "@/components/InterestSubmissionsManager";
@@ -226,9 +227,10 @@ export default function AdminDashboard() {
 
         {/* Main Content */}
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="clients">Clients</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
+            <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
             <TabsTrigger value="food">Food Items</TabsTrigger>
             <TabsTrigger value="recipes">Recipes</TabsTrigger>
             <TabsTrigger value="reports">Reports</TabsTrigger>
@@ -348,6 +350,10 @@ export default function AdminDashboard() {
 
           <TabsContent value="leads">
             <InterestSubmissionsManager />
+          </TabsContent>
+
+          <TabsContent value="ingredients">
+            <IngredientsManager />
           </TabsContent>
 
           <TabsContent value="food">
