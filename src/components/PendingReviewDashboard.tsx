@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Clock, Eye, Send, Loader2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface PendingCard {
   id: string;
@@ -23,36 +24,24 @@ interface PendingReviewDashboardProps {
 }
 
 export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardProps) {
-  const [cards, setCards] = useState<PendingCard[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [sendingCard, setSendingCard] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchPendingCards();
-  }, []);
-
   const fetchPendingCards = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('pending_review_cards')
-        .select('*, clients(name)')
-        .in('status', ['pending', 'edited'])
-        .order('ai_generated_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('pending_review_cards')
+      .select('*, clients(name)')
+      .in('status', ['pending', 'edited'])
+      .order('ai_generated_at', { ascending: false });
 
-      if (error) throw error;
-      setCards(data || []);
-    } catch (error) {
-      console.error('Error fetching pending cards:', error);
-      toast({
-        title: "Error",
-        description: "Failed to fetch pending review cards",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+    if (error) throw error;
+    return data || [];
   };
+
+  const { data: cards = [], isLoading } = useQuery({
+    queryKey: ['pending-review-cards'],
+    queryFn: fetchPendingCards,
+  });
 
   const handleSendCard = async (cardId: string) => {
     setSendingCard(cardId);
@@ -68,7 +57,7 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
         description: "Assessment card sent to client successfully",
       });
 
-      fetchPendingCards(); // Refresh list
+      queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] });
     } catch (error: any) {
       console.error('Error sending card:', error);
       toast({
@@ -103,7 +92,7 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
     return colors[cardType] || 'bg-gray-500';
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-12">

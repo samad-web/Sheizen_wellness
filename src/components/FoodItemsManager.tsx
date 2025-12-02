@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -164,8 +165,7 @@ const FormFields = ({
 );
 
 export function FoodItemsManager() {
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<FoodItem | null>(null);
@@ -183,26 +183,20 @@ export function FoodItemsManager() {
     fats: null,
   });
 
-  useEffect(() => {
-    fetchFoodItems();
-  }, []);
-
   const fetchFoodItems = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("food_items")
-        .select("*")
-        .order("name", { ascending: true });
+    const { data, error } = await supabase
+      .from("food_items")
+      .select("*")
+      .order("name", { ascending: true });
 
-      if (error) throw error;
-      setFoodItems(data || []);
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load food items");
-    } finally {
-      setLoading(false);
-    }
+    if (error) throw error;
+    return data || [];
   };
+
+  const { data: foodItems = [], isLoading } = useQuery({
+    queryKey: ['food-items'],
+    queryFn: fetchFoodItems,
+  });
 
   const resetForm = () => {
     setFormData({
@@ -278,7 +272,7 @@ export function FoodItemsManager() {
       setIsAddDialogOpen(false);
       setEditingItem(null);
       resetForm();
-      fetchFoodItems();
+      queryClient.invalidateQueries({ queryKey: ['food-items'] });
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         const firstError = error.errors[0];
@@ -301,7 +295,7 @@ export function FoodItemsManager() {
       if (error) throw error;
 
       toast.success("Food item deleted successfully!");
-      fetchFoodItems();
+      queryClient.invalidateQueries({ queryKey: ['food-items'] });
     } catch (error: any) {
       toast.error(error.message || "Failed to delete food item");
     } finally {
@@ -341,7 +335,7 @@ export function FoodItemsManager() {
             />
           </div>
 
-          {loading ? (
+          {isLoading ? (
             <div className="text-center py-12 text-muted-foreground">Loading food items...</div>
           ) : filteredItems.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">

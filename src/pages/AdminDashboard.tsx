@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,32 +33,20 @@ import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user, userRole, signOut } = useAuth();
-  const [stats, setStats] = useState({
-    totalClients: 0,
-    activeClients: 0,
-    pendingClients: 0,
-    todayLogs: 0,
-  });
-  const [clients, setClients] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [reviewCardId, setReviewCardId] = useState<string | null>(null);
   const [reviewCardType, setReviewCardType] = useState<string | null>(null);
-  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     if (!user || userRole !== "admin") {
       navigate("/auth");
       return;
     }
-
-    fetchDashboardData();
   }, [user, userRole, navigate]);
 
   const fetchDashboardData = async () => {
-    setLoading(true);
-
     // Fetch only clients (exclude admins)
     // First get all admin user_ids
     const { data: adminRoles } = await supabase
@@ -80,20 +69,11 @@ export default function AdminDashboard() {
 
     const { data: clientsData, error: clientsError } = await query;
 
-    if (!clientsError && clientsData) {
-      setClients(clientsData);
+    if (clientsError) throw clientsError;
 
-      // Calculate stats
-      const activeClients = clientsData.filter((c) => c.status === "active").length;
-      const pendingClients = clientsData.filter((c) => c.status === "pending").length;
-
-      setStats({
-        totalClients: clientsData.length,
-        activeClients,
-        pendingClients,
-        todayLogs: 0, // Will be calculated from daily_logs
-      });
-    }
+    // Calculate stats
+    const activeClients = clientsData?.filter((c) => c.status === "active").length || 0;
+    const pendingClients = clientsData?.filter((c) => c.status === "pending").length || 0;
 
     // Fetch today's logs count
     const today = new Date().toISOString().split("T")[0];
@@ -102,9 +82,33 @@ export default function AdminDashboard() {
       .select("*", { count: "exact", head: true })
       .eq("log_date", today);
 
-    setStats((prev) => ({ ...prev, todayLogs: count || 0 }));
+    return {
+      clients: clientsData || [],
+      stats: {
+        totalClients: clientsData?.length || 0,
+        activeClients,
+        pendingClients,
+        todayLogs: count || 0,
+      }
+    };
+  };
 
-    setLoading(false);
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-dashboard'],
+    queryFn: fetchDashboardData,
+    enabled: !!user && userRole === "admin",
+  });
+
+  const clients = data?.clients || [];
+  const stats = data?.stats || {
+    totalClients: 0,
+    activeClients: 0,
+    pendingClients: 0,
+    todayLogs: 0,
+  };
+
+  const refetchDashboard = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
   };
 
   const getStatusColor = (status: string) => {
@@ -120,7 +124,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-lg">Loading...</div>
@@ -213,7 +217,6 @@ export default function AdminDashboard() {
 
         <div className="mb-8">
           <PendingReviewDashboard 
-            key={refreshKey}
             onReviewCard={(cardId, cardType) => {
               setReviewCardId(cardId);
               setReviewCardType(cardType);
@@ -240,7 +243,7 @@ export default function AdminDashboard() {
                   <CardDescription>Manage your client roster</CardDescription>
                 </div>
                 <div className="flex gap-2">
-                  <BulkMessageButton clients={clients} onSuccess={fetchDashboardData} />
+                  <BulkMessageButton clients={clients} onSuccess={refetchDashboard} />
                   <Button
                     onClick={() => {
                       setEditingClientId(null);
@@ -383,7 +386,7 @@ export default function AdminDashboard() {
             setEditorOpen(open);
             if (!open) setEditingClientId(null);
           }}
-          onSuccess={fetchDashboardData}
+          onSuccess={refetchDashboard}
         />
 
         {reviewCardId && reviewCardType === 'health_assessment' && (
@@ -396,7 +399,7 @@ export default function AdminDashboard() {
                 setReviewCardType(null);
               }
             }}
-            onSave={() => setRefreshKey(prev => prev + 1)}
+            onSave={() => queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] })}
           />
         )}
 
@@ -410,7 +413,7 @@ export default function AdminDashboard() {
                 setReviewCardType(null);
               }
             }}
-            onSave={() => setRefreshKey(prev => prev + 1)}
+            onSave={() => queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] })}
           />
         )}
 
@@ -424,7 +427,7 @@ export default function AdminDashboard() {
                 setReviewCardType(null);
               }
             }}
-            onSave={() => setRefreshKey(prev => prev + 1)}
+            onSave={() => queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] })}
           />
         )}
       </div>

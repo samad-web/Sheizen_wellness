@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -57,9 +58,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 export default function ClientDashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
-  const [clientData, setClientData] = useState<any>(null);
+  const queryClient = useQueryClient();
   const [todayLog, setTodayLog] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const [mealLogs, setMealLogs] = useState<any[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
   const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "assessments" | "reports" | "messages" | "calendar" | "progress">("today");
@@ -77,19 +77,102 @@ export default function ClientDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [newMessage, setNewMessage] = useState<Message | null>(null);
-  const { isSupported: pushSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications(clientData?.id || null);
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
   const [selectedAssessmentRequest, setSelectedAssessmentRequest] = useState<{ requestId: string; type: string } | null>(null);
+
+  const fetchClientData = async () => {
+    if (!user?.id) throw new Error("No user");
+    
+    // Fetch client data
+    const { data: client, error: clientError } = await supabase
+      .from("clients")
+      .select("*")
+      .eq("user_id", user.id)
+      .single();
+
+    if (clientError) {
+      if (clientError.code === 'PGRST116') {
+        navigate("/onboarding");
+        throw new Error("No client profile");
+      }
+      throw clientError;
+    }
+
+    if (!client?.id) {
+      throw new Error("Client record missing ID");
+    }
+
+    // Fetch user achievements
+    const { data: earned } = await supabase
+      .from("user_achievements")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("earned_at", { ascending: false });
+
+    // Fetch achievement progress
+    const { data: progress } = await supabase
+      .from("achievement_progress")
+      .select("*")
+      .eq("client_id", client.id);
+
+    // Fetch today's log
+    const todayDate = new Date().toISOString().split("T")[0];
+    const { data: log } = await supabase
+      .from("daily_logs")
+      .select("*")
+      .eq("client_id", client.id)
+      .eq("log_date", todayDate)
+      .maybeSingle();
+
+    // Fetch meal logs
+    const { data: meals } = await supabase
+      .from("meal_logs")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("logged_at", { ascending: false })
+      .limit(20);
+
+    // Calculate today's calories
+    const todayMeals = meals?.filter(
+      (meal) => meal.logged_at.split("T")[0] === todayDate
+    ) || [];
+    const totalCalories = todayMeals.reduce((sum, meal) => sum + (meal.kcal || 0), 0);
+
+    return {
+      client,
+      earned: earned || [],
+      progress: progress || [],
+      log,
+      meals: meals || [],
+      todayCalories: totalCalories,
+    };
+  };
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['client-dashboard', user?.id],
+    queryFn: fetchClientData,
+    enabled: !!user?.id,
+  });
+
+  const clientData = data?.client || null;
+  const { isSupported: pushSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications(clientData?.id || null);
 
   useEffect(() => {
     if (!user) {
       navigate("/auth");
       return;
     }
-
-    fetchClientData();
-    fetchAchievements();
   }, [user, navigate]);
+
+  useEffect(() => {
+    if (data) {
+      setTodayLog(data.log);
+      setMealLogs(data.meals);
+      setTodayCalories(data.todayCalories);
+      setUserAchievements(data.earned);
+      setAchievementProgress(data.progress);
+    }
+  }, [data]);
 
   // Real-time messages subscription
   useEffect(() => {
@@ -172,17 +255,24 @@ export default function ClientDashboard() {
     }
   };
 
-  const fetchAchievements = async () => {
-    // Fetch all achievements
-    const { data: allAchievements } = await supabase
-      .from("achievements")
-      .select("*")
-      .eq("is_active", true)
-      .order("points", { ascending: false });
+  useEffect(() => {
+    const fetchAchievementsData = async () => {
+      const { data: allAchievements } = await supabase
+        .from("achievements")
+        .select("*")
+        .eq("is_active", true)
+        .order("points", { ascending: false });
 
-    if (allAchievements) {
-      setAchievements(allAchievements);
-    }
+      if (allAchievements) {
+        setAchievements(allAchievements);
+      }
+    };
+    
+    fetchAchievementsData();
+  }, []);
+
+  const refetchClientData = () => {
+    queryClient.invalidateQueries({ queryKey: ['client-dashboard', user?.id] });
   };
 
   const fetchMessages = async () => {
@@ -213,87 +303,9 @@ export default function ClientDashboard() {
     }
   };
 
-  const fetchClientData = async () => {
-    setLoading(true);
-    
-    // Fetch client data
-    const { data: client, error: clientError } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("user_id", user?.id)
-      .single();
-
-    if (clientError) {
-      console.error("Error fetching client:", clientError);
-      if (clientError.code === 'PGRST116') {
-        // No rows returned - redirect to onboarding
-        navigate("/onboarding");
-        return;
-      }
-      toast.error("Failed to load your profile");
-      setLoading(false);
-      return;
-    }
-
-    if (!client?.id) {
-      console.error("Client record missing ID:", client);
-      toast.error("Your profile is incomplete. Please contact support.");
-      setLoading(false);
-      return;
-    }
-
-    setClientData(client);
-
-    // Fetch user achievements
-    const { data: earned } = await supabase
-      .from("user_achievements")
-      .select("*")
-      .eq("client_id", client.id)
-      .order("earned_at", { ascending: false });
-
-    if (earned) {
-      setUserAchievements(earned);
-    }
-
-    // Fetch achievement progress
-    const { data: progress } = await supabase
-      .from("achievement_progress")
-      .select("*")
-      .eq("client_id", client.id);
-
-    if (progress) {
-      setAchievementProgress(progress);
-    }
-
-    // Fetch today's log
-    const todayDate = new Date().toISOString().split("T")[0];
-    const { data: log } = await supabase
-      .from("daily_logs")
-      .select("*")
-      .eq("client_id", client.id)
-      .eq("log_date", todayDate)
-      .maybeSingle();
-
-    setTodayLog(log);
-
-    // Fetch meal logs
-    const { data: meals } = await supabase
-      .from("meal_logs")
-      .select("*")
-      .eq("client_id", client.id)
-      .order("logged_at", { ascending: false })
-      .limit(20);
-
-    setMealLogs(meals || []);
-
-    // Calculate today's calories
-    const todayMeals = meals?.filter(
-      (meal) => meal.logged_at.split("T")[0] === todayDate
-    ) || [];
-    const totalCalories = todayMeals.reduce((sum, meal) => sum + (meal.kcal || 0), 0);
-    setTodayCalories(totalCalories);
-
-    setLoading(false);
+  const fetchClientDataLegacy = async () => {
+    // This is kept for compatibility with meal photo upload callbacks
+    refetchClientData();
   };
 
   // Load signed URLs for meal photos
@@ -338,7 +350,7 @@ export default function ClientDashboard() {
 
     toast.success(`Added ${amount}ml water`);
     setWaterInput("");
-    fetchClientData();
+    fetchClientDataLegacy();
     
     // Check for achievements
     if (clientData?.id) {
@@ -368,7 +380,7 @@ export default function ClientDashboard() {
 
     toast.success(`Added ${minutes} minutes`);
     setActivityInput("");
-    fetchClientData();
+    fetchClientDataLegacy();
     
     // Send automated message
     if (newAmount >= 30) {
@@ -411,7 +423,7 @@ export default function ClientDashboard() {
       await supabase.from("clients").update({ last_weight: weight }).eq("id", clientData.id);
 
       toast.success(`Weight logged: ${weight} kg`);
-      fetchClientData();
+      fetchClientDataLegacy();
       
       // Send automated message
       const previousWeight = clientData.last_weight || weight;
@@ -457,7 +469,7 @@ export default function ClientDashboard() {
       if (data?.newAchievements && data.newAchievements.length > 0) {
         setNewAchievements(data.newAchievements);
         // Refresh achievement data
-        fetchClientData();
+        refetchClientData();
       }
 
       if (data?.updatedProgress) {
@@ -472,7 +484,7 @@ export default function ClientDashboard() {
     setActiveTab('calendar');
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-pulse text-lg">Loading...</div>
