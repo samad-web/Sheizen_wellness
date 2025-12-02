@@ -1,15 +1,18 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Heart } from "lucide-react";
+import { Download, Heart, Edit } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { useNavigate } from "react-router-dom";
 
 interface HealthAssessmentCardViewProps {
   data: any;
+  assessmentId?: string;
   onDownloadPDF?: () => void;
 }
 
-export function HealthAssessmentCardView({ data, onDownloadPDF }: HealthAssessmentCardViewProps) {
+export function HealthAssessmentCardView({ data, assessmentId, onDownloadPDF }: HealthAssessmentCardViewProps) {
+  const navigate = useNavigate();
   const assessment = data?.assessment || data;
 
   return (
@@ -25,12 +28,24 @@ export function HealthAssessmentCardView({ data, onDownloadPDF }: HealthAssessme
               <p className="text-sm text-muted-foreground">Your comprehensive health evaluation</p>
             </div>
           </div>
-          {onDownloadPDF && (
-            <Button onClick={onDownloadPDF} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {assessmentId && (
+              <Button 
+                onClick={() => navigate(`/client/assessments/${assessmentId}/edit-health`)} 
+                variant="outline" 
+                size="sm"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
+            {onDownloadPDF && (
+              <Button onClick={onDownloadPDF} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">

@@ -1,16 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Brain } from "lucide-react";
+import { Download, Brain, Edit } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { useNavigate } from "react-router-dom";
 
 interface StressCardViewProps {
   data: any;
+  assessmentId?: string;
   onDownloadPDF?: () => void;
 }
 
-export function StressCardView({ data, onDownloadPDF }: StressCardViewProps) {
+export function StressCardView({ data, assessmentId, onDownloadPDF }: StressCardViewProps) {
+  const navigate = useNavigate();
   const stress = data?.stress_assessment || data;
   const stressScore = stress?.stress_score || 0;
 
@@ -35,12 +38,24 @@ export function StressCardView({ data, onDownloadPDF }: StressCardViewProps) {
               <p className="text-sm text-muted-foreground">Your mental wellness evaluation</p>
             </div>
           </div>
-          {onDownloadPDF && (
-            <Button onClick={onDownloadPDF} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {assessmentId && (
+              <Button 
+                onClick={() => navigate(`/client/assessments/${assessmentId}/edit-stress`)} 
+                variant="outline" 
+                size="sm"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
+            {onDownloadPDF && (
+              <Button onClick={onDownloadPDF} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
