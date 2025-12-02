@@ -452,15 +452,19 @@ export function FoodItemsManager() {
           resetForm();
         }
       }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+          <DialogHeader className="p-6 pb-4 shrink-0">
             <DialogTitle>{editingItem ? "Edit Food Item" : "Add Food Item"}</DialogTitle>
             <DialogDescription>
               {editingItem ? "Update the food item details" : "Add a new food item to your nutrition database"}
             </DialogDescription>
           </DialogHeader>
-          <FormFields formData={formData} setFormData={setFormData} saving={saving} categories={categories} />
-          <DialogFooter>
+          
+          <div className="flex-1 overflow-y-auto px-6 min-h-0">
+            <FormFields formData={formData} setFormData={setFormData} saving={saving} categories={categories} />
+          </div>
+          
+          <DialogFooter className="p-6 pt-4 shrink-0">
             <Button
               variant="outline"
               onClick={() => {

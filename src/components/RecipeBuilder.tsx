@@ -433,164 +433,166 @@ export function RecipeBuilder() {
           resetForm();
         }
       }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+          <DialogHeader className="p-6 pb-4 shrink-0">
             <DialogTitle>{editingRecipe ? "Edit Recipe" : "Create Recipe"}</DialogTitle>
             <DialogDescription>Build a recipe by selecting food items and specifying quantities</DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Basic Info */}
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+          <div className="flex-1 overflow-y-auto px-6 min-h-0">
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="recipe-name">Recipe Name *</Label>
+                    <Input
+                      id="recipe-name"
+                      value={recipeName}
+                      onChange={(e) => setRecipeName(e.target.value)}
+                      placeholder="e.g., Grilled Chicken Salad"
+                      disabled={saving}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="servings">Servings *</Label>
+                    <Input
+                      id="servings"
+                      type="number"
+                      min="1"
+                      value={servings}
+                      onChange={(e) => setServings(parseInt(e.target.value) || 1)}
+                      disabled={saving}
+                    />
+                  </div>
+                </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="recipe-name">Recipe Name *</Label>
-                  <Input
-                    id="recipe-name"
-                    value={recipeName}
-                    onChange={(e) => setRecipeName(e.target.value)}
-                    placeholder="e.g., Grilled Chicken Salad"
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Brief description of the recipe..."
+                    rows={2}
                     disabled={saving}
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="servings">Servings *</Label>
-                  <Input
-                    id="servings"
-                    type="number"
-                    min="1"
-                    value={servings}
-                    onChange={(e) => setServings(parseInt(e.target.value) || 1)}
+                  <Label htmlFor="instructions">Instructions</Label>
+                  <Textarea
+                    id="instructions"
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    placeholder="Step-by-step cooking instructions..."
+                    rows={3}
                     disabled={saving}
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Brief description of the recipe..."
-                  rows={2}
-                  disabled={saving}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="instructions">Instructions</Label>
-                <Textarea
-                  id="instructions"
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  placeholder="Step-by-step cooking instructions..."
-                  rows={3}
-                  disabled={saving}
-                />
-              </div>
-            </div>
-
-            {/* Ingredients */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Label className="text-base font-semibold">Ingredients</Label>
-                <Button type="button" variant="outline" size="sm" onClick={addIngredient} disabled={saving}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Ingredient
-                </Button>
-              </div>
-
-              {recipeIngredients.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
-                  <p>No ingredients added yet</p>
-                  <p className="text-sm">Click "Add Ingredient" to start building your recipe</p>
+              {/* Ingredients */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-semibold">Ingredients</Label>
+                  <Button type="button" variant="outline" size="sm" onClick={addIngredient} disabled={saving}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Ingredient
+                  </Button>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {recipeIngredients.map((recipeIng, index) => (
-                    <div key={index} className="flex items-center gap-2 p-3 border rounded-lg">
-                      <div className="flex-1">
-                        <Select
-                          value={recipeIng.ingredient_id}
-                          onValueChange={(value) => updateIngredient(index, "ingredient_id", value)}
+
+                {recipeIngredients.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <p>No ingredients added yet</p>
+                    <p className="text-sm">Click "Add Ingredient" to start building your recipe</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {recipeIngredients.map((recipeIng, index) => (
+                      <div key={index} className="flex items-center gap-2 p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <Select
+                            value={recipeIng.ingredient_id}
+                            onValueChange={(value) => updateIngredient(index, "ingredient_id", value)}
+                            disabled={saving}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ingredients.map((ing) => (
+                                <SelectItem key={ing.id} value={ing.id}>
+                                  {ing.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="w-24">
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={recipeIng.quantity}
+                            onChange={(e) => updateIngredient(index, "quantity", parseFloat(e.target.value) || 0)}
+                            placeholder="Qty"
+                            disabled={saving}
+                          />
+                        </div>
+                        <div className="w-24">
+                          <Input
+                            value={recipeIng.unit}
+                            onChange={(e) => updateIngredient(index, "unit", e.target.value)}
+                            placeholder="Unit"
+                            disabled={saving}
+                          />
+                        </div>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => removeIngredient(index)}
                           disabled={saving}
                         >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {ingredients.map((ing) => (
-                              <SelectItem key={ing.id} value={ing.id}>
-                                {ing.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          <X className="h-4 w-4" />
+                        </Button>
                       </div>
-                      <div className="w-24">
-                        <Input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          value={recipeIng.quantity}
-                          onChange={(e) => updateIngredient(index, "quantity", parseFloat(e.target.value) || 0)}
-                          placeholder="Qty"
-                          disabled={saving}
-                        />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Nutrition Summary */}
+              {recipeIngredients.length > 0 && (
+                <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                  <h3 className="font-semibold">Nutritional Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total (entire recipe)</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant="secondary">{Math.round(totalNutrition.kcal)} kcal</Badge>
+                        <Badge variant="outline">{totalNutrition.protein.toFixed(1)}g protein</Badge>
+                        <Badge variant="outline">{totalNutrition.carbs.toFixed(1)}g carbs</Badge>
+                        <Badge variant="outline">{totalNutrition.fats.toFixed(1)}g fats</Badge>
                       </div>
-                      <div className="w-24">
-                        <Input
-                          value={recipeIng.unit}
-                          onChange={(e) => updateIngredient(index, "unit", e.target.value)}
-                          placeholder="Unit"
-                          disabled={saving}
-                        />
-                      </div>
-                      <Button
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => removeIngredient(index)}
-                        disabled={saving}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
                     </div>
-                  ))}
+                    <div>
+                      <p className="text-sm text-muted-foreground">Per Serving</p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant="default">{Math.round(perServingNutrition.kcal)} kcal</Badge>
+                        <Badge variant="outline">{perServingNutrition.protein.toFixed(1)}g protein</Badge>
+                        <Badge variant="outline">{perServingNutrition.carbs.toFixed(1)}g carbs</Badge>
+                        <Badge variant="outline">{perServingNutrition.fats.toFixed(1)}g fats</Badge>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
-
-            {/* Nutrition Summary */}
-            {recipeIngredients.length > 0 && (
-              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
-                <h3 className="font-semibold">Nutritional Information</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total (entire recipe)</p>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <Badge variant="secondary">{Math.round(totalNutrition.kcal)} kcal</Badge>
-                      <Badge variant="outline">{totalNutrition.protein.toFixed(1)}g protein</Badge>
-                      <Badge variant="outline">{totalNutrition.carbs.toFixed(1)}g carbs</Badge>
-                      <Badge variant="outline">{totalNutrition.fats.toFixed(1)}g fats</Badge>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Per Serving</p>
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <Badge variant="default">{Math.round(perServingNutrition.kcal)} kcal</Badge>
-                      <Badge variant="outline">{perServingNutrition.protein.toFixed(1)}g protein</Badge>
-                      <Badge variant="outline">{perServingNutrition.carbs.toFixed(1)}g carbs</Badge>
-                      <Badge variant="outline">{perServingNutrition.fats.toFixed(1)}g fats</Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="p-6 pt-4 shrink-0">
             <Button
               variant="outline"
               onClick={() => {
