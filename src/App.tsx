@@ -13,6 +13,9 @@ import ClientDetail from "./pages/ClientDetail";
 import SetupAdmin from "./pages/SetupAdmin";
 import InterestForm from "./pages/InterestForm";
 import NotFound from "./pages/NotFound";
+import AdminEditSleepAssessment from "./pages/AdminEditSleepAssessment";
+import AdminEditStressAssessment from "./pages/AdminEditStressAssessment";
+import AdminEditHealthAssessment from "./pages/AdminEditHealthAssessment";
 
 const queryClient = new QueryClient();
 
@@ -31,6 +34,9 @@ const App = () => (
             <Route path="/dashboard" element={<ClientDashboard />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/client/:id" element={<ClientDetail />} />
+            <Route path="/admin/assessments/:id/edit-sleep" element={<AdminEditSleepAssessment />} />
+            <Route path="/admin/assessments/:id/edit-stress" element={<AdminEditStressAssessment />} />
+            <Route path="/admin/assessments/:id/edit-health" element={<AdminEditHealthAssessment />} />
             <Route path="/interest" element={<InterestForm />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
