@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Search, Loader2, ChefHat, X } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { RecipeImport } from "./RecipeImport";
 
 interface Recipe {
   id: string;
@@ -348,10 +349,16 @@ export function RecipeBuilder() {
               <CardTitle>Recipe Builder</CardTitle>
               <CardDescription>Create recipes from food items with auto-calculated nutrition</CardDescription>
             </div>
-            <Button onClick={handleAdd}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Recipe
-            </Button>
+            <div className="flex gap-2">
+              <RecipeImport
+                onImportComplete={fetchData}
+                existingFoodItems={foodItems.map(f => ({ id: f.id, name: f.name }))}
+              />
+              <Button onClick={handleAdd}>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Recipe
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

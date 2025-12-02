@@ -28,6 +28,7 @@ import {
 import { Plus, Pencil, Trash2, Search, Loader2, Apple } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { FoodItemsImport } from "./FoodItemsImport";
 
 interface FoodItem {
   id: string;
@@ -318,10 +319,13 @@ export function FoodItemsManager() {
               <CardTitle>Food Items Database</CardTitle>
               <CardDescription>Manage your nutrition database for meal planning</CardDescription>
             </div>
-            <Button onClick={handleAdd}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Food Item
-            </Button>
+            <div className="flex gap-2">
+              <FoodItemsImport onImportComplete={() => queryClient.invalidateQueries({ queryKey: ['food-items'] })} />
+              <Button onClick={handleAdd}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Food Item
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
