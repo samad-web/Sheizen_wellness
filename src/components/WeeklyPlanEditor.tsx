@@ -16,7 +16,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
@@ -251,16 +250,16 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
           {planId ? "Edit Plan" : "Create Plan"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0">
+        <DialogHeader className="p-6 pb-4 shrink-0 border-b">
           <DialogTitle>{planId ? "Edit Weekly Plan" : "Create Weekly Plan"}</DialogTitle>
           <DialogDescription>
             Build a 7-day meal plan with meal cards for each day
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-1">
-          <div className="space-y-4 pr-4">
+        <div className="flex-1 overflow-y-auto min-h-0 p-6">
+          <div className="space-y-4">
           <div className="grid grid-cols-3 gap-4">
             <div>
               <Label htmlFor="week">Week Number</Label>
@@ -376,9 +375,9 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
             ))}
           </Tabs>
         </div>
-        </ScrollArea>
+        </div>
 
-        <DialogFooter className="gap-2 pt-4 border-t">
+        <DialogFooter className="p-6 pt-4 border-t shrink-0 gap-2">
           <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
             Cancel
           </Button>
