@@ -64,6 +64,7 @@ export default function ClientDashboard() {
   const [todayCalories, setTodayCalories] = useState(0);
   const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "assessments" | "reports" | "messages" | "calendar" | "progress">("today");
   const [assessmentCards, setAssessmentCards] = useState<any[]>([]);
+  const [assessmentRecords, setAssessmentRecords] = useState<any[]>([]);
   const [newCardNotification, setNewCardNotification] = useState<any>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [weightInput, setWeightInput] = useState<string>("");
@@ -157,6 +158,17 @@ export default function ClientDashboard() {
 
     if (!error && data) {
       setAssessmentCards(data);
+    }
+
+    // Fetch actual assessment records for editing
+    const { data: assessments, error: assessError } = await supabase
+      .from('assessments')
+      .select('*')
+      .eq('client_id', clientData.id)
+      .not('form_responses', 'is', null);
+
+    if (!assessError && assessments) {
+      setAssessmentRecords(assessments);
     }
   };
 
@@ -492,7 +504,7 @@ export default function ClientDashboard() {
           <div className="flex items-center gap-2">
             <NotificationBell clientId={clientData?.id} onNavigate={handleNavigateToCalendar} />
             {pushSupported && !isSubscribed && (
-              <Button variant="outline" onClick={subscribe} disabled={pushLoading} size="sm">
+              <Button variant="default" onClick={subscribe} disabled={pushLoading} size="sm" className="bg-primary hover:bg-primary/90">
                 Enable Notifications
               </Button>
             )}
@@ -617,35 +629,37 @@ export default function ClientDashboard() {
           onValueChange={(value) => setActiveTab(value as typeof activeTab)}
           className="space-y-6"
         >
-          <TabsList className={`grid w-full ${clientData?.service_type === 'hundred_days' ? 'grid-cols-10' : 'grid-cols-9'}`}>
-            <TabsTrigger value="today">Today</TabsTrigger>
-            <TabsTrigger value="plan">Plan</TabsTrigger>
-            <TabsTrigger value="logs">Meals</TabsTrigger>
-            <TabsTrigger value="files">Files</TabsTrigger>
-            <TabsTrigger value="achievements">Achievements</TabsTrigger>
-            <TabsTrigger value="assessments" className="relative">
-              <ClipboardList className="w-4 h-4 mr-1" />
-              Assessments
-              {assessmentCards.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {assessmentCards.length}
-                </span>
+          <div className="tabs-container flex items-center gap-2 flex-wrap p-1 rounded-lg bg-muted/50">
+            <TabsList className="flex-1 min-w-0 flex items-center gap-1 flex-wrap bg-transparent">
+              <TabsTrigger value="today" className="whitespace-nowrap">Today</TabsTrigger>
+              <TabsTrigger value="plan" className="whitespace-nowrap">Plan</TabsTrigger>
+              <TabsTrigger value="logs" className="whitespace-nowrap">Meals</TabsTrigger>
+              <TabsTrigger value="files" className="whitespace-nowrap">Files</TabsTrigger>
+              <TabsTrigger value="achievements" className="whitespace-nowrap">Achievements</TabsTrigger>
+              <TabsTrigger value="assessments" className="relative whitespace-nowrap">
+                <ClipboardList className="w-4 h-4 mr-1" />
+                Assessments
+                {assessmentCards.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {assessmentCards.length}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="reports" className="whitespace-nowrap">Reports</TabsTrigger>
+              <TabsTrigger value="messages" className="relative whitespace-nowrap" onClick={handleMessagesTabOpen}>
+                Messages
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="whitespace-nowrap">Calendar</TabsTrigger>
+              {clientData?.service_type === 'hundred_days' && (
+                <TabsTrigger value="progress" className="whitespace-nowrap">100-Day</TabsTrigger>
               )}
-            </TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="messages" className="relative" onClick={handleMessagesTabOpen}>
-              Messages
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {unreadCount}
-                </span>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="calendar">Calendar</TabsTrigger>
-            {clientData?.service_type === 'hundred_days' && (
-              <TabsTrigger value="progress">100-Day</TabsTrigger>
-            )}
-          </TabsList>
+            </TabsList>
+          </div>
 
           <TabsContent value="today" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1002,13 +1016,22 @@ export default function ClientDashboard() {
 
                         {/* Render the appropriate card view */}
                         {card.card_type === 'health_assessment' && (
-                          <HealthAssessmentCardView data={card.generated_content} />
+                          <HealthAssessmentCardView 
+                            data={card.generated_content} 
+                            assessmentId={assessmentRecords.find(a => a.assessment_type === 'health' && a.client_id === clientData?.id)?.id}
+                          />
                         )}
                         {card.card_type === 'stress_card' && (
-                          <StressCardView data={card.generated_content} />
+                          <StressCardView 
+                            data={card.generated_content} 
+                            assessmentId={assessmentRecords.find(a => a.assessment_type === 'stress' && a.client_id === clientData?.id)?.id}
+                          />
                         )}
                         {card.card_type === 'sleep_card' && (
-                          <SleepCardView data={card.generated_content} />
+                          <SleepCardView 
+                            data={card.generated_content} 
+                            assessmentId={assessmentRecords.find(a => a.assessment_type === 'sleep' && a.client_id === clientData?.id)?.id}
+                          />
                         )}
                         {card.card_type === 'action_plan' && (
                           <ActionPlanCardView data={card.generated_content} />

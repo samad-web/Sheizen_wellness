@@ -1,16 +1,19 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Download, Moon } from "lucide-react";
+import { Download, Moon, Edit } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { useNavigate } from "react-router-dom";
 
 interface SleepCardViewProps {
   data: any;
+  assessmentId?: string;
   onDownloadPDF?: () => void;
 }
 
-export function SleepCardView({ data, onDownloadPDF }: SleepCardViewProps) {
+export function SleepCardView({ data, assessmentId, onDownloadPDF }: SleepCardViewProps) {
+  const navigate = useNavigate();
   const sleep = data?.sleep_assessment || data;
   const sleepQuality = sleep?.sleep_quality_score || 0;
 
@@ -36,12 +39,24 @@ export function SleepCardView({ data, onDownloadPDF }: SleepCardViewProps) {
               <p className="text-sm text-muted-foreground">Your sleep health evaluation</p>
             </div>
           </div>
-          {onDownloadPDF && (
-            <Button onClick={onDownloadPDF} variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-2" />
-              Download PDF
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {assessmentId && (
+              <Button 
+                onClick={() => navigate(`/client/assessments/${assessmentId}/edit-sleep`)} 
+                variant="outline" 
+                size="sm"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            )}
+            {onDownloadPDF && (
+              <Button onClick={onDownloadPDF} variant="outline" size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                Download PDF
+              </Button>
+            )}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
