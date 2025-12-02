@@ -515,6 +515,24 @@ const ClientDetail = () => {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
+                              {(assessment as any).form_responses && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const assessmentType = (assessment as any).assessment_type;
+                                    if (assessmentType === 'sleep') {
+                                      navigate(`/admin/assessments/${assessment.id}/edit-sleep`);
+                                    } else if (assessmentType === 'stress') {
+                                      navigate(`/admin/assessments/${assessment.id}/edit-stress`);
+                                    } else if (assessmentType === 'health') {
+                                      navigate(`/admin/assessments/${assessment.id}/edit-health`);
+                                    }
+                                  }}
+                                >
+                                  <FileText className="h-4 w-4" />
+                                </Button>
+                              )}
                               {assessment.file_url && (
                                 <Button
                                   variant="outline"
