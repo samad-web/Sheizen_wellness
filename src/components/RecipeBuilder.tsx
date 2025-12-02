@@ -41,7 +41,7 @@ interface Recipe {
   created_at: string;
 }
 
-interface FoodItem {
+interface Ingredient {
   id: string;
   name: string;
   serving_size: string;
@@ -54,8 +54,8 @@ interface FoodItem {
 
 interface RecipeIngredient {
   id?: string;
-  food_item_id: string;
-  food_item?: FoodItem;
+  ingredient_id: string;
+  ingredient?: Ingredient;
   quantity: number;
   unit: string;
 }
@@ -76,7 +76,7 @@ const recipeSchema = z.object({
 
 export function RecipeBuilder() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -88,7 +88,7 @@ export function RecipeBuilder() {
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
   const [servings, setServings] = useState(1);
-  const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
+  const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -106,14 +106,14 @@ export function RecipeBuilder() {
       if (recipesError) throw recipesError;
       setRecipes(recipesData || []);
 
-      // Fetch food items
-      const { data: foodData, error: foodError } = await supabase
-        .from("food_items")
+      // Fetch ingredients
+      const { data: ingredientsData, error: ingredientsError } = await supabase
+        .from("ingredients")
         .select("*")
         .order("name", { ascending: true });
 
-      if (foodError) throw foodError;
-      setFoodItems(foodData || []);
+      if (ingredientsError) throw ingredientsError;
+      setIngredients(ingredientsData || []);
     } catch (error: any) {
       toast.error(error.message || "Failed to load data");
     } finally {
@@ -126,7 +126,7 @@ export function RecipeBuilder() {
     setDescription("");
     setInstructions("");
     setServings(1);
-    setIngredients([]);
+    setRecipeIngredients([]);
     setEditingRecipe(null);
   };
 
@@ -145,7 +145,7 @@ export function RecipeBuilder() {
     // Fetch recipe ingredients
     const { data, error } = await supabase
       .from("recipe_ingredients")
-      .select("*, food_items(*)")
+      .select("*, ingredients(*)")
       .eq("recipe_id", recipe.id);
 
     if (error) {
@@ -153,11 +153,11 @@ export function RecipeBuilder() {
       return;
     }
 
-    setIngredients(
+    setRecipeIngredients(
       data.map((ing: any) => ({
         id: ing.id,
-        food_item_id: ing.food_item_id,
-        food_item: ing.food_items,
+        ingredient_id: ing.ingredient_id,
+        ingredient: ing.ingredients,
         quantity: ing.quantity,
         unit: ing.unit,
       }))
@@ -167,58 +167,58 @@ export function RecipeBuilder() {
   };
 
   const addIngredient = () => {
-    if (foodItems.length === 0) {
-      toast.error("No food items available. Add food items first.");
+    if (ingredients.length === 0) {
+      toast.error("No ingredients available. Add ingredients first.");
       return;
     }
 
-    setIngredients([
-      ...ingredients,
+    setRecipeIngredients([
+      ...recipeIngredients,
       {
-        food_item_id: foodItems[0].id,
-        food_item: foodItems[0],
+        ingredient_id: ingredients[0].id,
+        ingredient: ingredients[0],
         quantity: 1,
-        unit: foodItems[0].serving_unit,
+        unit: ingredients[0].serving_unit,
       },
     ]);
   };
 
   const updateIngredient = (index: number, field: keyof RecipeIngredient, value: any) => {
-    const updated = [...ingredients];
+    const updated = [...recipeIngredients];
     
-    if (field === "food_item_id") {
-      const foodItem = foodItems.find((f) => f.id === value);
+    if (field === "ingredient_id") {
+      const ingredient = ingredients.find((f) => f.id === value);
       updated[index] = {
         ...updated[index],
-        food_item_id: value,
-        food_item: foodItem,
-        unit: foodItem?.serving_unit || updated[index].unit,
+        ingredient_id: value,
+        ingredient: ingredient,
+        unit: ingredient?.serving_unit || updated[index].unit,
       };
     } else {
       updated[index] = { ...updated[index], [field]: value };
     }
     
-    setIngredients(updated);
+    setRecipeIngredients(updated);
   };
 
   const removeIngredient = (index: number) => {
-    setIngredients(ingredients.filter((_, i) => i !== index));
+    setRecipeIngredients(recipeIngredients.filter((_, i) => i !== index));
   };
 
   const calculateNutrition = (): NutritionTotals => {
-    const totals = ingredients.reduce(
+    const totals = recipeIngredients.reduce(
       (acc, ing) => {
-        const foodItem = ing.food_item || foodItems.find((f) => f.id === ing.food_item_id);
-        if (!foodItem) return acc;
+        const ingredient = ing.ingredient || ingredients.find((f) => f.id === ing.ingredient_id);
+        if (!ingredient) return acc;
 
-        const servingSizeNum = parseFloat(foodItem.serving_size);
+        const servingSizeNum = parseFloat(ingredient.serving_size);
         const multiplier = ing.quantity / servingSizeNum;
 
         return {
-          kcal: acc.kcal + foodItem.kcal_per_serving * multiplier,
-          protein: acc.protein + (foodItem.protein || 0) * multiplier,
-          carbs: acc.carbs + (foodItem.carbs || 0) * multiplier,
-          fats: acc.fats + (foodItem.fats || 0) * multiplier,
+          kcal: acc.kcal + ingredient.kcal_per_serving * multiplier,
+          protein: acc.protein + (ingredient.protein || 0) * multiplier,
+          carbs: acc.carbs + (ingredient.carbs || 0) * multiplier,
+          fats: acc.fats + (ingredient.fats || 0) * multiplier,
         };
       },
       { kcal: 0, protein: 0, carbs: 0, fats: 0 }
@@ -237,7 +237,7 @@ export function RecipeBuilder() {
         servings,
       });
 
-      if (ingredients.length === 0) {
+      if (recipeIngredients.length === 0) {
         toast.error("Add at least one ingredient");
         return;
       }
@@ -285,9 +285,9 @@ export function RecipeBuilder() {
       }
 
       // Insert ingredients
-      const ingredientsData = ingredients.map((ing) => ({
+      const ingredientsData = recipeIngredients.map((ing) => ({
         recipe_id: recipeId,
-        food_item_id: ing.food_item_id,
+        ingredient_id: ing.ingredient_id,
         quantity: ing.quantity,
         unit: ing.unit,
       }));
@@ -352,7 +352,7 @@ export function RecipeBuilder() {
             <div className="flex gap-2">
               <RecipeImport
                 onImportComplete={fetchData}
-                existingFoodItems={foodItems.map(f => ({ id: f.id, name: f.name }))}
+                existingIngredients={ingredients.map(i => ({ id: i.id, name: i.name }))}
               />
               <Button onClick={handleAdd}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -501,28 +501,28 @@ export function RecipeBuilder() {
                 </Button>
               </div>
 
-              {ingredients.length === 0 ? (
+              {recipeIngredients.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground border-2 border-dashed rounded-lg">
                   <p>No ingredients added yet</p>
                   <p className="text-sm">Click "Add Ingredient" to start building your recipe</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {ingredients.map((ingredient, index) => (
+                  {recipeIngredients.map((recipeIng, index) => (
                     <div key={index} className="flex items-center gap-2 p-3 border rounded-lg">
                       <div className="flex-1">
                         <Select
-                          value={ingredient.food_item_id}
-                          onValueChange={(value) => updateIngredient(index, "food_item_id", value)}
+                          value={recipeIng.ingredient_id}
+                          onValueChange={(value) => updateIngredient(index, "ingredient_id", value)}
                           disabled={saving}
                         >
                           <SelectTrigger>
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {foodItems.map((food) => (
-                              <SelectItem key={food.id} value={food.id}>
-                                {food.name}
+                            {ingredients.map((ing) => (
+                              <SelectItem key={ing.id} value={ing.id}>
+                                {ing.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -533,7 +533,7 @@ export function RecipeBuilder() {
                           type="number"
                           step="0.1"
                           min="0"
-                          value={ingredient.quantity}
+                          value={recipeIng.quantity}
                           onChange={(e) => updateIngredient(index, "quantity", parseFloat(e.target.value) || 0)}
                           placeholder="Qty"
                           disabled={saving}
@@ -541,7 +541,7 @@ export function RecipeBuilder() {
                       </div>
                       <div className="w-24">
                         <Input
-                          value={ingredient.unit}
+                          value={recipeIng.unit}
                           onChange={(e) => updateIngredient(index, "unit", e.target.value)}
                           placeholder="Unit"
                           disabled={saving}
@@ -563,7 +563,7 @@ export function RecipeBuilder() {
             </div>
 
             {/* Nutrition Summary */}
-            {ingredients.length > 0 && (
+            {recipeIngredients.length > 0 && (
               <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
                 <h3 className="font-semibold">Nutritional Information</h3>
                 <div className="grid grid-cols-2 gap-4">

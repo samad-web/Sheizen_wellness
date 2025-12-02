@@ -82,3 +82,71 @@ export function exportToExcel(data: any[], filename: string, sheetName: string =
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
   XLSX.writeFile(wb, filename);
 }
+
+export function createFoodItemTemplate(filename: string) {
+  const columns = [
+    { header: 'name', key: 'name', example: 'Chicken Breast' },
+    { header: 'category', key: 'category', example: 'Protein' },
+    { header: 'serving_size', key: 'serving_size', example: '100' },
+    { header: 'serving_unit', key: 'serving_unit', example: 'g' },
+    { header: 'kcal_per_serving', key: 'kcal_per_serving', example: '165' },
+    { header: 'protein', key: 'protein', example: '31' },
+    { header: 'carbs', key: 'carbs', example: '0' },
+    { header: 'fats', key: 'fats', example: '3.6' },
+  ];
+  
+  generateExcelTemplate(columns, filename);
+}
+
+export function validateFoodItems(rawData: any[]): any[] {
+  return rawData.map((row, index) => {
+    const errors: string[] = [];
+    
+    // Validate required fields
+    const nameError = validateRequired(row.name, 'Name');
+    if (nameError) errors.push(nameError);
+    
+    const servingSizeError = validateRequired(row.serving_size, 'Serving Size');
+    if (servingSizeError) errors.push(servingSizeError);
+    
+    const servingUnitError = validateRequired(row.serving_unit, 'Serving Unit');
+    if (servingUnitError) errors.push(servingUnitError);
+    
+    const kcalError = validateRequired(row.kcal_per_serving, 'Kcal');
+    if (kcalError) {
+      errors.push(kcalError);
+    } else {
+      const kcalNumError = validateNumber(row.kcal_per_serving, 'Kcal', 0);
+      if (kcalNumError) errors.push(kcalNumError);
+    }
+    
+    // Validate optional numeric fields
+    if (row.protein !== undefined && row.protein !== null && row.protein !== '') {
+      const proteinError = validateNumber(row.protein, 'Protein', 0);
+      if (proteinError) errors.push(proteinError);
+    }
+    
+    if (row.carbs !== undefined && row.carbs !== null && row.carbs !== '') {
+      const carbsError = validateNumber(row.carbs, 'Carbs', 0);
+      if (carbsError) errors.push(carbsError);
+    }
+    
+    if (row.fats !== undefined && row.fats !== null && row.fats !== '') {
+      const fatsError = validateNumber(row.fats, 'Fats', 0);
+      if (fatsError) errors.push(fatsError);
+    }
+    
+    return {
+      name: sanitizeString(row.name),
+      category: sanitizeString(row.category),
+      serving_size: sanitizeString(row.serving_size),
+      serving_unit: sanitizeString(row.serving_unit),
+      kcal_per_serving: Number(row.kcal_per_serving) || 0,
+      protein: row.protein ? Number(row.protein) : null,
+      carbs: row.carbs ? Number(row.carbs) : null,
+      fats: row.fats ? Number(row.fats) : null,
+      valid: errors.length === 0,
+      error: errors.join(', '),
+    };
+  });
+}
