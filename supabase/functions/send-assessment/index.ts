@@ -37,7 +37,7 @@ serve(async (req) => {
       .insert({
         client_id: client_id,
         sender_type: 'admin',
-        message_type: 'assessment',
+        message_type: 'manual',
         content: `Your ${assessment.assessment_type || 'assessment'} has been completed and is ready to view.`,
         attachment_url: assessment.file_url,
         attachment_name: assessment.display_name,
