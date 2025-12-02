@@ -101,120 +101,125 @@ export default function ClientEditSleepForm() {
               <div className="flex-1">
                 <CardTitle className="text-2xl">Edit Sleep Assessment</CardTitle>
                 <CardDescription>Update your sleep health evaluation</CardDescription>
-              </div>
-              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as typeof viewMode)}>
-                <TabsList>
-                  <TabsTrigger value="view">View</TabsTrigger>
-                  <TabsTrigger value="edit">Edit</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-          </CardHeader>
-        </Card>
+          </div>
+        </div>
+      </CardHeader>
+    </Card>
 
-        {/* Form */}
-        <ScrollArea className="h-[calc(100vh-300px)]">
-          <Card>
-            <CardContent className="pt-6 space-y-6">
-              <TabsContent value={viewMode} className="mt-0">
-                {viewMode === "view" ? (
-                  <div className="space-y-4 text-sm">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label className="text-muted-foreground">Usual Bedtime</Label>
-                        <p className="font-medium">{formData.bedtime_usual || "Not provided"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Usual Wake Time</Label>
-                        <p className="font-medium">{formData.wake_time_usual || "Not provided"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Sleep Latency (minutes)</Label>
-                        <p className="font-medium">{formData.sleep_latency_minutes || "Not provided"}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Actual Sleep Hours</Label>
-                        <p className="font-medium">{formData.actual_sleep_hours || "Not provided"}</p>
-                      </div>
-                    </div>
+    {/* Form with Tabs */}
+    <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as typeof viewMode)}>
+      <Card className="mb-6">
+        <CardHeader>
+          <TabsList>
+            <TabsTrigger value="view">View</TabsTrigger>
+            <TabsTrigger value="edit">Edit</TabsTrigger>
+          </TabsList>
+        </CardHeader>
+      </Card>
+
+      <ScrollArea className="h-[calc(100vh-300px)]">
+        <Card>
+          <CardContent className="pt-6 space-y-6">
+            <TabsContent value="view" className="mt-0">
+              <div className="space-y-4 text-sm">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-muted-foreground">Usual Bedtime</Label>
+                    <p className="font-medium">{formData.bedtime_usual || "Not provided"}</p>
                   </div>
-                ) : (
-                  <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Usual Bedtime</Label>
-                        <Input
-                          type="time"
-                          value={formData.bedtime_usual || ""}
-                          onChange={(e) => setFormData({ ...formData, bedtime_usual: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <Label>Usual Wake Time</Label>
-                        <Input
-                          type="time"
-                          value={formData.wake_time_usual || ""}
-                          onChange={(e) => setFormData({ ...formData, wake_time_usual: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <Label>Sleep Latency (minutes)</Label>
-                        <Input
-                          type="number"
-                          value={formData.sleep_latency_minutes || ""}
-                          onChange={(e) => setFormData({ ...formData, sleep_latency_minutes: parseInt(e.target.value) })}
-                        />
-                      </div>
-                      <div>
-                        <Label>Actual Sleep Hours</Label>
-                        <Input
-                          type="number"
-                          step="0.5"
-                          value={formData.actual_sleep_hours || ""}
-                          onChange={(e) => setFormData({ ...formData, actual_sleep_hours: parseFloat(e.target.value) })}
-                        />
-                      </div>
-                      <div>
-                        <Label>Sleep Trouble Frequency</Label>
-                        <Select
-                          value={formData.sleep_trouble_frequency || ""}
-                          onValueChange={(value) => setFormData({ ...formData, sleep_trouble_frequency: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select frequency" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="never">Never</SelectItem>
-                            <SelectItem value="less_than_once_week">Less than once a week</SelectItem>
-                            <SelectItem value="once_twice_week">Once or twice a week</SelectItem>
-                            <SelectItem value="three_or_more_week">Three or more times a week</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label>Overall Sleep Quality</Label>
-                        <Select
-                          value={formData.overall_sleep_quality_rating || ""}
-                          onValueChange={(value) => setFormData({ ...formData, overall_sleep_quality_rating: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select quality" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="very_good">Very good</SelectItem>
-                            <SelectItem value="fairly_good">Fairly good</SelectItem>
-                            <SelectItem value="fairly_bad">Fairly bad</SelectItem>
-                            <SelectItem value="very_bad">Very bad</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                  <div>
+                    <Label className="text-muted-foreground">Usual Wake Time</Label>
+                    <p className="font-medium">{formData.wake_time_usual || "Not provided"}</p>
                   </div>
-                )}
-              </TabsContent>
-            </CardContent>
-          </Card>
-        </ScrollArea>
+                  <div>
+                    <Label className="text-muted-foreground">Sleep Latency (minutes)</Label>
+                    <p className="font-medium">{formData.sleep_latency_minutes || "Not provided"}</p>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Actual Sleep Hours</Label>
+                    <p className="font-medium">{formData.actual_sleep_hours || "Not provided"}</p>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="edit" className="mt-0">
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Usual Bedtime</Label>
+                    <Input
+                      type="time"
+                      value={formData.bedtime_usual || ""}
+                      onChange={(e) => setFormData({ ...formData, bedtime_usual: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Usual Wake Time</Label>
+                    <Input
+                      type="time"
+                      value={formData.wake_time_usual || ""}
+                      onChange={(e) => setFormData({ ...formData, wake_time_usual: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Sleep Latency (minutes)</Label>
+                    <Input
+                      type="number"
+                      value={formData.sleep_latency_minutes || ""}
+                      onChange={(e) => setFormData({ ...formData, sleep_latency_minutes: parseInt(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Actual Sleep Hours</Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={formData.actual_sleep_hours || ""}
+                      onChange={(e) => setFormData({ ...formData, actual_sleep_hours: parseFloat(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Sleep Trouble Frequency</Label>
+                    <Select
+                      value={formData.sleep_trouble_frequency || ""}
+                      onValueChange={(value) => setFormData({ ...formData, sleep_trouble_frequency: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select frequency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="never">Never</SelectItem>
+                        <SelectItem value="less_than_once_week">Less than once a week</SelectItem>
+                        <SelectItem value="once_twice_week">Once or twice a week</SelectItem>
+                        <SelectItem value="three_or_more_week">Three or more times a week</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Overall Sleep Quality</Label>
+                    <Select
+                      value={formData.overall_sleep_quality_rating || ""}
+                      onValueChange={(value) => setFormData({ ...formData, overall_sleep_quality_rating: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select quality" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="very_good">Very good</SelectItem>
+                        <SelectItem value="fairly_good">Fairly good</SelectItem>
+                        <SelectItem value="fairly_bad">Fairly bad</SelectItem>
+                        <SelectItem value="very_bad">Very bad</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+          </CardContent>
+        </Card>
+      </ScrollArea>
+    </Tabs>
 
         {/* Actions */}
         <div className="mt-6 flex justify-between gap-4 sticky bottom-0 bg-background/95 backdrop-blur-sm p-4 rounded-lg border">
