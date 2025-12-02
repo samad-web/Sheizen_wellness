@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -60,11 +61,13 @@ type FoodItemFormData = z.infer<typeof foodItemSchema>;
 const FormFields = ({ 
   formData, 
   setFormData, 
-  saving 
+  saving,
+  categories
 }: { 
   formData: FoodItemFormData; 
   setFormData: (data: FoodItemFormData) => void; 
   saving: boolean;
+  categories: string[];
 }) => (
   <div className="space-y-4">
     <div className="grid grid-cols-2 gap-4">
@@ -80,13 +83,30 @@ const FormFields = ({
       </div>
       <div className="space-y-2">
         <Label htmlFor="category">Category</Label>
-        <Input
-          id="category"
+        <Select
           value={formData.category}
-          onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-          placeholder="e.g., Protein, Vegetable"
+          onValueChange={(value) => setFormData({ ...formData, category: value })}
           disabled={saving}
-        />
+        >
+          <SelectTrigger id="category">
+            <SelectValue placeholder="Select or type category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>
+                {cat}
+              </SelectItem>
+            ))}
+            <SelectItem value="new">+ Add New Category</SelectItem>
+          </SelectContent>
+        </Select>
+        {formData.category === "new" && (
+          <Input
+            placeholder="Enter new category name"
+            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            disabled={saving}
+          />
+        )}
       </div>
     </div>
 
@@ -197,6 +217,23 @@ export function FoodItemsManager() {
   const { data: foodItems = [], isLoading } = useQuery({
     queryKey: ['food-items'],
     queryFn: fetchFoodItems,
+  });
+
+  // Fetch distinct categories
+  const { data: categories = [] } = useQuery({
+    queryKey: ['food-item-categories'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("food_items")
+        .select("category")
+        .not("category", "is", null)
+        .order("category", { ascending: true });
+
+      if (error) throw error;
+      
+      const uniqueCategories = [...new Set(data.map(item => item.category).filter(Boolean))] as string[];
+      return uniqueCategories;
+    },
   });
 
   const resetForm = () => {
@@ -422,7 +459,7 @@ export function FoodItemsManager() {
               {editingItem ? "Update the food item details" : "Add a new food item to your nutrition database"}
             </DialogDescription>
           </DialogHeader>
-          <FormFields formData={formData} setFormData={setFormData} saving={saving} />
+          <FormFields formData={formData} setFormData={setFormData} saving={saving} categories={categories} />
           <DialogFooter>
             <Button
               variant="outline"
