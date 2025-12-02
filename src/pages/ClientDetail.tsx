@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, Phone, Mail, Target, Weight, Calendar, Trash2, Image as ImageIcon, Download, Activity } from "lucide-react";
+import { ArrowLeft, Phone, Mail, Target, Weight, Calendar, Trash2, Image as ImageIcon, Download, Activity, Edit, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { AssessmentUploadDialog } from "@/components/AssessmentUploadDialog";
+import { EditAssessmentDialog } from "@/components/EditAssessmentDialog";
 import { WeeklyPlanEditor } from "@/components/WeeklyPlanEditor";
 import { ProgressCharts } from "@/components/ProgressCharts";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
@@ -126,6 +127,7 @@ const ClientDetail = () => {
   const [deleteAssessmentId, setDeleteAssessmentId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [isRequestingAssessment, setIsRequestingAssessment] = useState(false);
+  const [editAssessmentId, setEditAssessmentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (userRole !== "admin") {
@@ -484,7 +486,8 @@ const ClientDetail = () => {
                       <TableHeader>
                         <TableRow>
                           <TableHead>Display Name</TableHead>
-                          <TableHead>Notes</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Status</TableHead>
                           <TableHead>Created</TableHead>
                           <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
@@ -495,9 +498,23 @@ const ClientDetail = () => {
                             <TableCell>
                               {(assessment as any).display_name || assessment.file_name || "—"}
                             </TableCell>
-                            <TableCell className="max-w-xs truncate">{assessment.notes || "—"}</TableCell>
+                            <TableCell className="capitalize">
+                              {(assessment as any).assessment_type || "—"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={(assessment as any).status === 'sent' ? 'default' : 'outline'}>
+                                {(assessment as any).status || 'draft'}
+                              </Badge>
+                            </TableCell>
                             <TableCell>{new Date(assessment.created_at).toLocaleDateString()}</TableCell>
                             <TableCell className="text-right space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditAssessmentId(assessment.id)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
                               {assessment.file_url && (
                                 <Button
                                   variant="outline"
@@ -511,11 +528,11 @@ const ClientDetail = () => {
                                     }
                                   }}
                                 >
-                                  View
+                                  <Download className="h-4 w-4" />
                                 </Button>
                               )}
                               <Button
-                                variant="destructive"
+                                variant="ghost"
                                 size="sm"
                                 onClick={() => setDeleteAssessmentId(assessment.id)}
                               >
@@ -930,10 +947,20 @@ const ClientDetail = () => {
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-};
+          </AlertDialogContent>
+        </AlertDialog>
 
-export default ClientDetail;
+        <EditAssessmentDialog
+          assessmentId={editAssessmentId}
+          open={editAssessmentId !== null}
+          onOpenChange={(open) => !open && setEditAssessmentId(null)}
+          onSave={() => {
+            fetchClientData();
+            setEditAssessmentId(null);
+          }}
+        />
+      </div>
+    );
+  };
+  
+  export default ClientDetail;
