@@ -154,6 +154,47 @@ export type Database = {
           },
         ]
       }
+      assessment_audits: {
+        Row: {
+          action: string
+          actor_id: string | null
+          after: Json | null
+          assessment_id: string | null
+          before: Json | null
+          created_at: string | null
+          id: string
+          target_table: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          after?: Json | null
+          assessment_id?: string | null
+          before?: Json | null
+          created_at?: string | null
+          id?: string
+          target_table: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          after?: Json | null
+          assessment_id?: string | null
+          before?: Json | null
+          created_at?: string | null
+          id?: string
+          target_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assessment_audits_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_requests: {
         Row: {
           assessment_type: string
@@ -221,11 +262,14 @@ export type Database = {
           client_id: string
           created_at: string
           display_name: string | null
+          file_history: Json | null
           file_name: string | null
           file_url: string | null
+          file_version: number | null
           form_responses: Json | null
           id: string
           notes: string | null
+          status: string | null
           updated_at: string
         }
         Insert: {
@@ -237,11 +281,14 @@ export type Database = {
           client_id: string
           created_at?: string
           display_name?: string | null
+          file_history?: Json | null
           file_name?: string | null
           file_url?: string | null
+          file_version?: number | null
           form_responses?: Json | null
           id?: string
           notes?: string | null
+          status?: string | null
           updated_at?: string
         }
         Update: {
@@ -253,11 +300,14 @@ export type Database = {
           client_id?: string
           created_at?: string
           display_name?: string | null
+          file_history?: Json | null
           file_name?: string | null
           file_url?: string | null
+          file_version?: number | null
           form_responses?: Json | null
           id?: string
           notes?: string | null
+          status?: string | null
           updated_at?: string
         }
         Relationships: [
