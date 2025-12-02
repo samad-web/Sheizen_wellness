@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -115,15 +116,7 @@ const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { userRole, user } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [client, setClient] = useState<Client | null>(null);
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [plans, setPlans] = useState<WeeklyPlan[]>([]);
-  const [dailyLogs, setDailyLogs] = useState<DailyLog[]>([]);
-  const [files, setFiles] = useState<FileRecord[]>([]);
-  const [reports, setReports] = useState<WeeklyReport[]>([]);
-  const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const queryClient = useQueryClient();
   const [deleteAssessmentId, setDeleteAssessmentId] = useState<string | null>(null);
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [isRequestingAssessment, setIsRequestingAssessment] = useState(false);
@@ -140,89 +133,101 @@ const ClientDetail = () => {
       navigate("/admin");
       return;
     }
-
-    fetchClientData();
   }, [id, userRole, navigate]);
 
   const fetchClientData = async () => {
-    try {
-      setLoading(true);
+    if (!id) throw new Error("No client ID");
 
-      // Fetch client details
-      const { data: clientData, error: clientError } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("id", id)
-        .single();
+    // Fetch client details
+    const { data: clientData, error: clientError } = await supabase
+      .from("clients")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-      if (clientError) throw clientError;
-      setClient(clientData);
+    if (clientError) throw clientError;
 
-      // Fetch assessments
-      const { data: assessmentsData } = await supabase
-        .from("assessments")
-        .select("*")
-        .eq("client_id", id)
-        .order("created_at", { ascending: false });
-      setAssessments(assessmentsData || []);
+    // Fetch assessments
+    const { data: assessmentsData } = await supabase
+      .from("assessments")
+      .select("*")
+      .eq("client_id", id)
+      .order("created_at", { ascending: false });
 
-      // Fetch weekly plans
-      const { data: plansData } = await supabase
-        .from("weekly_plans")
-        .select("*")
-        .eq("client_id", id)
-        .order("week_number", { ascending: false });
-      setPlans(plansData || []);
+    // Fetch weekly plans
+    const { data: plansData } = await supabase
+      .from("weekly_plans")
+      .select("*")
+      .eq("client_id", id)
+      .order("week_number", { ascending: false });
 
-      // Fetch daily logs
-      const { data: logsData } = await supabase
-        .from("daily_logs")
-        .select("*")
-        .eq("client_id", id)
-        .order("log_date", { ascending: false })
-        .limit(30);
-      setDailyLogs(logsData || []);
+    // Fetch daily logs
+    const { data: logsData } = await supabase
+      .from("daily_logs")
+      .select("*")
+      .eq("client_id", id)
+      .order("log_date", { ascending: false })
+      .limit(30);
 
-      // Fetch files
-      const { data: filesData } = await supabase
-        .from("files")
-        .select("*")
-        .eq("client_id", id)
-        .order("created_at", { ascending: false });
-      setFiles(filesData || []);
+    // Fetch files
+    const { data: filesData } = await supabase
+      .from("files")
+      .select("*")
+      .eq("client_id", id)
+      .order("created_at", { ascending: false });
 
-      // Fetch reports
-      const { data: reportsData } = await supabase
-        .from("weekly_reports")
-        .select("*")
-        .eq("client_id", id)
-        .order("week_number", { ascending: false });
-      setReports(reportsData || []);
+    // Fetch reports
+    const { data: reportsData } = await supabase
+      .from("weekly_reports")
+      .select("*")
+      .eq("client_id", id)
+      .order("week_number", { ascending: false });
 
-      // Fetch meal logs with photos
-      const { data: mealLogsData } = await supabase
-        .from("meal_logs")
-        .select("*")
-        .eq("client_id", id)
-        .not("photo_url", "is", null)
-        .order("logged_at", { ascending: false })
-        .limit(50);
-      setMealLogs(mealLogsData || []);
+    // Fetch meal logs with photos
+    const { data: mealLogsData } = await supabase
+      .from("meal_logs")
+      .select("*")
+      .eq("client_id", id)
+      .not("photo_url", "is", null)
+      .order("logged_at", { ascending: false })
+      .limit(50);
 
-      // Fetch messages
-      const { data: messagesData } = await supabase
-        .from("messages")
-        .select("*")
-        .eq("client_id", id)
-        .order("created_at", { ascending: true });
-      setMessages((messagesData as Message[]) || []);
+    // Fetch messages
+    const { data: messagesData } = await supabase
+      .from("messages")
+      .select("*")
+      .eq("client_id", id)
+      .order("created_at", { ascending: true });
 
-    } catch (error: any) {
-      toast.error(error.message || "Failed to load client data");
-      navigate("/admin");
-    } finally {
-      setLoading(false);
-    }
+    return {
+      client: clientData,
+      assessments: assessmentsData || [],
+      plans: plansData || [],
+      dailyLogs: logsData || [],
+      files: filesData || [],
+      reports: reportsData || [],
+      mealLogs: mealLogsData || [],
+      messages: (messagesData as Message[]) || [],
+    };
+  };
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['admin-client-detail', id],
+    queryFn: fetchClientData,
+    enabled: !!id && userRole === "admin",
+  });
+
+  const client = data?.client || null;
+  const assessments = data?.assessments || [];
+  const plans = data?.plans || [];
+  const dailyLogs = data?.dailyLogs || [];
+  const files = data?.files || [];
+  const reports = data?.reports || [];
+  const mealLogs = data?.mealLogs || [];
+  const messages = data?.messages || [];
+
+  const refetchClientData = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin-client-detail', id] });
   };
 
   const getStatusColor = (status: string | null) => {
@@ -256,7 +261,7 @@ const ClientDetail = () => {
       if (error) throw error;
 
       toast.success("Assessment deleted successfully!");
-      fetchClientData();
+      refetchClientData();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete assessment");
     } finally {
@@ -274,7 +279,7 @@ const ClientDetail = () => {
       if (error) throw error;
 
       toast.success("Plan deleted successfully!");
-      fetchClientData();
+      refetchClientData();
     } catch (error: any) {
       toast.error(error.message || "Failed to delete plan");
     } finally {
@@ -304,7 +309,7 @@ const ClientDetail = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-8">
         <Skeleton className="h-10 w-64 mb-6" />

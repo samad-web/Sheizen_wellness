@@ -20,7 +20,16 @@ import ClientEditSleepForm from "./components/client/ClientEditSleepForm";
 import ClientEditStressForm from "./components/client/ClientEditStressForm";
 import ClientEditHealthForm from "./components/client/ClientEditHealthForm";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes - data considered fresh
+      gcTime: 30 * 60 * 1000, // 30 minutes - keep in cache
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
