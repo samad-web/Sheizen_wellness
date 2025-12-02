@@ -25,10 +25,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Pencil, Trash2, Search, Loader2, Carrot } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Loader2, Carrot, Download } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { IngredientsImport } from "./IngredientsImport";
+import { createFoodItemTemplate } from "@/lib/importUtils";
 
 interface Ingredient {
   id: string;
@@ -334,6 +335,11 @@ export function IngredientsManager() {
     }
   };
 
+  const handleDownloadTemplate = () => {
+    createFoodItemTemplate("ingredients_template.xlsx");
+    toast.success("Template downloaded!");
+  };
+
   const filteredItems = ingredients.filter(
     (item) =>
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -350,6 +356,10 @@ export function IngredientsManager() {
               <CardDescription>Manage base ingredients for recipe creation</CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button variant="outline" onClick={handleDownloadTemplate}>
+                <Download className="mr-2 h-4 w-4" />
+                Download Template
+              </Button>
               <IngredientsImport onImportComplete={() => {
                 queryClient.invalidateQueries({ queryKey: ['ingredients'] });
                 queryClient.invalidateQueries({ queryKey: ['ingredient-categories'] });
