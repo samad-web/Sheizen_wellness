@@ -47,11 +47,19 @@ export function usePushNotifications(clientId: string | null) {
     if (!clientId) return;
 
     try {
+      // First check if permission is already denied - don't try to access pushManager if so
+      if (Notification.permission === 'denied') {
+        setIsSubscribed(false);
+        return;
+      }
+
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
       setIsSubscribed(!!subscription);
     } catch (error) {
+      // Silently handle errors - don't show toast on initial check
       console.error('Error checking subscription:', error);
+      setIsSubscribed(false);
     }
   };
 
@@ -61,6 +69,19 @@ export function usePushNotifications(clientId: string | null) {
       return false;
     }
 
+    // Check current permission state first
+    const currentPermission = Notification.permission;
+    
+    if (currentPermission === 'denied') {
+      toast.error('Notification permission was previously denied. Please enable it in your browser settings.');
+      return false;
+    }
+
+    if (currentPermission === 'granted') {
+      return true;
+    }
+
+    // Only request permission if it's 'default' (not yet asked)
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
       toast.error('Notification permission denied');
