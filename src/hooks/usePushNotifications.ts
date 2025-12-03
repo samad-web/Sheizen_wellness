@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -34,16 +34,9 @@ export function usePushNotifications(clientId: string | null) {
   const [isSupported, setIsSupported] = useState(false);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
 
-  useEffect(() => {
-    setIsSupported('Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window);
-    
-    if (clientId && isSupported) {
-      checkSubscriptionStatus();
-    }
-  }, [clientId, isSupported]);
-
-  const checkSubscriptionStatus = async () => {
+  const checkSubscriptionStatus = useCallback(async () => {
     if (!clientId) return;
 
     try {
@@ -61,7 +54,62 @@ export function usePushNotifications(clientId: string | null) {
       console.error('Error checking subscription:', error);
       setIsSubscribed(false);
     }
-  };
+  }, [clientId]);
+
+  // Refresh permission status manually (fallback for browsers without Permissions API)
+  const refreshPermissionStatus = useCallback(() => {
+    if (typeof Notification !== 'undefined') {
+      const newStatus = Notification.permission;
+      setPermissionStatus(newStatus);
+      
+      // If permission is now granted, re-check subscription status
+      if (newStatus === 'granted') {
+        checkSubscriptionStatus();
+      }
+    }
+  }, [checkSubscriptionStatus]);
+
+  useEffect(() => {
+    const supported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+    setIsSupported(supported);
+    
+    // Set initial permission status
+    if (typeof Notification !== 'undefined') {
+      setPermissionStatus(Notification.permission);
+    }
+
+    // Use Permissions API to listen for permission changes
+    if ('permissions' in navigator) {
+      navigator.permissions.query({ name: 'notifications' as PermissionName }).then((status) => {
+        // Update on initial query
+        if (typeof Notification !== 'undefined') {
+          setPermissionStatus(Notification.permission);
+        }
+        
+        // Listen for changes
+        status.onchange = () => {
+          if (typeof Notification !== 'undefined') {
+            const newStatus = Notification.permission;
+            setPermissionStatus(newStatus);
+            
+            // Re-check subscription status when permission changes to granted
+            if (newStatus === 'granted') {
+              checkSubscriptionStatus();
+            } else if (newStatus === 'denied') {
+              setIsSubscribed(false);
+            }
+          }
+        };
+      }).catch(() => {
+        // Fallback for browsers that don't support this - just use initial value
+        console.log('Permissions API not fully supported, using fallback');
+      });
+    }
+    
+    if (clientId && supported) {
+      checkSubscriptionStatus();
+    }
+  }, [clientId, checkSubscriptionStatus]);
 
   const requestPermission = async () => {
     if (!isSupported) {
@@ -83,6 +131,8 @@ export function usePushNotifications(clientId: string | null) {
 
     // Only request permission if it's 'default' (not yet asked)
     const permission = await Notification.requestPermission();
+    setPermissionStatus(permission);
+    
     if (permission !== 'granted') {
       toast.error('Notification permission denied');
       return false;
@@ -158,8 +208,6 @@ export function usePushNotifications(clientId: string | null) {
     }
   };
 
-  const permissionStatus = typeof Notification !== 'undefined' ? Notification.permission : 'default';
-
   return {
     isSupported,
     isSubscribed,
@@ -167,5 +215,6 @@ export function usePushNotifications(clientId: string | null) {
     permissionStatus,
     subscribe,
     unsubscribe,
+    refreshPermissionStatus,
   };
 }

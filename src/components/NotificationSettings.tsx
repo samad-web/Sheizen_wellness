@@ -1,4 +1,4 @@
-import { Bell, BellOff, CheckCircle, XCircle, AlertCircle, Settings } from "lucide-react";
+import { Bell, BellOff, CheckCircle, XCircle, AlertCircle, Settings, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
@@ -8,9 +8,15 @@ interface NotificationSettingsProps {
 }
 
 export function NotificationSettings({ clientId }: NotificationSettingsProps) {
-  const { isSupported, isSubscribed, isLoading, subscribe, unsubscribe } = usePushNotifications(clientId);
-  
-  const permissionStatus = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+  const { 
+    isSupported, 
+    isSubscribed, 
+    isLoading, 
+    permissionStatus, 
+    subscribe, 
+    unsubscribe,
+    refreshPermissionStatus 
+  } = usePushNotifications(clientId);
 
   const getStatusInfo = () => {
     if (!isSupported) {
@@ -131,7 +137,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
         {/* Status indicator */}
         <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
           {statusInfo.icon}
-          <div>
+          <div className="flex-1">
             <p className={`font-medium ${statusInfo.color}`}>{statusInfo.title}</p>
             <p className="text-sm text-muted-foreground">{statusInfo.description}</p>
           </div>
@@ -173,6 +179,17 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
                 <li key={index}>{step}</li>
               ))}
             </ol>
+            
+            {/* Check Again button - fallback for browsers without Permissions API change events */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshPermissionStatus}
+              className="w-full mt-3"
+            >
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Check Again
+            </Button>
           </div>
         )}
       </CardContent>
