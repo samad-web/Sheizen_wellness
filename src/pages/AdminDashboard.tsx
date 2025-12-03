@@ -147,10 +147,19 @@ export default function AdminDashboard() {
               <p className="text-muted-foreground">Manage your clients and programs</p>
             </div>
           </div>
-          <Button variant="outline" onClick={signOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => window.open('/community', '_blank')}
+            >
+              <Users className="mr-2 h-4 w-4" />
+              Community
+            </Button>
+            <Button variant="outline" onClick={signOut}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
