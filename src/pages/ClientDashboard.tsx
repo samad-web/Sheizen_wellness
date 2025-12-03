@@ -54,6 +54,7 @@ import { ClientHealthAssessmentForm } from "@/components/client/ClientHealthAsse
 import { ClientStressAssessmentForm } from "@/components/client/ClientStressAssessmentForm";
 import { ClientSleepAssessmentForm } from "@/components/client/ClientSleepAssessmentForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { NotificationSettings } from "@/components/NotificationSettings";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -882,6 +883,8 @@ export default function ClientDashboard() {
                     </Button>
                   </CardContent>
                 </Card>
+
+                <NotificationSettings clientId={clientData?.id || null} />
               </div>
             </div>
           </TabsContent>
