@@ -527,6 +527,13 @@ export default function ClientDashboard() {
                 Notifications Blocked
               </Button>
             )}
+            <Button 
+              variant="outline" 
+              onClick={() => window.open('/community', '_blank')}
+            >
+              <MessageCircle className="mr-2 h-4 w-4" />
+              Community
+            </Button>
             <Button variant="outline" onClick={signOut}>
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
