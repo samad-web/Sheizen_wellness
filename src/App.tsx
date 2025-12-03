@@ -19,6 +19,7 @@ import AdminEditHealthAssessment from "./pages/AdminEditHealthAssessment";
 import ClientEditSleepForm from "./components/client/ClientEditSleepForm";
 import ClientEditStressForm from "./components/client/ClientEditStressForm";
 import ClientEditHealthForm from "./components/client/ClientEditHealthForm";
+import Community from "./pages/Community";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/client/assessments/:id/edit-stress" element={<ClientEditStressForm />} />
             <Route path="/client/assessments/:id/edit-health" element={<ClientEditHealthForm />} />
             <Route path="/interest" element={<InterestForm />} />
+            <Route path="/community" element={<Community />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

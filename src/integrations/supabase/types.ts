@@ -464,13 +464,18 @@ export type Database = {
       clients: {
         Row: {
           age: number | null
+          badges: Json | null
+          community_banned: boolean | null
+          community_terms_accepted_at: string | null
           created_at: string
+          display_name: string | null
           email: string
           gender: Database["public"]["Enums"]["gender_type"] | null
           goals: string | null
           id: string
           last_weight: number | null
           name: string
+          opt_in_directory: boolean | null
           phone: string
           program_type: Database["public"]["Enums"]["program_type"] | null
           service_type: Database["public"]["Enums"]["service_type"] | null
@@ -481,13 +486,18 @@ export type Database = {
         }
         Insert: {
           age?: number | null
+          badges?: Json | null
+          community_banned?: boolean | null
+          community_terms_accepted_at?: string | null
           created_at?: string
+          display_name?: string | null
           email: string
           gender?: Database["public"]["Enums"]["gender_type"] | null
           goals?: string | null
           id?: string
           last_weight?: number | null
           name: string
+          opt_in_directory?: boolean | null
           phone: string
           program_type?: Database["public"]["Enums"]["program_type"] | null
           service_type?: Database["public"]["Enums"]["service_type"] | null
@@ -498,13 +508,18 @@ export type Database = {
         }
         Update: {
           age?: number | null
+          badges?: Json | null
+          community_banned?: boolean | null
+          community_terms_accepted_at?: string | null
           created_at?: string
+          display_name?: string | null
           email?: string
           gender?: Database["public"]["Enums"]["gender_type"] | null
           goals?: string | null
           id?: string
           last_weight?: number | null
           name?: string
+          opt_in_directory?: boolean | null
           phone?: string
           program_type?: Database["public"]["Enums"]["program_type"] | null
           service_type?: Database["public"]["Enums"]["service_type"] | null
@@ -514,6 +529,466 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      community_audit_logs: {
+        Row: {
+          action: string
+          actor_admin_id: string | null
+          actor_client_id: string | null
+          after: Json | null
+          before: Json | null
+          created_at: string | null
+          id: string
+          target_id: string | null
+          target_table: string
+        }
+        Insert: {
+          action: string
+          actor_admin_id?: string | null
+          actor_client_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          created_at?: string | null
+          id?: string
+          target_id?: string | null
+          target_table: string
+        }
+        Update: {
+          action?: string
+          actor_admin_id?: string | null
+          actor_client_id?: string | null
+          after?: Json | null
+          before?: Json | null
+          created_at?: string | null
+          id?: string
+          target_id?: string | null
+          target_table?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_audit_logs_actor_client_id_fkey"
+            columns: ["actor_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_comments: {
+        Row: {
+          author_client_id: string
+          author_display_name: string
+          author_service_type: string | null
+          content: string
+          created_at: string | null
+          id: string
+          likes_count: number | null
+          post_id: string
+        }
+        Insert: {
+          author_client_id: string
+          author_display_name: string
+          author_service_type?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          post_id: string
+        }
+        Update: {
+          author_client_id?: string
+          author_display_name?: string
+          author_service_type?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          likes_count?: number | null
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_comments_author_client_id_fkey"
+            columns: ["author_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_group_members: {
+        Row: {
+          client_id: string
+          group_id: string
+          id: string
+          joined_at: string | null
+          role: Database["public"]["Enums"]["community_group_role"] | null
+          status: string | null
+        }
+        Insert: {
+          client_id: string
+          group_id: string
+          id?: string
+          joined_at?: string | null
+          role?: Database["public"]["Enums"]["community_group_role"] | null
+          status?: string | null
+        }
+        Update: {
+          client_id?: string
+          group_id?: string
+          id?: string
+          joined_at?: string | null
+          role?: Database["public"]["Enums"]["community_group_role"] | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_group_members_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_group_members_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "community_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_groups: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_private: boolean | null
+          member_count: number | null
+          moderator_ids: Json | null
+          name: string
+          owner_client_id: string
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          member_count?: number | null
+          moderator_ids?: Json | null
+          name: string
+          owner_client_id: string
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_private?: boolean | null
+          member_count?: number | null
+          moderator_ids?: Json | null
+          name?: string
+          owner_client_id?: string
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_groups_owner_client_id_fkey"
+            columns: ["owner_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          deleted: boolean | null
+          id: string
+          is_read: boolean | null
+          media_urls: Json | null
+          receiver_client_id: string
+          receiver_service_type_snapshot: string | null
+          sender_client_id: string
+          sender_service_type_snapshot: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          deleted?: boolean | null
+          id?: string
+          is_read?: boolean | null
+          media_urls?: Json | null
+          receiver_client_id: string
+          receiver_service_type_snapshot?: string | null
+          sender_client_id: string
+          sender_service_type_snapshot?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          deleted?: boolean | null
+          id?: string
+          is_read?: boolean | null
+          media_urls?: Json | null
+          receiver_client_id?: string
+          receiver_service_type_snapshot?: string | null
+          sender_client_id?: string
+          sender_service_type_snapshot?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_messages_receiver_client_id_fkey"
+            columns: ["receiver_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_messages_sender_client_id_fkey"
+            columns: ["sender_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_notifications: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          payload: Json
+          read: boolean | null
+          type: Database["public"]["Enums"]["community_notification_type"]
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          payload?: Json
+          read?: boolean | null
+          type: Database["public"]["Enums"]["community_notification_type"]
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          payload?: Json
+          read?: boolean | null
+          type?: Database["public"]["Enums"]["community_notification_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_notifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_posts: {
+        Row: {
+          attachments: Json | null
+          author_client_id: string
+          author_display_name: string
+          author_service_type: string | null
+          comments_count: number | null
+          content: string
+          created_at: string | null
+          group_id: string | null
+          id: string
+          likes_count: number | null
+          media_urls: Json | null
+          pinned: boolean | null
+          tags: Json | null
+          title: string | null
+          updated_at: string | null
+          visibility: Database["public"]["Enums"]["community_visibility"] | null
+        }
+        Insert: {
+          attachments?: Json | null
+          author_client_id: string
+          author_display_name: string
+          author_service_type?: string | null
+          comments_count?: number | null
+          content: string
+          created_at?: string | null
+          group_id?: string | null
+          id?: string
+          likes_count?: number | null
+          media_urls?: Json | null
+          pinned?: boolean | null
+          tags?: Json | null
+          title?: string | null
+          updated_at?: string | null
+          visibility?:
+            | Database["public"]["Enums"]["community_visibility"]
+            | null
+        }
+        Update: {
+          attachments?: Json | null
+          author_client_id?: string
+          author_display_name?: string
+          author_service_type?: string | null
+          comments_count?: number | null
+          content?: string
+          created_at?: string | null
+          group_id?: string | null
+          id?: string
+          likes_count?: number | null
+          media_urls?: Json | null
+          pinned?: boolean | null
+          tags?: Json | null
+          title?: string | null
+          updated_at?: string | null
+          visibility?:
+            | Database["public"]["Enums"]["community_visibility"]
+            | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_posts_author_client_id_fkey"
+            columns: ["author_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_posts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "community_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_rate_limits: {
+        Row: {
+          action_date: string
+          action_type: string
+          client_id: string
+          count: number | null
+          id: string
+        }
+        Insert: {
+          action_date?: string
+          action_type: string
+          client_id: string
+          count?: number | null
+          id?: string
+        }
+        Update: {
+          action_date?: string
+          action_type?: string
+          client_id?: string
+          count?: number | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_rate_limits_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_reactions: {
+        Row: {
+          client_id: string
+          created_at: string | null
+          id: string
+          reaction: Database["public"]["Enums"]["community_reaction_type"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["community_target_type"]
+        }
+        Insert: {
+          client_id: string
+          created_at?: string | null
+          id?: string
+          reaction: Database["public"]["Enums"]["community_reaction_type"]
+          target_id: string
+          target_type: Database["public"]["Enums"]["community_target_type"]
+        }
+        Update: {
+          client_id?: string
+          created_at?: string | null
+          id?: string
+          reaction?: Database["public"]["Enums"]["community_reaction_type"]
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["community_target_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_reactions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      community_reports: {
+        Row: {
+          admin_notes: string | null
+          created_at: string | null
+          id: string
+          reason: string
+          reporter_client_id: string
+          reviewed_at: string | null
+          status: Database["public"]["Enums"]["community_report_status"] | null
+          target_id: string
+          target_type: Database["public"]["Enums"]["community_target_type"]
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string | null
+          id?: string
+          reason: string
+          reporter_client_id: string
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["community_report_status"] | null
+          target_id: string
+          target_type: Database["public"]["Enums"]["community_target_type"]
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string | null
+          id?: string
+          reason?: string
+          reporter_client_id?: string
+          reviewed_at?: string | null
+          status?: Database["public"]["Enums"]["community_report_status"] | null
+          target_id?: string
+          target_type?: Database["public"]["Enums"]["community_target_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "community_reports_reporter_client_id_fkey"
+            columns: ["reporter_client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       cron_job_metadata: {
         Row: {
@@ -1551,6 +2026,18 @@ export type Database = {
         | "cancelled"
       assessment_type: "health" | "stress" | "sleep" | "custom"
       client_status: "active" | "inactive" | "pending" | "completed"
+      community_group_role: "member" | "moderator" | "owner"
+      community_notification_type:
+        | "comment"
+        | "reaction"
+        | "dm"
+        | "moderation_action"
+        | "group_invite"
+        | "mention"
+      community_reaction_type: "like" | "love" | "celebrate"
+      community_report_status: "open" | "reviewed" | "actioned"
+      community_target_type: "post" | "comment" | "user"
+      community_visibility: "public" | "archived"
       gender_type: "male" | "female" | "other"
       health_goal_type:
         | "weight_loss"
@@ -1716,6 +2203,19 @@ export const Constants = {
       ],
       assessment_type: ["health", "stress", "sleep", "custom"],
       client_status: ["active", "inactive", "pending", "completed"],
+      community_group_role: ["member", "moderator", "owner"],
+      community_notification_type: [
+        "comment",
+        "reaction",
+        "dm",
+        "moderation_action",
+        "group_invite",
+        "mention",
+      ],
+      community_reaction_type: ["like", "love", "celebrate"],
+      community_report_status: ["open", "reviewed", "actioned"],
+      community_target_type: ["post", "comment", "user"],
+      community_visibility: ["public", "archived"],
       gender_type: ["male", "female", "other"],
       health_goal_type: [
         "weight_loss",
