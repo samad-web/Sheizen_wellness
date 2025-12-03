@@ -37,7 +37,7 @@ import { MessageFeed } from "@/components/MessageFeed";
 import { MessageComposer } from "@/components/MessageComposer";
 import { MessageNotification } from "@/components/MessageNotification";
 import { sendAutomatedMessage, getUnreadCount, markMessagesAsRead, type Message } from "@/lib/messages";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, BellOff } from "lucide-react";
 import { CalendarView } from "@/components/CalendarView";
 import { HundredDayProgress } from "@/components/HundredDayProgress";
 import { UpcomingMeetingsBanner } from "@/components/UpcomingMeetingsBanner";
@@ -156,7 +156,7 @@ export default function ClientDashboard() {
   });
 
   const clientData = data?.client || null;
-  const { isSupported: pushSupported, isSubscribed, isLoading: pushLoading, subscribe, unsubscribe } = usePushNotifications(clientData?.id || null);
+  const { isSupported: pushSupported, isSubscribed, isLoading: pushLoading, permissionStatus, subscribe, unsubscribe } = usePushNotifications(clientData?.id || null);
 
   useEffect(() => {
     if (!user) {
@@ -516,9 +516,15 @@ export default function ClientDashboard() {
           </div>
           <div className="flex items-center gap-2">
             <NotificationBell clientId={clientData?.id} onNavigate={handleNavigateToCalendar} />
-            {pushSupported && !isSubscribed && (
+            {pushSupported && !isSubscribed && permissionStatus !== 'denied' && (
               <Button variant="default" onClick={subscribe} disabled={pushLoading} size="sm" className="bg-primary hover:bg-primary/90">
                 Enable Notifications
+              </Button>
+            )}
+            {pushSupported && permissionStatus === 'denied' && (
+              <Button variant="outline" size="sm" onClick={() => setActiveTab('today')} className="text-muted-foreground">
+                <BellOff className="h-4 w-4 mr-2" />
+                Notifications Blocked
               </Button>
             )}
             <Button variant="outline" onClick={signOut}>
