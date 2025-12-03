@@ -158,10 +158,13 @@ export function usePushNotifications(clientId: string | null) {
     }
   };
 
+  const permissionStatus = typeof Notification !== 'undefined' ? Notification.permission : 'default';
+
   return {
     isSupported,
     isSubscribed,
     isLoading,
+    permissionStatus,
     subscribe,
     unsubscribe,
   };
