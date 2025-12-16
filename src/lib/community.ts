@@ -84,7 +84,7 @@ const RATE_LIMITS = {
 
 export async function checkRateLimit(clientId: string, actionType: 'posts' | 'comments' | 'messages'): Promise<boolean> {
   const today = new Date().toISOString().split('T')[0];
-  
+
   const { data } = await supabase
     .from('community_rate_limits')
     .select('count')
@@ -92,13 +92,13 @@ export async function checkRateLimit(clientId: string, actionType: 'posts' | 'co
     .eq('action_type', actionType)
     .eq('action_date', today)
     .single();
-  
+
   return !data || data.count < RATE_LIMITS[actionType];
 }
 
 export async function incrementRateLimit(clientId: string, actionType: string): Promise<void> {
   const today = new Date().toISOString().split('T')[0];
-  
+
   const { data: existing } = await supabase
     .from('community_rate_limits')
     .select('id, count')
@@ -106,7 +106,7 @@ export async function incrementRateLimit(clientId: string, actionType: string): 
     .eq('action_type', actionType)
     .eq('action_date', today)
     .single();
-  
+
   if (existing) {
     await supabase
       .from('community_rate_limits')
@@ -136,40 +136,42 @@ export async function fetchPosts(options: {
   clientId?: string;
 }): Promise<{ posts: CommunityPost[]; nextCursor: string | null }> {
   const limit = options.limit || 20;
-  
+
   let query = supabase
     .from('community_posts')
     .select('*')
     .eq('visibility', 'public')
     .order(options.sort === 'popular' ? 'likes_count' : 'created_at', { ascending: false })
     .limit(limit);
-  
+
   if (options.cursor) {
     query = query.lt('created_at', options.cursor);
   }
-  
+
   if (options.groupId) {
     query = query.eq('group_id', options.groupId);
-  } else {
-    query = query.is('group_id', null);
   }
-  
+  // Removed strict filtering for main feed: now includes both general and group posts
+  // else {
+  //   query = query.is('group_id', null);
+  // }
+
   if (options.tag) {
     query = query.contains('tags', [options.tag]);
   }
-  
+
   if (options.serviceType) {
     query = query.eq('author_service_type', options.serviceType);
   }
-  
+
   if (options.search) {
     query = query.or(`content.ilike.%${options.search}%,title.ilike.%${options.search}%`);
   }
-  
+
   const { data: posts, error } = await query;
-  
+
   if (error) throw error;
-  
+
   // Fetch user reactions if clientId provided
   let postsWithReactions = posts || [];
   if (options.clientId && posts?.length) {
@@ -179,7 +181,7 @@ export async function fetchPosts(options: {
       .eq('client_id', options.clientId)
       .eq('target_type', 'post')
       .in('target_id', posts.map(p => p.id));
-    
+
     const reactionMap = new Map(reactions?.map(r => [r.target_id, r.reaction]) || []);
     postsWithReactions = posts.map(p => ({
       ...p,
@@ -189,9 +191,9 @@ export async function fetchPosts(options: {
       user_reaction: reactionMap.get(p.id) || null,
     }));
   }
-  
+
   const nextCursor = posts?.length === limit ? posts[posts.length - 1].created_at : null;
-  
+
   return { posts: postsWithReactions as CommunityPost[], nextCursor };
 }
 
@@ -212,7 +214,7 @@ export async function createPost(data: {
   if (!canPost) {
     throw new Error('Daily post limit reached (5 posts per day)');
   }
-  
+
   const { data: post, error } = await supabase
     .from('community_posts')
     .insert({
@@ -228,11 +230,11 @@ export async function createPost(data: {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
-  
+
   await incrementRateLimit(data.clientId, 'posts');
-  
+
   return post as CommunityPost;
 }
 
@@ -248,7 +250,7 @@ export async function createComment(data: {
   if (!canComment) {
     throw new Error('Daily comment limit reached (50 comments per day)');
   }
-  
+
   const { data: comment, error } = await supabase
     .from('community_comments')
     .insert({
@@ -260,18 +262,18 @@ export async function createComment(data: {
     })
     .select()
     .single();
-  
+
   if (error) throw error;
-  
+
   await incrementRateLimit(data.clientId, 'comments');
-  
+
   // Create notification for post author
   const { data: post } = await supabase
     .from('community_posts')
     .select('author_client_id')
     .eq('id', data.postId)
     .single();
-  
+
   if (post && post.author_client_id !== data.clientId) {
     await supabase.from('community_notifications').insert({
       client_id: post.author_client_id,
@@ -283,7 +285,7 @@ export async function createComment(data: {
       },
     });
   }
-  
+
   return comment as CommunityComment;
 }
 
@@ -302,7 +304,7 @@ export async function toggleReaction(
     .eq('target_type', targetType)
     .eq('target_id', targetId)
     .single();
-  
+
   if (existing) {
     if (existing.reaction === reaction) {
       // Remove reaction
@@ -321,7 +323,7 @@ export async function toggleReaction(
       target_id: targetId,
       reaction,
     });
-    
+
     return { added: true };
   }
 }
@@ -333,9 +335,9 @@ export async function fetchComments(postId: string, clientId?: string): Promise<
     .select('*')
     .eq('post_id', postId)
     .order('created_at', { ascending: true });
-  
+
   if (error) throw error;
-  
+
   if (clientId && comments?.length) {
     const { data: reactions } = await supabase
       .from('community_reactions')
@@ -343,14 +345,14 @@ export async function fetchComments(postId: string, clientId?: string): Promise<
       .eq('client_id', clientId)
       .eq('target_type', 'comment')
       .in('target_id', comments.map(c => c.id));
-    
+
     const reactionMap = new Map(reactions?.map(r => [r.target_id, r.reaction]) || []);
     return comments.map(c => ({
       ...c,
       user_reaction: reactionMap.get(c.id) || null,
     })) as CommunityComment[];
   }
-  
+
   return (comments || []) as CommunityComment[];
 }
 
@@ -367,7 +369,7 @@ export async function reportContent(
     target_id: targetId,
     reason,
   });
-  
+
   if (error) throw error;
 }
 
@@ -378,13 +380,13 @@ export async function canSendDM(senderClientId: string, receiverClientId: string
     .select('service_type, status, community_banned')
     .eq('id', senderClientId)
     .single();
-  
+
   const { data: receiver } = await supabase
     .from('clients')
     .select('service_type, status')
     .eq('id', receiverClientId)
     .single();
-  
+
   return (
     sender?.service_type === 'hundred_days' &&
     sender?.status === 'active' &&
@@ -405,25 +407,25 @@ export async function sendDirectMessage(
   if (!canSend) {
     throw new Error('DMs are only available between active 100-day program members');
   }
-  
+
   const canMessage = await checkRateLimit(senderClientId, 'messages');
   if (!canMessage) {
     throw new Error('Daily message limit reached (100 messages per day)');
   }
-  
+
   // Get service types for snapshot
   const { data: sender } = await supabase
     .from('clients')
     .select('service_type')
     .eq('id', senderClientId)
     .single();
-  
+
   const { data: receiver } = await supabase
     .from('clients')
     .select('service_type')
     .eq('id', receiverClientId)
     .single();
-  
+
   const { data: message, error } = await supabase
     .from('community_messages')
     .insert({
@@ -436,11 +438,11 @@ export async function sendDirectMessage(
     })
     .select()
     .single();
-  
+
   if (error) throw error;
-  
+
   await incrementRateLimit(senderClientId, 'messages');
-  
+
   // Create notification
   await supabase.from('community_notifications').insert({
     client_id: receiverClientId,
@@ -450,7 +452,7 @@ export async function sendDirectMessage(
       sender_client_id: senderClientId,
     },
   });
-  
+
   return message as DirectMessage;
 }
 
@@ -468,9 +470,9 @@ export async function fetchConversations(clientId: string): Promise<{
     .or(`sender_client_id.eq.${clientId},receiver_client_id.eq.${clientId}`)
     .eq('deleted', false)
     .order('created_at', { ascending: false });
-  
+
   if (error) throw error;
-  
+
   // Group by peer
   const conversationMap = new Map<string, {
     peerId: string;
@@ -478,10 +480,10 @@ export async function fetchConversations(clientId: string): Promise<{
     lastMessageAt: string;
     unreadCount: number;
   }>();
-  
+
   for (const msg of messages || []) {
     const peerId = msg.sender_client_id === clientId ? msg.receiver_client_id : msg.sender_client_id;
-    
+
     if (!conversationMap.has(peerId)) {
       conversationMap.set(peerId, {
         peerId,
@@ -490,22 +492,22 @@ export async function fetchConversations(clientId: string): Promise<{
         unreadCount: 0,
       });
     }
-    
+
     if (msg.receiver_client_id === clientId && !msg.is_read) {
       const conv = conversationMap.get(peerId)!;
       conv.unreadCount++;
     }
   }
-  
+
   // Fetch peer names
   const peerIds = Array.from(conversationMap.keys());
   const { data: peers } = await supabase
     .from('clients')
     .select('id, display_name, name')
     .in('id', peerIds);
-  
+
   const peerNameMap = new Map(peers?.map(p => [p.id, p.display_name || p.name]) || []);
-  
+
   return Array.from(conversationMap.values()).map(conv => ({
     ...conv,
     peerName: peerNameMap.get(conv.peerId) || 'Unknown',
@@ -520,9 +522,9 @@ export async function fetchMessages(clientId: string, peerId: string): Promise<D
     .or(`and(sender_client_id.eq.${clientId},receiver_client_id.eq.${peerId}),and(sender_client_id.eq.${peerId},receiver_client_id.eq.${clientId})`)
     .eq('deleted', false)
     .order('created_at', { ascending: true });
-  
+
   if (error) throw error;
-  
+
   // Mark as read
   await supabase
     .from('community_messages')
@@ -530,7 +532,7 @@ export async function fetchMessages(clientId: string, peerId: string): Promise<D
     .eq('receiver_client_id', clientId)
     .eq('sender_client_id', peerId)
     .eq('is_read', false);
-  
+
   return (messages || []) as DirectMessage[];
 }
 
@@ -540,23 +542,23 @@ export async function fetchGroups(clientId?: string): Promise<CommunityGroup[]> 
     .from('community_groups')
     .select('*')
     .order('member_count', { ascending: false });
-  
+
   if (error) throw error;
-  
+
   if (clientId && groups?.length) {
     const { data: memberships } = await supabase
       .from('community_group_members')
       .select('group_id')
       .eq('client_id', clientId);
-    
+
     const memberGroupIds = new Set(memberships?.map(m => m.group_id) || []);
-    
+
     return groups.map(g => ({
       ...g,
       is_member: memberGroupIds.has(g.id),
     })) as CommunityGroup[];
   }
-  
+
   return (groups || []) as CommunityGroup[];
 }
 
@@ -567,7 +569,7 @@ export async function joinGroup(groupId: string, clientId: string): Promise<void
     client_id: clientId,
     role: 'member',
   });
-  
+
   if (error) throw error;
 }
 
@@ -578,7 +580,7 @@ export async function leaveGroup(groupId: string, clientId: string): Promise<voi
     .delete()
     .eq('group_id', groupId)
     .eq('client_id', clientId);
-  
+
   if (error) throw error;
 }
 
@@ -590,9 +592,9 @@ export async function fetchNotifications(clientId: string): Promise<CommunityNot
     .eq('client_id', clientId)
     .order('created_at', { ascending: false })
     .limit(50);
-  
+
   if (error) throw error;
-  
+
   return (data || []) as CommunityNotification[];
 }
 
@@ -602,11 +604,11 @@ export async function markNotificationsRead(clientId: string, notificationIds?: 
     .from('community_notifications')
     .update({ read: true })
     .eq('client_id', clientId);
-  
+
   if (notificationIds?.length) {
     query = query.in('id', notificationIds);
   }
-  
+
   await query;
 }
 
@@ -617,9 +619,9 @@ export async function getUnreadNotificationCount(clientId: string): Promise<numb
     .select('*', { count: 'exact', head: true })
     .eq('client_id', clientId)
     .eq('read', false);
-  
+
   if (error) throw error;
-  
+
   return count || 0;
 }
 
@@ -627,7 +629,7 @@ export async function getUnreadNotificationCount(clientId: string): Promise<numb
 export function projectPublicProfile(client: any): PublicProfile {
   const createdAt = new Date(client.created_at);
   const joinMonthYear = `${createdAt.toLocaleString('default', { month: 'short' })} ${createdAt.getFullYear()}`;
-  
+
   return {
     id: client.id,
     display_name: client.display_name || client.name?.split(' ')[0] || 'Member',

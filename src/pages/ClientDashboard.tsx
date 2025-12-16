@@ -4,6 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -11,16 +13,16 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { 
-  Leaf, 
-  Scale, 
-  Droplets, 
-  Activity, 
+import {
+  Scale,
+  Droplets,
+  Activity,
   Flame,
   LogOut,
   FileText,
   Plus
 } from "lucide-react";
+import { CustomLogo } from "@/components/CustomLogo";
 import { MealPhotoUpload } from "@/components/MealPhotoUpload";
 import { FileUploadSection } from "@/components/FileUploadSection";
 import { WeeklyPlanViewer } from "@/components/WeeklyPlanViewer";
@@ -55,6 +57,7 @@ import { ClientStressAssessmentForm } from "@/components/client/ClientStressAsse
 import { ClientSleepAssessmentForm } from "@/components/client/ClientSleepAssessmentForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { NotificationSettings } from "@/components/NotificationSettings";
+import { ClientReportList } from "@/components/ClientReportList";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -71,6 +74,7 @@ export default function ClientDashboard() {
   const [weightInput, setWeightInput] = useState<string>("");
   const [waterInput, setWaterInput] = useState<string>("");
   const [activityInput, setActivityInput] = useState<string>("");
+  const [activityType, setActivityType] = useState<string>("");
   const [achievements, setAchievements] = useState<any[]>([]);
   const [userAchievements, setUserAchievements] = useState<any[]>([]);
   const [achievementProgress, setAchievementProgress] = useState<any[]>([]);
@@ -83,20 +87,48 @@ export default function ClientDashboard() {
 
   const fetchClientData = async () => {
     if (!user?.id) throw new Error("No user");
-    
+
+    try {
+      const { data: client, error: clientError } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle(); // Use maybeSingle to prevent PGRST116 throwing immediately
+
+      if (clientError) {
+        console.error("ClientDashboard: Error fetching client profile", clientError);
+        throw clientError;
+      }
+
+      if (!client) {
+        console.warn("ClientDashboard: No client profile found for user", user.id);
+        navigate("/onboarding");
+        return null; // Return null to signal no data, but handled
+      }
+    } catch (err) {
+      console.error("ClientDashboard: Unexpected error in fetch", err);
+      throw err;
+    }
+
+    // Re-assign client for rest of function (using the one from scope if I could, but I need to restructure)
+    // Redoing the fetch cleanly below:
+
     // Fetch client data
     const { data: client, error: clientError } = await supabase
       .from("clients")
       .select("*")
       .eq("user_id", user.id)
-      .single();
+      .maybeSingle();
 
     if (clientError) {
-      if (clientError.code === 'PGRST116') {
-        navigate("/onboarding");
-        throw new Error("No client profile");
-      }
+      console.error("Error fetching client:", clientError);
       throw clientError;
+    }
+
+    if (!client) {
+      console.log("No client found, redirecting to onboarding");
+      navigate("/onboarding");
+      throw new Error("Redirecting to onboarding"); // Stop execution
     }
 
     if (!client?.id) {
@@ -131,7 +163,7 @@ export default function ClientDashboard() {
       .select("*")
       .eq("client_id", client.id)
       .order("logged_at", { ascending: false })
-      .limit(20);
+      .limit(55);
 
     // Calculate today's calories
     const todayMeals = meals?.filter(
@@ -158,12 +190,7 @@ export default function ClientDashboard() {
   const clientData = data?.client || null;
   const { isSupported: pushSupported, isSubscribed, isLoading: pushLoading, permissionStatus, subscribe, unsubscribe } = usePushNotifications(clientData?.id || null);
 
-  useEffect(() => {
-    if (!user) {
-      navigate("/auth");
-      return;
-    }
-  }, [user, navigate]);
+  // Auth check handled by ProtectedRoute
 
   useEffect(() => {
     if (data) {
@@ -172,6 +199,9 @@ export default function ClientDashboard() {
       setTodayCalories(data.todayCalories);
       setUserAchievements(data.earned);
       setAchievementProgress(data.progress);
+      if (data.log?.activity_type) {
+        setActivityType(data.log.activity_type);
+      }
     }
   }, [data]);
 
@@ -268,7 +298,7 @@ export default function ClientDashboard() {
         setAchievements(allAchievements);
       }
     };
-    
+
     fetchAchievementsData();
   }, []);
 
@@ -315,9 +345,9 @@ export default function ClientDashboard() {
       const paths = mealLogs
         .map(log => log.photo_url)
         .filter(Boolean) as string[];
-      
+
       if (paths.length === 0) return;
-      
+
       try {
         const urlMap = await getSignedUrls("meal-photos", paths);
         setSignedUrls(Object.fromEntries(urlMap));
@@ -325,14 +355,14 @@ export default function ClientDashboard() {
         console.error("Error loading signed URLs:", error);
       }
     };
-    
+
     loadSignedUrls();
   }, [mealLogs]);
 
   const quickAddWater = async (amount: number) => {
     if (!clientData) return;
 
-    const currentWater = todayLog?.water_intake || 0;
+    const currentWater = Number(todayLog?.water_intake) || 0;
     const newAmount = currentWater + amount;
 
     const today = new Date().toISOString().split("T")[0];
@@ -352,7 +382,7 @@ export default function ClientDashboard() {
     toast.success(`Added ${amount}ml water`);
     setWaterInput("");
     fetchClientDataLegacy();
-    
+
     // Check for achievements
     if (clientData?.id) {
       checkAchievements(clientData.id, "water_log");
@@ -362,7 +392,7 @@ export default function ClientDashboard() {
   const quickAddActivity = async (minutes: number) => {
     if (!clientData) return;
 
-    const currentActivity = todayLog?.activity_minutes || 0;
+    const currentActivity = Number(todayLog?.activity_minutes) || 0;
     const newAmount = currentActivity + minutes;
 
     const today = new Date().toISOString().split("T")[0];
@@ -370,6 +400,7 @@ export default function ClientDashboard() {
       client_id: clientData.id,
       log_date: today,
       activity_minutes: newAmount,
+      activity_type: activityType || null,
     };
 
     if (todayLog) {
@@ -382,7 +413,7 @@ export default function ClientDashboard() {
     toast.success(`Added ${minutes} minutes`);
     setActivityInput("");
     fetchClientDataLegacy();
-    
+
     // Send automated message
     if (newAmount >= 30) {
       await sendAutomatedMessage(clientData.id, 'activity_milestone_30', {
@@ -395,7 +426,7 @@ export default function ClientDashboard() {
         minutes
       });
     }
-    
+
     // Check for achievements
     if (clientData?.id) {
       checkAchievements(clientData.id, "activity_log");
@@ -425,11 +456,11 @@ export default function ClientDashboard() {
 
       toast.success(`Weight logged: ${weight} kg`);
       fetchClientDataLegacy();
-      
+
       // Send automated message
       const previousWeight = clientData.last_weight || weight;
       const weightDiff = previousWeight - weight;
-      
+
       if (weightDiff > 0) {
         await sendAutomatedMessage(clientData.id, 'weight_logged_loss', {
           name: clientData.name,
@@ -447,7 +478,7 @@ export default function ClientDashboard() {
           weight
         });
       }
-      
+
       // Check for achievements
       checkAchievements(clientData.id, "weight_log");
     } catch (error) {
@@ -499,9 +530,7 @@ export default function ClientDashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-              <Leaf className="w-6 h-6 text-primary-foreground" />
-            </div>
+            <CustomLogo className="w-12 h-12" />
             <div>
               <h1 className="text-3xl font-bold">Welcome, {clientData?.name}!</h1>
               <div className="flex items-center gap-2">
@@ -527,9 +556,9 @@ export default function ClientDashboard() {
                 Notifications Blocked
               </Button>
             )}
-            <Button 
-              variant="outline" 
-              onClick={() => window.open('/community', '_blank')}
+            <Button
+              variant="outline"
+              onClick={() => navigate('/community')}
             >
               <MessageCircle className="mr-2 h-4 w-4" />
               Community
@@ -546,8 +575,8 @@ export default function ClientDashboard() {
 
         {/* Upcoming Meetings Banner */}
         {clientData?.id && (
-          <UpcomingMeetingsBanner 
-            clientId={clientData.id} 
+          <UpcomingMeetingsBanner
+            clientId={clientData.id}
             onNavigate={handleNavigateToCalendar}
           />
         )}
@@ -650,10 +679,10 @@ export default function ClientDashboard() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs 
-          value={activeTab} 
+        <Tabs
+          value={activeTab}
           onValueChange={(value) => setActiveTab(value as typeof activeTab)}
-          className="space-y-6"
+          className=""
         >
           <div className="tabs-container flex items-center gap-2 flex-wrap p-1 rounded-lg bg-muted/50">
             <TabsList className="flex-1 min-w-0 flex items-center gap-1 flex-wrap bg-transparent">
@@ -701,7 +730,7 @@ export default function ClientDashboard() {
                     }}
                   />
                 )}
-                
+
                 <Card className="animate-fade-in">
                   <CardHeader>
                     <CardTitle>Quick Actions</CardTitle>
@@ -772,6 +801,20 @@ export default function ClientDashboard() {
                     {/* Activity Quick Add */}
                     <div>
                       <Label className="mb-2 block">Log Activity</Label>
+                      <div className="mb-3">
+                        <Select value={activityType} onValueChange={setActivityType}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select activity type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Aerobic">Aerobic</SelectItem>
+                            <SelectItem value="Muscle Strength">Muscle Strength</SelectItem>
+                            <SelectItem value="Flexibility">Flexibility</SelectItem>
+                            <SelectItem value="Stretch">Stretch</SelectItem>
+                            <SelectItem value="Lifestyle">Lifestyle</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <div className="flex flex-wrap gap-2 mb-2">
                         <Button
                           variant="outline"
@@ -877,7 +920,7 @@ export default function ClientDashboard() {
                     <CardDescription>You're almost there!</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <AchievementProgress 
+                    <AchievementProgress
                       achievements={achievements}
                       progress={achievementProgress}
                     />
@@ -909,12 +952,12 @@ export default function ClientDashboard() {
           <TabsContent value="logs">
             <div className="space-y-6">
               {clientData?.id ? (
-                <MealPhotoUpload 
-                  clientId={clientData.id} 
+                <MealPhotoUpload
+                  clientId={clientData.id}
                   onSuccess={() => {
                     fetchClientData();
                     checkAchievements(clientData.id, "meal_log");
-                  }} 
+                  }}
                 />
               ) : (
                 <Card>
@@ -931,12 +974,12 @@ export default function ClientDashboard() {
                     <CardDescription>Recent meals you've logged</CardDescription>
                   </CardHeader>
                   <CardContent>
-                  <div className="space-y-4">
+                    <div className="space-y-4">
                       {mealLogs.map((log) => {
                         const signedUrl = log.photo_url ? signedUrls[log.photo_url] : null;
                         const isImage = log.file_type?.startsWith('image/');
                         const FileIcon = getFileIcon(log.file_type);
-                        
+
                         return (
                           <div key={log.id} className="flex gap-4 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                             {signedUrl && (
@@ -949,7 +992,7 @@ export default function ClientDashboard() {
                                     onClick={() => handleFileClick(signedUrl, log.file_type, log.meal_name || undefined)}
                                   />
                                 ) : (
-                                  <div 
+                                  <div
                                     className="w-full h-full flex flex-col items-center justify-center bg-muted rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
                                     onClick={() => handleFileClick(signedUrl, log.file_type, log.meal_name || undefined)}
                                   >
@@ -1010,25 +1053,23 @@ export default function ClientDashboard() {
                 <div className="space-y-4">
                   {assessmentCards.map((card) => {
                     const isNew = card.sent_at && new Date(card.sent_at) > new Date(Date.now() - 24 * 60 * 60 * 1000);
-                    
+
                     return (
                       <div key={card.id} className="space-y-4">
                         <div className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors">
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                              card.card_type === 'health_assessment' ? 'bg-primary/10' :
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${card.card_type === 'health_assessment' ? 'bg-primary/10' :
                               card.card_type === 'stress_card' ? 'bg-purple-500/10' :
-                              card.card_type === 'sleep_card' ? 'bg-blue-500/10' :
-                              card.card_type === 'action_plan' ? 'bg-orange-500/10' :
-                              'bg-green-500/10'
-                            }`}>
-                              <ClipboardList className={`w-5 h-5 ${
-                                card.card_type === 'health_assessment' ? 'text-primary' :
+                                card.card_type === 'sleep_card' ? 'bg-blue-500/10' :
+                                  card.card_type === 'action_plan' ? 'bg-orange-500/10' :
+                                    'bg-green-500/10'
+                              }`}>
+                              <ClipboardList className={`w-5 h-5 ${card.card_type === 'health_assessment' ? 'text-primary' :
                                 card.card_type === 'stress_card' ? 'text-purple-600' :
-                                card.card_type === 'sleep_card' ? 'text-blue-600' :
-                                card.card_type === 'action_plan' ? 'text-orange-600' :
-                                'text-green-600'
-                              }`} />
+                                  card.card_type === 'sleep_card' ? 'text-blue-600' :
+                                    card.card_type === 'action_plan' ? 'text-orange-600' :
+                                      'text-green-600'
+                                }`} />
                             </div>
                             <div>
                               <h3 className="font-semibold capitalize flex items-center gap-2">
@@ -1044,20 +1085,20 @@ export default function ClientDashboard() {
 
                         {/* Render the appropriate card view */}
                         {card.card_type === 'health_assessment' && (
-                          <HealthAssessmentCardView 
-                            data={card.generated_content} 
+                          <HealthAssessmentCardView
+                            data={card.generated_content}
                             assessmentId={assessmentRecords.find(a => a.assessment_type === 'health' && a.client_id === clientData?.id)?.id}
                           />
                         )}
                         {card.card_type === 'stress_card' && (
-                          <StressCardView 
-                            data={card.generated_content} 
+                          <StressCardView
+                            data={card.generated_content}
                             assessmentId={assessmentRecords.find(a => a.assessment_type === 'stress' && a.client_id === clientData?.id)?.id}
                           />
                         )}
                         {card.card_type === 'sleep_card' && (
-                          <SleepCardView 
-                            data={card.generated_content} 
+                          <SleepCardView
+                            data={card.generated_content}
                             assessmentId={assessmentRecords.find(a => a.assessment_type === 'sleep' && a.client_id === clientData?.id)?.id}
                           />
                         )}
@@ -1082,44 +1123,48 @@ export default function ClientDashboard() {
                 <CardDescription>Your progress reports</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">No reports available</p>
-                  <p className="text-sm">Reports will appear here once generated by your dietitian</p>
-                </div>
+                {clientData?.id ? (
+                  <ClientReportList clientId={clientData.id} />
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p>Loading...</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="messages" className="h-[600px] flex flex-col">
-            <Card className="flex-1 flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <MessageCircle className="h-5 w-5" />
-                  Messages
-                </CardTitle>
-                <CardDescription>Chat with your nutritionist and receive updates</CardDescription>
-              </CardHeader>
-              <MessageFeed 
-                messages={messages} 
-                currentUserType="client"
-                onStartAssessment={(requestId, type) => {
-                  setSelectedAssessmentRequest({ requestId, type });
-                  setShowAssessmentForm(true);
-                }}
-              />
-              {clientData && user && (
-                <MessageComposer
-                  clientId={clientData.id}
-                  senderId={user.id}
-                  senderType="client"
-                  onMessageSent={fetchMessages}
+          <TabsContent value="messages">
+            <div className="h-[600px] flex flex-col">
+              <Card className="flex-1 flex flex-col">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5" />
+                    Messages
+                  </CardTitle>
+                  <CardDescription>Chat with your nutritionist and receive updates</CardDescription>
+                </CardHeader>
+                <MessageFeed
+                  messages={messages}
+                  currentUserType="client"
+                  onStartAssessment={(requestId, type) => {
+                    setSelectedAssessmentRequest({ requestId, type });
+                    setShowAssessmentForm(true);
+                  }}
                 />
-              )}
-            </Card>
+                {clientData && user && (
+                  <MessageComposer
+                    clientId={clientData.id}
+                    senderId={user.id}
+                    senderType="client"
+                    onMessageSent={fetchMessages}
+                  />
+                )}
+              </Card>
+            </div>
           </TabsContent>
 
-          <TabsContent value="calendar">
+          <TabsContent value="calendar" className="-mt-1">
             {clientData?.id && <CalendarView clientId={clientData.id} />}
           </TabsContent>
 
@@ -1129,7 +1174,7 @@ export default function ClientDashboard() {
             </TabsContent>
           )}
         </Tabs>
-        
+
         {/* Achievement Notifications */}
         <AchievementNotification
           newAchievements={newAchievements}
@@ -1147,7 +1192,7 @@ export default function ClientDashboard() {
         <Dialog open={showAssessmentForm} onOpenChange={setShowAssessmentForm}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             {selectedAssessmentRequest?.type === 'health_assessment' && clientData && (
-              <ClientHealthAssessmentForm 
+              <ClientHealthAssessmentForm
                 requestId={selectedAssessmentRequest.requestId}
                 clientId={clientData.id}
                 clientName={clientData.name}
@@ -1158,7 +1203,7 @@ export default function ClientDashboard() {
               />
             )}
             {selectedAssessmentRequest?.type === 'stress_assessment' && clientData && (
-              <ClientStressAssessmentForm 
+              <ClientStressAssessmentForm
                 requestId={selectedAssessmentRequest.requestId}
                 clientId={clientData.id}
                 clientName={clientData.name}
@@ -1169,7 +1214,7 @@ export default function ClientDashboard() {
               />
             )}
             {selectedAssessmentRequest?.type === 'sleep_assessment' && clientData && (
-              <ClientSleepAssessmentForm 
+              <ClientSleepAssessmentForm
                 requestId={selectedAssessmentRequest.requestId}
                 clientId={clientData.id}
                 clientName={clientData.name}

@@ -28,22 +28,21 @@ export default function Home() {
             <Leaf className="w-10 h-10 text-primary-foreground" />
           </div>
           <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-primary to-wellness-mint bg-clip-text text-transparent">
-            Sheizen AI Nutritionist
+            Sheizen Wellness
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
             Your personalized wellness journey starts here. Connect with expert dietitians and achieve your health goals with AI-powered nutrition guidance.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              size="lg" 
+            <Button
               className="text-lg px-8"
-              onClick={() => navigate("/auth")}
+              onClick={() => navigate("/interest")}
             >
               Get Started
               <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-            <Button 
-              size="lg" 
+            <Button
+              size="lg"
               variant="outline"
               className="text-lg px-8"
               onClick={() => navigate("/auth")}
@@ -100,10 +99,9 @@ export default function Home() {
               <p className="text-lg text-muted-foreground mb-6">
                 Join thousands of people achieving their wellness goals with personalized nutrition guidance.
               </p>
-              <Button 
-                size="lg" 
+              <Button
                 className="text-lg px-10"
-                onClick={() => navigate("/auth")}
+                onClick={() => navigate("/interest")}
               >
                 Start Your Journey Today
                 <ArrowRight className="ml-2 h-5 w-5" />

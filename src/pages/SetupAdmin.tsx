@@ -41,9 +41,9 @@ export default function SetupAdmin() {
   const checkAdminExists = async () => {
     try {
       const { data, error } = await supabase.rpc("count_admins");
-      
+
       if (error) throw error;
-      
+
       if (data > 0) {
         setAdminExists(true);
         toast.info("Admin account already exists. Redirecting to login...");
@@ -68,19 +68,26 @@ export default function SetupAdmin() {
         return;
       }
 
-      const { error } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
+      // Use Edge Function to create admin with auto-confirmed email
+      const { data: funcData, error: funcError } = await supabase.functions.invoke('create-admin', {
+        body: {
+          email: values.email,
+          password: values.password,
+          userData: {
             name: values.name,
             phone: values.phone,
           },
         },
       });
 
-      if (error) throw error;
+      if (funcError) {
+        console.error("Edge Function Error:", funcError);
+        throw funcError;
+      }
+      if (funcData.error) {
+        console.error("Edge Function Data Error:", funcData.error);
+        throw new Error(funcData.error);
+      }
 
       toast.success("Admin account created successfully!");
       navigate("/auth");

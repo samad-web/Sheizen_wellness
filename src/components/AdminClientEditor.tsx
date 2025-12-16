@@ -12,7 +12,7 @@ interface AdminClientEditorProps {
   clientId?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  onSuccess: (newClientId?: string | null) => void;
 }
 
 export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: AdminClientEditorProps) {
@@ -30,6 +30,8 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
     status: "active",
     goals: "",
   });
+
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (clientId && open) {
@@ -54,6 +56,7 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
     }
 
     if (data) {
+      setUserId(data.user_id); // Store the Auth User ID
       setFormData({
         name: data.name || "",
         email: data.email || "",
@@ -71,6 +74,7 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
   };
 
   const resetForm = () => {
+    setUserId(null);
     setFormData({
       name: "",
       email: "",
@@ -91,6 +95,8 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
     setLoading(true);
 
     try {
+      let finalClientId = clientId;
+
       if (clientId) {
         // Update existing client
         const { error } = await supabase
@@ -118,41 +124,71 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
           return;
         }
 
-        // Create auth user
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
+        // Create auth user AND client record via Edge Function (server-side to bypass RLS)
+        const { data: funcData, error: funcError } = await supabase.functions.invoke('create-user', {
+          body: {
+            email: formData.email,
+            password: formData.password,
+            userData: {
               name: formData.name,
               phone: formData.phone,
+              age: formData.age,
+              gender: formData.gender,
+              service_type: formData.service_type,
+              program_type: formData.program_type,
+              target_kcal: formData.target_kcal,
+              status: formData.status,
+              goals: formData.goals,
             },
           },
         });
 
-        if (authError) throw authError;
-        if (!authData.user) throw new Error("Failed to create user account");
+        console.log("Edge Function Response Data:", funcData); // DEBUG: Check what we actually got
 
-        // The trigger will create the profile and user_role automatically
-        // Now update the client record with additional fields
-        const { error: updateError } = await supabase
-          .from("clients")
-          .update({
-            age: formData.age ? parseInt(formData.age) : null,
-            gender: formData.gender as any,
-            service_type: formData.service_type as any,
-            program_type: formData.program_type as any,
-            target_kcal: formData.target_kcal ? parseInt(formData.target_kcal) : null,
-            status: formData.status as any,
-            goals: formData.goals || null,
-          })
-          .eq("user_id", authData.user.id);
+        if (funcError) {
+          console.error("Edge Function Error:", funcError);
+          throw funcError;
+        }
+        if (funcData.error) {
+          console.error("Edge Function Data Error:", funcData.error);
+          throw new Error(funcData.error);
+        }
 
-        if (updateError) throw updateError;
+        const authUser = funcData.user.user;
+        const newClient = funcData.client;
+
+        if (!authUser) throw new Error("Failed to create user account");
+
+        // Use the ID returned from the Edge Function
+        if (newClient) {
+          finalClientId = newClient.id;
+        } else {
+          // Warning if no client data returned
+          console.warn("Edge function did not return client data. Attempting fallback fetch...");
+
+          // Fallback: Fetch new client ID
+          const { data: fetchedClient, error: fetchError } = await supabase
+            .from("clients")
+            .select("id")
+            .eq("user_id", authUser.id)
+            .maybeSingle(); // Use maybeSingle to avoid 406 Not Acceptable if no row exists
+
+          if (fetchError) {
+            console.error("Fallback fetch error:", fetchError);
+            throw new Error("Could not verify client creation.");
+          }
+
+          if (fetchedClient) {
+            finalClientId = fetchedClient.id;
+          } else {
+            throw new Error("User created but Client record missing. Please check logs.");
+          }
+        }
+
         toast.success("Client created successfully");
       }
 
-      onSuccess();
+      onSuccess(finalClientId);
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || "Failed to save client");
@@ -314,13 +350,52 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
             />
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : clientId ? "Update Client" : "Add Client"}
-            </Button>
+          <DialogFooter className="flex items-center justify-between sm:justify-between w-full">
+            {clientId && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={async () => {
+                  if (window.confirm("Are you sure you want to delete this client? This action cannot be undone and will remove all associated data.")) {
+                    try {
+                      setLoading(true);
+
+                      // We need the Auth User ID, not just the client ID
+                      if (!userId) {
+                        toast.error("Cannot delete: User ID not found");
+                        return;
+                      }
+
+                      const { error } = await supabase.functions.invoke('delete-user', {
+                        body: { user_id: userId }
+                      });
+
+                      if (error) throw error;
+
+                      toast.success("Client deleted successfully");
+                      onSuccess(null); // Pass null to indicate deletion/reset
+                      onOpenChange(false);
+                    } catch (error: any) {
+                      console.error("Delete error:", error);
+                      toast.error("Failed to delete client: " + (error.message || "Unknown error"));
+                    } finally {
+                      setLoading(false);
+                    }
+                  }
+                }}
+                disabled={loading}
+              >
+                Delete Client
+              </Button>
+            )}
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : clientId ? "Update Client" : "Add Client"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -16,9 +16,17 @@ serve(async (req) => {
 
     console.log('Generating sleep assessment for client:', client_id);
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Missing configuration:', {
+        hasUrl: !!supabaseUrl,
+        hasKey: !!supabaseKey
+      });
+      throw new Error('Server configuration error: Missing required keys');
+    }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -46,30 +54,55 @@ Please provide a comprehensive sleep hygiene assessment report including:
 
 Format the response as a professional assessment report in markdown.`;
 
-    // Call Lovable AI
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${lovableApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: 'You are an expert sleep consultant specializing in sleep hygiene and circadian rhythm optimization.' },
-          { role: 'user', content: prompt }
-        ],
-      }),
-    });
+    let assessmentText = '';
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI API error:', aiResponse.status, errorText);
-      throw new Error(`AI generation failed: ${errorText}`);
+    if (!lovableApiKey) {
+      console.warn('Missing Lovable API Key, using mock response');
+      assessmentText = `## Sleep Assessment (Mock)
+Based on your responses, here is a preliminary analysis:
+1. **Sleep Patterns**: You reported sleeping ${form_data.sleepHours} hours.
+2. **Quality**: You rated your sleep ${form_data.sleepQuality}/10.
+3. **Recommendations**:
+   - Maintain a consistent schedule.
+   - Reduce screen time before bed.
+   - Ensure your room is dark and cool.
+
+*Note: This is a placeholder response as the AI service is currently unavailable.*`;
+    } else {
+      try {
+        // Call Lovable AI
+        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${lovableApiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              { role: 'system', content: 'You are an expert sleep consultant specializing in sleep hygiene and circadian rhythm optimization.' },
+              { role: 'user', content: prompt }
+            ],
+          }),
+        });
+
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          console.error('AI API error:', aiResponse.status, errorText);
+          throw new Error(`AI generation failed: ${errorText}`);
+        }
+
+        const aiData = await aiResponse.json();
+        assessmentText = aiData.choices[0].message.content;
+      } catch (aiError) {
+        console.error('AI Generation failed, falling back to mock:', aiError);
+        assessmentText = `## Sleep Assessment (Fallback)
+We encountered an issue generating your personalized report. Here are some general recommendations:
+- Stick to a consistent sleep schedule.
+- Create a relaxing bedtime routine.
+- Limit exposure to bright screens before bed.`;
+      }
     }
-
-    const aiData = await aiResponse.json();
-    const assessmentText = aiData.choices[0].message.content;
 
     // Store assessment in database
     const { data: assessment, error: dbError } = await supabase
@@ -79,7 +112,7 @@ Format the response as a professional assessment report in markdown.`;
         assessment_type: 'sleep',
         form_responses: form_data,
         assessment_data: { report: assessmentText },
-        ai_generated: true,
+        ai_generated: !!lovableApiKey,
         file_name: `Sleep Assessment - ${client_name} - ${new Date().toLocaleDateString()}`,
         notes: 'AI-generated sleep hygiene assessment based on client form responses'
       })
@@ -110,10 +143,10 @@ Format the response as a professional assessment report in markdown.`;
     console.log('Sleep assessment generated successfully:', assessment.id);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         assessment_id: assessment.id,
-        assessment_text: assessmentText 
+        assessment_text: assessmentText
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

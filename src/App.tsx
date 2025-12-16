@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
@@ -20,6 +21,8 @@ import ClientEditSleepForm from "./components/client/ClientEditSleepForm";
 import ClientEditStressForm from "./components/client/ClientEditStressForm";
 import ClientEditHealthForm from "./components/client/ClientEditHealthForm";
 import Community from "./pages/Community";
+import SupabaseConnectionTest from "./components/SupabaseConnectionTest";
+import { DatabaseConnectionTest } from "./components/DatabaseConnectionTest";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,18 +46,64 @@ const App = () => (
             <Route path="/" element={<Home />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/setup-admin" element={<SetupAdmin />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/dashboard" element={<ClientDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
-            <Route path="/admin/client/:id" element={<ClientDetail />} />
-            <Route path="/admin/assessments/:id/edit-sleep" element={<AdminEditSleepAssessment />} />
-            <Route path="/admin/assessments/:id/edit-stress" element={<AdminEditStressAssessment />} />
-            <Route path="/admin/assessments/:id/edit-health" element={<AdminEditHealthAssessment />} />
-            <Route path="/client/assessments/:id/edit-sleep" element={<ClientEditSleepForm />} />
-            <Route path="/client/assessments/:id/edit-stress" element={<ClientEditStressForm />} />
-            <Route path="/client/assessments/:id/edit-health" element={<ClientEditHealthForm />} />
+            <Route path="/onboarding" element={
+              <ProtectedRoute>
+                <Onboarding />
+              </ProtectedRoute>
+            } />
+            <Route path="/dashboard" element={
+              <ProtectedRoute requiredRole="client">
+                <ClientDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/client/:id" element={
+              <ProtectedRoute requiredRole="admin">
+                <ClientDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/assessments/:id/edit-sleep" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminEditSleepAssessment />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/assessments/:id/edit-stress" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminEditStressAssessment />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/assessments/:id/edit-health" element={
+              <ProtectedRoute requiredRole="admin">
+                <AdminEditHealthAssessment />
+              </ProtectedRoute>
+            } />
+            <Route path="/client/assessments/:id/edit-sleep" element={
+              <ProtectedRoute requiredRole="client">
+                <ClientEditSleepForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/client/assessments/:id/edit-stress" element={
+              <ProtectedRoute requiredRole="client">
+                <ClientEditStressForm />
+              </ProtectedRoute>
+            } />
+            <Route path="/client/assessments/:id/edit-health" element={
+              <ProtectedRoute requiredRole="client">
+                <ClientEditHealthForm />
+              </ProtectedRoute>
+            } />
             <Route path="/interest" element={<InterestForm />} />
-            <Route path="/community" element={<Community />} />
+            <Route path="/community" element={
+              <ProtectedRoute>
+                <Community />
+              </ProtectedRoute>
+            } />
+            <Route path="/test-connection" element={<SupabaseConnectionTest />} />
+            <Route path="/test-db" element={<DatabaseConnectionTest />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

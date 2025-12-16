@@ -12,9 +12,9 @@ interface WeeklyGoalsProps {
 export function WeeklyGoals({ clientId }: WeeklyGoalsProps) {
   const [loading, setLoading] = useState(true);
   const [goals, setGoals] = useState({
-    mealPhotos: { current: 0, target: 21, label: "Meal Photos" },
+    mealPhotos: { current: 0, target: 56, label: "Meal Photos" },
     waterGoal: { current: 0, target: 7, label: "Hydration Days" },
-    exerciseDays: { current: 0, target: 5, label: "Active Days" },
+    exerciseDays: { current: 0, target: 7, label: "Active Days" },
     weightTracking: { current: 0, target: 7, label: "Weight Logs" },
   });
 
@@ -46,9 +46,9 @@ export function WeeklyGoals({ clientId }: WeeklyGoalsProps) {
     const weightDays = dailyLogs?.filter((log) => log.weight !== null).length || 0;
 
     setGoals({
-      mealPhotos: { current: mealCount || 0, target: 21, label: "Meal Photos" },
+      mealPhotos: { current: mealCount || 0, target: 56, label: "Meal Photos" },
       waterGoal: { current: waterDays, target: 7, label: "Hydration Days" },
-      exerciseDays: { current: activeDays, target: 5, label: "Active Days" },
+      exerciseDays: { current: activeDays, target: 7, label: "Active Days" },
       weightTracking: { current: weightDays, target: 7, label: "Weight Logs" },
     });
 
@@ -113,18 +113,17 @@ export function WeeklyGoals({ clientId }: WeeklyGoalsProps) {
                   <span className="text-sm font-bold">
                     {goal.current}/{goal.target}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    percentage >= 80 ? "bg-primary/10 text-primary" :
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${percentage >= 80 ? "bg-primary/10 text-primary" :
                     percentage >= 60 ? "bg-wellness-mint/20 text-wellness-mint" :
-                    percentage >= 40 ? "bg-accent/20 text-accent-foreground" :
-                    "bg-destructive/10 text-destructive"
-                  }`}>
+                      percentage >= 40 ? "bg-accent/20 text-accent-foreground" :
+                        "bg-destructive/10 text-destructive"
+                    }`}>
                     {Math.round(percentage)}%
                   </span>
                 </div>
               </div>
-              <Progress 
-                value={percentage} 
+              <Progress
+                value={percentage}
                 className={`h-2 ${getProgressColor(percentage)}`}
               />
             </div>

@@ -14,12 +14,12 @@ interface InterestSubmission {
   name: string;
   age: number;
   gender: string;
-  contact_number: string;
+  phone: string;
   email: string;
   health_goal: string;
-  submitted_at: string;
+  message?: string;
+  created_at: string;
   status: string;
-  notes?: string;
 }
 
 const healthGoalLabels: Record<string, string> = {
@@ -50,12 +50,12 @@ export function InterestSubmissionsManager() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from("interest_form_submissions")
+        .from("interest_forms" as any)
         .select("*")
-        .order("submitted_at", { ascending: false });
+        .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setSubmissions(data || []);
+      setSubmissions((data as unknown as InterestSubmission[]) || []);
     } catch (error) {
       console.error("Error fetching submissions:", error);
       toast.error("Failed to load submissions");
@@ -67,7 +67,7 @@ export function InterestSubmissionsManager() {
   const updateStatus = async (id: string, newStatus: string) => {
     try {
       const { error } = await supabase
-        .from("interest_form_submissions")
+        .from("interest_forms" as any)
         .update({ status: newStatus })
         .eq("id", id);
 
@@ -178,6 +178,7 @@ export function InterestSubmissionsManager() {
                     <TableHead>Age/Gender</TableHead>
                     <TableHead>Contact</TableHead>
                     <TableHead>Health Goal</TableHead>
+                    <TableHead>Message</TableHead>
                     <TableHead>Submitted</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -194,7 +195,7 @@ export function InterestSubmissionsManager() {
                         <div className="flex flex-col gap-1 text-sm">
                           <div className="flex items-center gap-1">
                             <Phone className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs">{submission.contact_number}</span>
+                            <span className="text-xs">{submission.phone}</span>
                           </div>
                           <div className="flex items-center gap-1">
                             <Mail className="h-3 w-3 text-muted-foreground" />
@@ -208,9 +209,14 @@ export function InterestSubmissionsManager() {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <span className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]" title={submission.message}>
+                          {submission.message || "-"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          {new Date(submission.submitted_at).toLocaleDateString()}
+                          {new Date(submission.created_at).toLocaleDateString()}
                         </div>
                       </TableCell>
                       <TableCell>

@@ -16,8 +16,13 @@ serve(async (req) => {
 
     console.log(`Generating health assessment card for client ${client_id}`);
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error('Missing Supabase configuration');
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Fetch client data
@@ -58,7 +63,7 @@ serve(async (req) => {
 
     const heightM = height / 100;
     const bmi = (weight / (heightM * heightM)).toFixed(1);
-    
+
     // Mifflin-St Jeor equation
     let bmr;
     if (gender === 'male') {
@@ -71,10 +76,24 @@ serve(async (req) => {
     const calorieIntake = client.target_kcal || bmr * 1.2;
     const proteinIntake = (parseFloat(idealWeight) * 1.4).toFixed(1);
 
-    // Generate AI assessment using Lovable AI
+    // Generate AI assessment
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    let aiAnalysis = '';
+
+    if (!LOVABLE_API_KEY) {
+      console.warn('Missing Lovable API Key, using mock response');
+      aiAnalysis = `## Health Assessment (Mock)
+Based on your metrics (BMI: ${bmi}), here is a preliminary analysis:
+1. **Activity**: You reported ${latestLog?.activity_minutes || 0} minutes of activity.
+2. **Hydration**: Intake is ${latestLog?.water_intake || 2} liters.
+3. **Recommendations**:
+    - Increase protein intake to reach ${proteinIntake}g.
+    - Mantain hydration levels.
     
-    const prompt = `You are a professional dietitian creating a comprehensive health assessment card for ${client_name}.
+*Note: This is a placeholder response as the AI service is currently unavailable.*`;
+    } else {
+      try {
+        const prompt = `You are a professional dietitian creating a comprehensive health assessment card for ${client_name}.
 
 Based on the following client data:
 - Name: ${client_name}
@@ -102,29 +121,39 @@ Generate a professional health assessment with key findings and recommendations.
 
 Format as a detailed professional report suitable for a dietitian review.`;
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: 'You are an expert dietitian creating professional health assessment cards.' },
-          { role: 'user', content: prompt }
-        ],
-      }),
-    });
+        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-2.5-flash',
+            messages: [
+              { role: 'system', content: 'You are an expert dietitian creating professional health assessment cards.' },
+              { role: 'user', content: prompt }
+            ],
+          }),
+        });
 
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI API error:', aiResponse.status, errorText);
-      throw new Error(`AI generation failed: ${aiResponse.status}`);
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          console.error('AI API error:', aiResponse.status, errorText);
+          throw new Error(`AI generation failed: ${aiResponse.status}`);
+        }
+
+        const aiData = await aiResponse.json();
+        aiAnalysis = aiData.choices[0].message.content;
+
+      } catch (aiError) {
+        console.error('AI Generation failed, falling back to mock:', aiError);
+        aiAnalysis = `## Health Assessment (Fallback)
+We encountered an issue generating your personalized report.
+- BMI: ${bmi}
+- Goal: ${client.goals || 'Wellness'}
+- Maintain a balanced diet and regular exercise.`;
+      }
     }
-
-    const aiData = await aiResponse.json();
-    const aiAnalysis = aiData.choices[0].message.content;
 
     // Structure the card data
     const cardData = {
@@ -172,8 +201,8 @@ Format as a detailed professional report suitable for a dietitian review.`;
     console.log(`Health assessment card generated for client ${client_id}, card ID: ${card.id}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         card_id: card.id,
         message: 'Health assessment card generated and pending admin review'
       }),

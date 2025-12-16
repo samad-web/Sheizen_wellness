@@ -53,7 +53,7 @@ export function CalendarView({ clientId }: CalendarViewProps) {
       weeklyPlans?.forEach(plan => {
         const startDate = parseISO(plan.start_date);
         const endDate = parseISO(plan.end_date);
-        
+
         // Create event for each day in the plan
         for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
           if (isWithinInterval(d, { start: monthStart, end: monthEnd })) {
@@ -230,31 +230,30 @@ export function CalendarView({ clientId }: CalendarViewProps) {
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="p-3 pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              <CalendarIcon className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <CalendarIcon className="h-4 w-4" />
               Calendar
             </CardTitle>
-            <CardDescription>
-              View your meal plans, follow-ups, and milestones
-            </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
+              className="h-8 w-8"
               onClick={() => handleMonthChange('prev')}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <div className="text-sm font-medium min-w-[140px] text-center">
+            <div className="text-sm font-medium min-w-[120px] text-center">
               {format(currentMonth, 'MMMM yyyy')}
             </div>
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
+              className="h-8 w-8"
               onClick={() => handleMonthChange('next')}
             >
               <ChevronRight className="h-4 w-4" />
@@ -262,7 +261,7 @@ export function CalendarView({ clientId }: CalendarViewProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-3 pt-0">
         <div className="space-y-6">
           {/* Calendar */}
           <div className="flex justify-center">

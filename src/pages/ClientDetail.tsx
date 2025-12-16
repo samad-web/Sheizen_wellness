@@ -127,7 +127,7 @@ const ClientDetail = () => {
       navigate("/auth");
       return;
     }
-    
+
     if (!id) {
       toast.error("Invalid client ID");
       navigate("/admin");
@@ -290,7 +290,7 @@ const ClientDetail = () => {
   const handleRequestAssessment = async (assessmentType: string) => {
     setIsRequestingAssessment(true);
     try {
-      const { error } = await supabase.functions.invoke('request-assessment', {
+      const { data, error } = await supabase.functions.invoke('request-assessment', {
         body: {
           client_id: id,
           assessment_type: assessmentType,
@@ -299,7 +299,10 @@ const ClientDetail = () => {
       });
 
       if (error) throw error;
-      
+      if (data && !data.success) {
+        throw new Error(data.error || 'Failed to send assessment request');
+      }
+
       toast.success('Assessment request sent to client');
     } catch (error: any) {
       console.error('Error requesting assessment:', error);
@@ -439,7 +442,7 @@ const ClientDetail = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-2xl font-bold">
-                    {dailyLogs.length > 0 
+                    {dailyLogs.length > 0
                       ? new Date(dailyLogs[0].log_date).toLocaleDateString()
                       : "No logs"}
                   </p>
@@ -569,7 +572,7 @@ const ClientDetail = () => {
                   )}
                 </CardContent>
               </Card>
-              
+
               <Card className="mt-6">
                 <CardHeader>
                   <CardTitle>Request New Assessments</CardTitle>
@@ -627,7 +630,7 @@ const ClientDetail = () => {
                                     .from('meal_cards')
                                     .select('*')
                                     .eq('plan_id', plan.id);
-                                  
+
                                   exportDietPlanToExcel(
                                     { name: client.name, program_type: client.program_type },
                                     plan,
@@ -882,14 +885,14 @@ const ClientDetail = () => {
 
           <TabsContent value="workflow">
             {id && <WorkflowTimeline clientId={id} />}
-            
+
             <Card className="mt-6">
               <CardHeader>
                 <CardTitle>Request Assessments</CardTitle>
                 <CardDescription>Send assessment forms to client</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Button 
+                <Button
                   onClick={() => handleRequestAssessment('health_assessment')}
                   disabled={isRequestingAssessment}
                   className="w-full"
@@ -898,8 +901,8 @@ const ClientDetail = () => {
                   <FileText className="mr-2 h-4 w-4" />
                   Request Health Assessment
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={() => handleRequestAssessment('stress_assessment')}
                   disabled={isRequestingAssessment}
                   className="w-full"
@@ -908,8 +911,8 @@ const ClientDetail = () => {
                   <Brain className="mr-2 h-4 w-4" />
                   Request Stress Assessment
                 </Button>
-                
-                <Button 
+
+                <Button
                   onClick={() => handleRequestAssessment('sleep_assessment')}
                   disabled={isRequestingAssessment}
                   className="w-full"
@@ -970,20 +973,20 @@ const ClientDetail = () => {
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        <EditAssessmentDialog
-          assessmentId={editAssessmentId}
-          open={editAssessmentId !== null}
-          onOpenChange={(open) => !open && setEditAssessmentId(null)}
-          onSave={() => {
-            fetchClientData();
-            setEditAssessmentId(null);
-          }}
-        />
-      </div>
-    );
-  };
-  
-  export default ClientDetail;
+      <EditAssessmentDialog
+        assessmentId={editAssessmentId}
+        open={editAssessmentId !== null}
+        onOpenChange={(open) => !open && setEditAssessmentId(null)}
+        onSave={() => {
+          fetchClientData();
+          setEditAssessmentId(null);
+        }}
+      />
+    </div>
+  );
+};
+
+export default ClientDetail;

@@ -52,6 +52,7 @@ export default {
           mint: "hsl(var(--wellness-mint))",
           light: "hsl(var(--wellness-light))",
           amber: "hsl(var(--wellness-amber))",
+          "green-dark": "#168035",
         },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",

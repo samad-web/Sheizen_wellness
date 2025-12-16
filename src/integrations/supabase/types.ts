@@ -208,8 +208,8 @@ export type Database = {
           requested_by: string | null
           started_at: string | null
           status:
-            | Database["public"]["Enums"]["assessment_request_status"]
-            | null
+          | Database["public"]["Enums"]["assessment_request_status"]
+          | null
           updated_at: string | null
         }
         Insert: {
@@ -224,8 +224,8 @@ export type Database = {
           requested_by?: string | null
           started_at?: string | null
           status?:
-            | Database["public"]["Enums"]["assessment_request_status"]
-            | null
+          | Database["public"]["Enums"]["assessment_request_status"]
+          | null
           updated_at?: string | null
         }
         Update: {
@@ -240,8 +240,8 @@ export type Database = {
           requested_by?: string | null
           started_at?: string | null
           status?:
-            | Database["public"]["Enums"]["assessment_request_status"]
-            | null
+          | Database["public"]["Enums"]["assessment_request_status"]
+          | null
           updated_at?: string | null
         }
         Relationships: [
@@ -276,8 +276,8 @@ export type Database = {
           ai_generated?: boolean | null
           assessment_data?: Json | null
           assessment_type?:
-            | Database["public"]["Enums"]["assessment_type"]
-            | null
+          | Database["public"]["Enums"]["assessment_type"]
+          | null
           client_id: string
           created_at?: string
           display_name?: string | null
@@ -295,8 +295,8 @@ export type Database = {
           ai_generated?: boolean | null
           assessment_data?: Json | null
           assessment_type?:
-            | Database["public"]["Enums"]["assessment_type"]
-            | null
+          | Database["public"]["Enums"]["assessment_type"]
+          | null
           client_id?: string
           created_at?: string
           display_name?: string | null
@@ -839,8 +839,8 @@ export type Database = {
           title?: string | null
           updated_at?: string | null
           visibility?:
-            | Database["public"]["Enums"]["community_visibility"]
-            | null
+          | Database["public"]["Enums"]["community_visibility"]
+          | null
         }
         Update: {
           attachments?: Json | null
@@ -859,8 +859,8 @@ export type Database = {
           title?: string | null
           updated_at?: string | null
           visibility?:
-            | Database["public"]["Enums"]["community_visibility"]
-            | null
+          | Database["public"]["Enums"]["community_visibility"]
+          | null
         }
         Relationships: [
           {
@@ -1035,6 +1035,7 @@ export type Database = {
       daily_logs: {
         Row: {
           activity_minutes: number | null
+          activity_type: string | null
           client_id: string
           created_at: string
           id: string
@@ -1047,6 +1048,7 @@ export type Database = {
         }
         Insert: {
           activity_minutes?: number | null
+          activity_type?: string | null
           client_id: string
           created_at?: string
           id?: string
@@ -1059,6 +1061,7 @@ export type Database = {
         }
         Update: {
           activity_minutes?: number | null
+          activity_type?: string | null
           client_id?: string
           created_at?: string
           id?: string
@@ -1907,40 +1910,37 @@ export type Database = {
       }
       weekly_reports: {
         Row: {
-          audio_url: string | null
-          client_id: string
-          created_at: string
-          end_date: string
           id: string
-          pdf_url: string | null
-          start_date: string
+          client_id: string
+          admin_id: string | null
+          report_date: string
           summary: string | null
+          content: string | null
+          status: string
+          created_at: string
           updated_at: string
-          week_number: number
         }
         Insert: {
-          audio_url?: string | null
-          client_id: string
-          created_at?: string
-          end_date: string
           id?: string
-          pdf_url?: string | null
-          start_date: string
+          client_id: string
+          admin_id?: string | null
+          report_date?: string
           summary?: string | null
+          content?: string | null
+          status?: string
+          created_at?: string
           updated_at?: string
-          week_number: number
         }
         Update: {
-          audio_url?: string | null
-          client_id?: string
-          created_at?: string
-          end_date?: string
           id?: string
-          pdf_url?: string | null
-          start_date?: string
+          client_id?: string
+          admin_id?: string | null
+          report_date?: string
           summary?: string | null
+          content?: string | null
+          status?: string
+          created_at?: string
           updated_at?: string
-          week_number?: number
         }
         Relationships: [
           {
@@ -1949,7 +1949,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clients"
             referencedColumns: ["id"]
-          },
+          }
         ]
       }
       workflow_history: {
@@ -2007,51 +2007,51 @@ export type Database = {
     Enums: {
       achievement_category: "consistency" | "milestone" | "streak" | "special"
       achievement_criteria_type:
-        | "meal_log_streak"
-        | "meal_log_count"
-        | "hydration_streak"
-        | "hydration_perfect_week"
-        | "weight_loss_milestone"
-        | "weight_consistency"
-        | "activity_streak"
-        | "activity_total_minutes"
-        | "perfect_week"
-        | "early_bird"
-        | "first_meal"
+      | "meal_log_streak"
+      | "meal_log_count"
+      | "hydration_streak"
+      | "hydration_perfect_week"
+      | "weight_loss_milestone"
+      | "weight_consistency"
+      | "activity_streak"
+      | "activity_total_minutes"
+      | "perfect_week"
+      | "early_bird"
+      | "first_meal"
       app_role: "admin" | "client"
       assessment_request_status:
-        | "pending"
-        | "in_progress"
-        | "completed"
-        | "cancelled"
+      | "pending"
+      | "in_progress"
+      | "completed"
+      | "cancelled"
       assessment_type: "health" | "stress" | "sleep" | "custom"
       client_status: "active" | "inactive" | "pending" | "completed"
       community_group_role: "member" | "moderator" | "owner"
       community_notification_type:
-        | "comment"
-        | "reaction"
-        | "dm"
-        | "moderation_action"
-        | "group_invite"
-        | "mention"
+      | "comment"
+      | "reaction"
+      | "dm"
+      | "moderation_action"
+      | "group_invite"
+      | "mention"
       community_reaction_type: "like" | "love" | "celebrate"
       community_report_status: "open" | "reviewed" | "actioned"
       community_target_type: "post" | "comment" | "user"
       community_visibility: "public" | "archived"
       gender_type: "male" | "female" | "other"
       health_goal_type:
-        | "weight_loss"
-        | "muscle_gain"
-        | "diabetes"
-        | "pcos"
-        | "lifestyle_correction"
+      | "weight_loss"
+      | "muscle_gain"
+      | "diabetes"
+      | "pcos"
+      | "lifestyle_correction"
       meal_type: "breakfast" | "lunch" | "evening_snack" | "dinner"
       program_type:
-        | "weight_loss"
-        | "weight_gain"
-        | "maintenance"
-        | "muscle_building"
-        | "general_wellness"
+      | "weight_loss"
+      | "weight_gain"
+      | "maintenance"
+      | "muscle_building"
+      | "general_wellness"
       service_type: "consultation" | "hundred_days"
     }
     CompositeTypes: {
@@ -2066,116 +2066,116 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+  ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+    DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R
     }
-    ? R
-    : never
+  ? R
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
+    DefaultSchema["Views"])
+  ? (DefaultSchema["Tables"] &
+    DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+      Row: infer R
+    }
+  ? R
+  : never
+  : never
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
+    Insert: infer I
+  }
+  ? I
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Insert: infer I
+  }
+  ? I
+  : never
+  : never
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Tables"]
+  | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+  : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
+    Update: infer U
+  }
+  ? U
+  : never
   : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
+  ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+    Update: infer U
+  }
+  ? U
+  : never
+  : never
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["Enums"]
+  | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+  : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
+  ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+  : never
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  | keyof DefaultSchema["CompositeTypes"]
+  | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+  ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+  : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
+  ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+  : never
 
 export const Constants = {
   public: {

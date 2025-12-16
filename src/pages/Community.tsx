@@ -32,51 +32,57 @@ import {
 } from "@/lib/community";
 
 export default function Community() {
-  const { user } = useAuth();
+  const { user, userRole } = useAuth();
   const navigate = useNavigate();
-  
+
   const [client, setClient] = useState<any>(null);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [groups, setGroups] = useState<CommunityGroup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("feed");
-  
+
   // Modals
   const [showGuidelines, setShowGuidelines] = useState(false);
   const [selectedPost, setSelectedPost] = useState<CommunityPost | null>(null);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [reportTarget, setReportTarget] = useState<{ type: "post" | "comment" | "user"; id: string } | null>(null);
   const [showMessages, setShowMessages] = useState(false);
-  
+
   useEffect(() => {
     if (user) {
-      loadClientData();
+      if (userRole !== 'admin') {
+        loadClientData();
+      } else {
+        // Admin doesn't have a client profile, but can view data
+        loadPosts();
+        loadGroups();
+      }
     }
-  }, [user]);
-  
+  }, [user, userRole]);
+
   useEffect(() => {
     if (client) {
       loadPosts();
       loadGroups();
-      
+
       // Check if user needs to accept guidelines
       if (!client.community_terms_accepted_at) {
         setShowGuidelines(true);
       }
     }
   }, [client]);
-  
+
   const loadClientData = async () => {
     const { data } = await supabase
       .from("clients")
       .select("*")
       .eq("user_id", user?.id)
       .single();
-    
+
     setClient(data);
   };
-  
+
   const loadPosts = async () => {
     setIsLoading(true);
     try {
@@ -91,7 +97,7 @@ export default function Community() {
       setIsLoading(false);
     }
   };
-  
+
   const loadGroups = async () => {
     try {
       const data = await fetchGroups(client?.id);
@@ -100,7 +106,7 @@ export default function Community() {
       console.error("Failed to load groups:", error);
     }
   };
-  
+
   const handleCreatePost = async (data: {
     content: string;
     title?: string;
@@ -109,7 +115,7 @@ export default function Community() {
     attachments: { name: string; url: string; type: string }[];
   }) => {
     if (!client) return;
-    
+
     const post = await createPost({
       clientId: client.id,
       displayName: client.display_name || client.name,
@@ -120,31 +126,31 @@ export default function Community() {
       mediaUrls: data.mediaUrls,
       attachments: data.attachments,
     });
-    
+
     setPosts((prev) => [post, ...prev]);
   };
-  
+
   const handleLikePost = async (postId: string) => {
     if (!client) return;
-    
+
     const { added } = await toggleReaction(client.id, "post", postId, "like");
-    
+
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId
           ? {
-              ...p,
-              likes_count: added ? p.likes_count + 1 : p.likes_count - 1,
-              user_reaction: added ? "like" : null,
-            }
+            ...p,
+            likes_count: added ? p.likes_count + 1 : p.likes_count - 1,
+            user_reaction: added ? "like" : null,
+          }
           : p
       )
     );
   };
-  
+
   const handleComment = async (postId: string, content: string) => {
     if (!client) return;
-    
+
     await createComment({
       postId,
       clientId: client.id,
@@ -152,17 +158,17 @@ export default function Community() {
       serviceType: client.service_type,
       content,
     });
-    
+
     setPosts((prev) =>
       prev.map((p) =>
         p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p
       )
     );
   };
-  
+
   const handleJoinGroup = async (groupId: string) => {
     if (!client) return;
-    
+
     try {
       await joinGroup(groupId, client.id);
       setGroups((prev) =>
@@ -175,10 +181,10 @@ export default function Community() {
       toast.error("Failed to join group");
     }
   };
-  
+
   const handleLeaveGroup = async (groupId: string) => {
     if (!client) return;
-    
+
     try {
       await leaveGroup(groupId, client.id);
       setGroups((prev) =>
@@ -191,7 +197,7 @@ export default function Community() {
       toast.error("Failed to leave group");
     }
   };
-  
+
   if (!user) {
     return (
       <div className="container mx-auto py-8 text-center">
@@ -202,7 +208,7 @@ export default function Community() {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -237,7 +243,7 @@ export default function Community() {
           </div>
         </div>
       </div>
-      
+
       <div className="container mx-auto px-4 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main content */}
@@ -247,7 +253,7 @@ export default function Community() {
                 <TabsTrigger value="feed">Feed</TabsTrigger>
                 <TabsTrigger value="groups">Groups</TabsTrigger>
               </TabsList>
-              
+
               <TabsContent value="feed" className="space-y-4 mt-4">
                 {/* Search */}
                 <div className="flex gap-2">
@@ -265,7 +271,7 @@ export default function Community() {
                     <Filter className="h-4 w-4" />
                   </Button>
                 </div>
-                
+
                 {/* Post composer */}
                 {client && (
                   <PostComposer
@@ -275,7 +281,7 @@ export default function Community() {
                     onPost={handleCreatePost}
                   />
                 )}
-                
+
                 {/* Posts feed */}
                 {isLoading ? (
                   <div className="flex justify-center py-8">
@@ -306,7 +312,7 @@ export default function Community() {
                   </div>
                 )}
               </TabsContent>
-              
+
               <TabsContent value="groups" className="mt-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {groups.map((group) => (
@@ -315,14 +321,14 @@ export default function Community() {
                       group={group}
                       onJoin={handleJoinGroup}
                       onLeave={handleLeaveGroup}
-                      onClick={() => {}}
+                      onClick={() => { }}
                     />
                   ))}
                 </div>
               </TabsContent>
             </Tabs>
           </div>
-          
+
           {/* Sidebar */}
           <div className="space-y-4">
             {client && showMessages && (
@@ -332,7 +338,7 @@ export default function Community() {
                 onClose={() => setShowMessages(false)}
               />
             )}
-            
+
             {!showMessages && (
               <Card>
                 <CardHeader>
@@ -350,7 +356,7 @@ export default function Community() {
           </div>
         </div>
       </div>
-      
+
       {/* Modals */}
       {client && (
         <>
@@ -359,7 +365,7 @@ export default function Community() {
             onAccept={() => setShowGuidelines(false)}
             clientId={client.id}
           />
-          
+
           <PostDetailModal
             post={selectedPost}
             open={!!selectedPost}
@@ -368,10 +374,10 @@ export default function Community() {
             displayName={client.display_name || client.name}
             serviceType={client.service_type}
             onComment={handleComment}
-            onLikeComment={() => {}}
+            onLikeComment={() => { }}
             onAuthorClick={setSelectedProfileId}
           />
-          
+
           <MemberProfileModal
             clientId={selectedProfileId}
             open={!!selectedProfileId}
@@ -379,7 +385,7 @@ export default function Community() {
             currentClientId={client.id}
             onStartDM={() => setShowMessages(true)}
           />
-          
+
           {reportTarget && (
             <ReportDialog
               open={!!reportTarget}

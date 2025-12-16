@@ -7,16 +7,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Leaf, 
-  Users, 
-  Activity, 
-  FileText, 
+import {
+  Users,
+  Activity,
+  FileText,
   LogOut,
   Eye,
   TrendingUp,
   Calendar
 } from "lucide-react";
+import { CustomLogo } from "@/components/CustomLogo";
 import { FoodItemsManager } from "@/components/FoodItemsManager";
 import { IngredientsManager } from "@/components/IngredientsManager";
 import { RecipeBuilder } from "@/components/RecipeBuilder";
@@ -26,6 +26,7 @@ import { BulkMessageButton } from "@/components/BulkMessageButton";
 import { CronJobsManager } from "@/components/CronJobsManager";
 import { WorkflowStatusWidget } from "@/components/WorkflowStatusWidget";
 import { PendingReviewDashboard } from "@/components/PendingReviewDashboard";
+import { ReportManager } from "@/components/ReportManager";
 import { HealthAssessmentCardEditor } from "@/components/HealthAssessmentCardEditor";
 import { StressCardEditor } from "@/components/StressCardEditor";
 import { SleepCardEditor } from "@/components/SleepCardEditor";
@@ -40,12 +41,7 @@ export default function AdminDashboard() {
   const [reviewCardId, setReviewCardId] = useState<string | null>(null);
   const [reviewCardType, setReviewCardType] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!user || userRole !== "admin") {
-      navigate("/auth");
-      return;
-    }
-  }, [user, userRole, navigate]);
+  // Auth check handled by ProtectedRoute
 
   const fetchDashboardData = async () => {
     // Fetch only clients (exclude admins)
@@ -139,18 +135,16 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-              <Leaf className="w-6 h-6 text-primary-foreground" />
-            </div>
+            <CustomLogo className="w-12 h-12" />
             <div>
               <h1 className="text-3xl font-bold">Admin Dashboard</h1>
               <p className="text-muted-foreground">Manage your clients and programs</p>
             </div>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
-              onClick={() => window.open('/community', '_blank')}
+            <Button
+              variant="outline"
+              onClick={() => navigate('/community')}
             >
               <Users className="mr-2 h-4 w-4" />
               Community
@@ -226,7 +220,7 @@ export default function AdminDashboard() {
         </div>
 
         <div className="mb-8">
-          <PendingReviewDashboard 
+          <PendingReviewDashboard
             onReviewCard={(cardId, cardType) => {
               setReviewCardId(cardId);
               setReviewCardType(cardType);
@@ -239,11 +233,12 @@ export default function AdminDashboard() {
           <TabsList className="grid w-full grid-cols-7">
             <TabsTrigger value="clients">Clients</TabsTrigger>
             <TabsTrigger value="leads">Leads</TabsTrigger>
+            <TabsTrigger value="reports">Reports</TabsTrigger>
+            <TabsTrigger value="automation">Automation</TabsTrigger>
             <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
             <TabsTrigger value="food">Food Items</TabsTrigger>
             <TabsTrigger value="recipes">Recipes</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="automation">Automation</TabsTrigger>
+
           </TabsList>
 
           <TabsContent value="clients">
@@ -282,8 +277,8 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {clients.map((client, index) => (
-                      <Card 
-                        key={client.id} 
+                      <Card
+                        key={client.id}
                         className="relative overflow-hidden group card-hover border-l-4 border-l-transparent hover:border-l-wellness-green transition-all animate-fade-in"
                         style={{ animationDelay: `${index * 0.05}s` }}
                       >
@@ -374,19 +369,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="reports">
-            <Card>
-              <CardHeader>
-                <CardTitle>Weekly Reports</CardTitle>
-                <CardDescription>Generated reports for all clients</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-12 text-muted-foreground">
-                  <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg mb-2">No reports generated yet</p>
-                  <p className="text-sm">Reports will appear here once you generate them</p>
-                </div>
-              </CardContent>
-            </Card>
+            <ReportManager />
           </TabsContent>
 
           <TabsContent value="automation">
@@ -401,7 +384,13 @@ export default function AdminDashboard() {
             setEditorOpen(open);
             if (!open) setEditingClientId(null);
           }}
-          onSuccess={refetchDashboard}
+          onSuccess={(newClientId?: string | null) => {
+            refetchDashboard();
+            if (newClientId && !editingClientId) {
+              // Only redirect if it was a new client creation
+              navigate(`/onboarding?clientId=${newClientId}`);
+            }
+          }}
         />
 
         {reviewCardId && reviewCardType === 'health_assessment' && (

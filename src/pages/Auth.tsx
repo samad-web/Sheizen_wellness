@@ -10,6 +10,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { z } from "zod";
+import { CustomLogo } from "@/components/CustomLogo";
+
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -38,24 +40,41 @@ export default function Auth() {
   const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   useEffect(() => {
-    if (user && userRole) {
+    // Debug logging for auth state
+    if (user || userRole) {
+      console.log("Auth State:", { user: user?.email, userRole, isLoading });
+    }
+
+    if (!isLoading && user && userRole) {
       if (userRole === "admin") {
         navigate("/admin");
       } else {
         navigate("/dashboard");
       }
+    } else if (!isLoading && user && !userRole) {
+      // Fallback: if user is logged in but role is missing, try to redirect to dashboard
+      // or wait for role (but if it takes too long, we might want to handle it)
+      console.log("User logged in but no role found yet.");
     }
-  }, [user, userRole, navigate]);
+  }, [user, userRole, isLoading, navigate]);
 
   useEffect(() => {
     // Check if user is coming from password reset email
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const type = hashParams.get('type');
-    
+
     if (type === 'recovery') {
       setShowUpdatePasswordForm(true);
     }
   }, []);
+
+  if (isLoading) {
+    return ( // Prevent rendering form while loading to avoid "redirect while typing"
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wellness-light via-background to-wellness-light/30">
+        <div className="animate-pulse text-lg text-primary">Loading authentication...</div>
+      </div>
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -70,6 +89,7 @@ export default function Auth() {
 
     try {
       loginSchema.parse(data);
+      console.log("AuthPage: Login submission valid. Calling signIn...");
       await signIn(data.email, data.password);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -98,7 +118,7 @@ export default function Auth() {
 
     try {
       resetEmailSchema.parse(data);
-      
+
       const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
         redirectTo: `${window.location.origin}/auth`,
       });
@@ -137,7 +157,7 @@ export default function Auth() {
 
     try {
       newPasswordSchema.parse(data);
-      
+
       const { error } = await supabase.auth.updateUser({
         password: data.password,
       });
@@ -170,10 +190,10 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wellness-light via-background to-wellness-light/30 p-4">
       <div className="w-full max-w-md animate-fade-in">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4 shadow-lg">
-            <Leaf className="w-8 h-8 text-primary-foreground" />
+          <div className="w-20 h-20 mb-4 mx-auto">
+            <CustomLogo className="w-full h-full" />
           </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Sheizen AI Nutritionist</h1>
+          <h1 className="text-3xl font-bold text-foreground mb-2">Sheizen Wellness</h1>
           <p className="text-muted-foreground">Your wellness journey starts here</p>
         </div>
 
