@@ -18,7 +18,7 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('Missing configuration:', {
@@ -32,75 +32,90 @@ serve(async (req) => {
 
     // Create AI prompt for sleep assessment
     const prompt = `You are a sleep health expert analyzing sleep patterns for ${client_name}.
+    
+    Based on the following sleep assessment data:
+    - Average Sleep Hours: ${form_data.sleepHours} hours
+    - Bedtime: ${form_data.sleepTime}
+    - Wake Time: ${form_data.wakeTime}
+    - Sleep Quality: ${form_data.sleepQuality}/10
+    - Pre-Bed Routine: ${form_data.preBedRoutine}
+    - Screen Time Before Sleep: ${form_data.screenTime || 'Not specified'}
+    - Sleep Disruptions: ${form_data.sleepDisruptions || 'None reported'}
+    - Daytime Energy Levels: ${form_data.energyLevels}/10
 
-Based on the following sleep assessment data:
-- Average Sleep Hours: ${form_data.sleepHours} hours
-- Bedtime: ${form_data.sleepTime}
-- Wake Time: ${form_data.wakeTime}
-- Sleep Quality: ${form_data.sleepQuality}/10
-- Pre-Bed Routine: ${form_data.preBedRoutine}
-- Screen Time Before Sleep: ${form_data.screenTime || 'Not specified'}
-- Sleep Disruptions: ${form_data.sleepDisruptions || 'None reported'}
-- Daytime Energy Levels: ${form_data.energyLevels}/10
+    Return a valid JSON object with the following structure (do not include markdown formatting around the JSON):
+    {
+      "client_details": {
+        "name": "${client_name}"
+      },
+      "key_findings": {
+        "sleep_hours": number,
+        "sleep_time": "string",
+        "wake_time": "string",
+        "sleep_quality": number,
+        "energy_levels": number,
+        "disruptions": ["string"]
+      },
+      "lifestyle": {
+        "bedtime_routine_analysis": "string"
+      },
+      "health_goals": ["string"],
+      "recommendations": ["string"],
+      "ai_analysis": "string (full Markdown formatted detailed analysis text)",
+      "summary": "string (brief summary)"
+    }`;
 
-Please provide a comprehensive sleep hygiene assessment report including:
-1. Sleep Pattern Analysis
-2. Sleep Quality Evaluation
-3. Factors Affecting Sleep
-4. Sleep Hygiene Recommendations (7-10 specific, actionable strategies)
-5. Bedtime Routine Optimization
-6. Environmental Adjustments
-7. When to Consult a Sleep Specialist
+    console.log('Calling OpenAI API for sleep assessment...');
+    let generatedContent = {};
 
-Format the response as a professional assessment report in markdown.`;
-
-    let assessmentText = '';
-
-    if (!lovableApiKey) {
-      console.warn('Missing Lovable API Key, using mock response');
-      assessmentText = `## Sleep Assessment (Mock)
-Based on your responses, here is a preliminary analysis:
-1. **Sleep Patterns**: You reported sleeping ${form_data.sleepHours} hours.
-2. **Quality**: You rated your sleep ${form_data.sleepQuality}/10.
-3. **Recommendations**:
-   - Maintain a consistent schedule.
-   - Reduce screen time before bed.
-   - Ensure your room is dark and cool.
-
-*Note: This is a placeholder response as the AI service is currently unavailable.*`;
+    if (!openaiApiKey) {
+      console.warn('Missing OPENAI_API_KEY, using mock response');
+      generatedContent = {
+        client_details: { name: client_name },
+        key_findings: {
+          sleep_hours: form_data.sleepHours,
+          sleep_time: form_data.sleepTime,
+          wake_time: form_data.wakeTime,
+          sleep_quality: form_data.sleepQuality,
+          energy_levels: form_data.energyLevels,
+          disruptions: [form_data.sleepDisruptions]
+        },
+        lifestyle: { bedtime_routine_analysis: "Routine needs improvement." },
+        health_goals: ["Improve sleep quality"],
+        recommendations: ["Maintain consistent schedule", "Reduce screen time"],
+        ai_analysis: "## Mock Analysis\nSystem is in mock mode.",
+        summary: "Mock summary."
+      };
     } else {
+      // Call OpenAI API
+      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          response_format: { type: "json_object" },
+          messages: [
+            { role: 'system', content: 'You are an expert sleep consultant specializing in sleep hygiene. Always respond in valid JSON.' },
+            { role: 'user', content: prompt }
+          ],
+        }),
+      });
+
+      if (!aiResponse.ok) {
+        const errorText = await aiResponse.text();
+        console.error('AI API error:', aiResponse.status, errorText);
+        throw new Error(`AI generation failed: ${errorText}`);
+      }
+
+      const aiData = await aiResponse.json();
       try {
-        // Call Lovable AI
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${lovableApiKey}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [
-              { role: 'system', content: 'You are an expert sleep consultant specializing in sleep hygiene and circadian rhythm optimization.' },
-              { role: 'user', content: prompt }
-            ],
-          }),
-        });
-
-        if (!aiResponse.ok) {
-          const errorText = await aiResponse.text();
-          console.error('AI API error:', aiResponse.status, errorText);
-          throw new Error(`AI generation failed: ${errorText}`);
-        }
-
-        const aiData = await aiResponse.json();
-        assessmentText = aiData.choices[0].message.content;
-      } catch (aiError) {
-        console.error('AI Generation failed, falling back to mock:', aiError);
-        assessmentText = `## Sleep Assessment (Fallback)
-We encountered an issue generating your personalized report. Here are some general recommendations:
-- Stick to a consistent sleep schedule.
-- Create a relaxing bedtime routine.
-- Limit exposure to bright screens before bed.`;
+        generatedContent = JSON.parse(aiData.choices[0].message.content);
+      } catch (e) {
+        console.error("Failed to parse AI JSON:", e);
+        generatedContent = { ai_analysis: aiData.choices[0].message.content };
       }
     }
 
@@ -111,10 +126,10 @@ We encountered an issue generating your personalized report. Here are some gener
         client_id,
         assessment_type: 'sleep',
         form_responses: form_data,
-        assessment_data: { report: assessmentText },
-        ai_generated: !!lovableApiKey,
+        assessment_data: generatedContent,
+        ai_generated: !!openaiApiKey,
         file_name: `Sleep Assessment - ${client_name} - ${new Date().toLocaleDateString()}`,
-        notes: 'AI-generated sleep hygiene assessment based on client form responses'
+        notes: 'AI-generated sleep hygiene assessment'
       })
       .select()
       .single();
@@ -125,20 +140,21 @@ We encountered an issue generating your personalized report. Here are some gener
     }
 
     // Also save to pending review cards for admin review workflow
-    await supabase
+    const { error: cardError } = await supabase
       .from('pending_review_cards')
       .insert({
         client_id: client_id,
         card_type: 'sleep_card',
-        generated_content: {
-          client_name: client_name,
-          form_responses: form_data,
-          assessment_text: assessmentText,
-          generated_at: new Date().toISOString()
-        },
-        workflow_stage: 'sleep_card_sent',
-        status: 'pending'
+        generated_content: generatedContent,
+        workflow_stage: 'sleep_card_generated',
+        status: 'pending',
+        ai_generated_at: new Date().toISOString()
       });
+
+    if (cardError) {
+      console.error('Error creating pending card:', cardError);
+      throw new Error(`Failed to create pending review card: ${cardError.message}`);
+    }
 
     console.log('Sleep assessment generated successfully:', assessment.id);
 
@@ -146,17 +162,16 @@ We encountered an issue generating your personalized report. Here are some gener
       JSON.stringify({
         success: true,
         assessment_id: assessment.id,
-        assessment_text: assessmentText
+        assessment_data: generatedContent
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in generate-sleep-assessment:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: false, error: error.message, stack: error.stack }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

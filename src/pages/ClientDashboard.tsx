@@ -58,6 +58,7 @@ import { ClientSleepAssessmentForm } from "@/components/client/ClientSleepAssess
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { NotificationSettings } from "@/components/NotificationSettings";
 import { ClientReportList } from "@/components/ClientReportList";
+import { ModeToggle } from "@/components/mode-toggle";
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -544,6 +545,7 @@ export default function ClientDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <ModeToggle />
             <NotificationBell clientId={clientData?.id} onNavigate={handleNavigateToCalendar} />
             {pushSupported && !isSubscribed && permissionStatus !== 'denied' && (
               <Button variant="default" onClick={subscribe} disabled={pushLoading} size="sm" className="bg-primary hover:bg-primary/90">

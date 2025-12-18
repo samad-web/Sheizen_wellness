@@ -32,7 +32,7 @@ serve(async (req) => {
     // Get admin user from auth header
     const authHeader = req.headers.get('Authorization');
     let reviewedBy = null;
-    
+
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
       const { data: { user } } = await supabase.auth.getUser(token);
@@ -90,32 +90,36 @@ serve(async (req) => {
     if (workflowError) console.error('Error updating workflow:', workflowError);
 
     // Create assessment record with display_name for tracking
-    if (display_name) {
-      const { error: assessmentError } = await supabase
-        .from('assessments')
-        .insert({
-          client_id: card.client_id,
-          assessment_type: card.card_type.includes('health') ? 'health' : 
-                           card.card_type.includes('stress') ? 'stress' : 
-                           card.card_type.includes('sleep') ? 'sleep' : 'custom',
-          display_name: display_name,
-          file_name: display_name,
-          ai_generated: true,
-          assessment_data: {
-            card_id: card_id,
-            card_type: card.card_type,
-            generated_content: card.generated_content,
-            sent_at: new Date().toISOString()
-          }
-        });
+    // Use provided display_name or fallback to generated name
+    const assessmentName = display_name || `${cardTypeName} - ${new Date().toLocaleDateString()}`;
 
-      if (assessmentError) console.error('Error creating assessment record:', assessmentError);
+    const { error: assessmentError } = await supabase
+      .from('assessments')
+      .insert({
+        client_id: card.client_id,
+        assessment_type: card.card_type.includes('health') ? 'health' :
+          card.card_type.includes('stress') ? 'stress' :
+            card.card_type.includes('sleep') ? 'sleep' : 'custom',
+        display_name: assessmentName,
+        file_name: assessmentName,
+        ai_generated: true,
+        assessment_data: {
+          card_id: card_id,
+          card_type: card.card_type,
+          generated_content: card.generated_content,
+          sent_at: new Date().toISOString()
+        }
+      });
+
+    if (assessmentError) {
+      console.error('Error creating assessment record:', assessmentError);
+      // We continue even if this fails, as the core message was sent
     }
 
     console.log(`Card ${card_id} sent to client successfully`);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         message: `${cardTypeName} sent to ${card.clients.name}`
       }),

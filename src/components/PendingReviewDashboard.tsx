@@ -2,9 +2,20 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { Clock, Eye, Send, Loader2 } from "lucide-react";
+import { Clock, Eye, Send, Loader2, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -26,15 +37,24 @@ interface PendingReviewDashboardProps {
 export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardProps) {
   const queryClient = useQueryClient();
   const [sendingCard, setSendingCard] = useState<string | null>(null);
+  const [selectedCards, setSelectedCards] = useState<string[]>([]);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPendingCards = async () => {
+    console.log('Fetching pending cards...');
     const { data, error } = await supabase
       .from('pending_review_cards')
       .select('*, clients(name)')
       .in('status', ['pending', 'edited'])
       .order('ai_generated_at', { ascending: false });
 
-    if (error) throw error;
+    console.log('PendingReviewDashboard: Fetched cards result:', { data, error });
+
+    if (error) {
+      console.error('PendingReviewDashboard: Error details:', error);
+      throw error;
+    }
     return data || [];
   };
 
@@ -42,33 +62,6 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
     queryKey: ['pending-review-cards'],
     queryFn: fetchPendingCards,
   });
-
-  const handleSendCard = async (cardId: string) => {
-    setSendingCard(cardId);
-    try {
-      const { error } = await supabase.functions.invoke('send-card-to-client', {
-        body: { card_id: cardId }
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Card Sent",
-        description: "Assessment card sent to client successfully",
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] });
-    } catch (error: any) {
-      console.error('Error sending card:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to send card to client",
-        variant: "destructive",
-      });
-    } finally {
-      setSendingCard(null);
-    }
-  };
 
   const getCardTypeLabel = (cardType: string) => {
     const labels: Record<string, string> = {
@@ -91,6 +84,95 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
     };
     return colors[cardType] || 'bg-gray-500';
   };
+
+  const handleSendCard = async (cardId: string) => {
+    setSendingCard(cardId);
+
+    const card = cards.find(c => c.id === cardId);
+    if (!card) {
+      setSendingCard(null);
+      return;
+    }
+
+    const display_name = `${getCardTypeLabel(card.card_type)} - ${new Date().toLocaleDateString()}`;
+
+    try {
+      const { error } = await supabase.functions.invoke('send-card-to-client', {
+        body: {
+          card_id: cardId,
+          display_name: display_name
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Card Sent",
+        description: "Assessment card sent to client successfully",
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] });
+    } catch (error: any) {
+      console.error('Error sending card:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send card to client",
+        variant: "destructive",
+      });
+    } finally {
+      setSendingCard(null);
+    }
+  };
+
+  const handleSelectCard = (cardId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedCards(prev => [...prev, cardId]);
+    } else {
+      setSelectedCards(prev => prev.filter(id => id !== cardId));
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedCards(cards.map(card => card.id));
+    } else {
+      setSelectedCards([]);
+    }
+  };
+
+  const handleDeleteReports = async () => {
+    if (selectedCards.length === 0) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from('pending_review_cards')
+        .delete()
+        .in('id', selectedCards);
+
+      if (error) throw error;
+
+      toast({
+        title: "Reports Deleted",
+        description: `Successfully deleted ${selectedCards.length} report(s).`,
+      });
+
+      setSelectedCards([]);
+      setIsDeleteDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] });
+    } catch (error: any) {
+      console.error('Error deleting reports:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete reports",
+        variant: "destructive",
+      });
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+
 
   if (isLoading) {
     return (
@@ -119,11 +201,37 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          Pending Review Cards
-          <Badge variant="secondary">{cards.length}</Badge>
-        </CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="select-all"
+              checked={cards.length > 0 && selectedCards.length === cards.length}
+              onCheckedChange={(checked) => handleSelectAll(checked as boolean)}
+            />
+            <label
+              htmlFor="select-all"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Select All
+            </label>
+          </div>
+          <CardTitle className="flex items-center gap-2">
+            Pending Review Cards
+            <Badge variant="secondary">{cards.length}</Badge>
+          </CardTitle>
+        </div>
+
+        {selectedCards.length > 0 && (
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setIsDeleteDialogOpen(true)}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete ({selectedCards.length})
+          </Button>
+        )}
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -133,6 +241,10 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
               className="flex items-center justify-between p-4 border rounded-lg hover:bg-accent/50 transition-colors"
             >
               <div className="flex items-center gap-4 flex-1">
+                <Checkbox
+                  checked={selectedCards.includes(card.id)}
+                  onCheckedChange={(checked) => handleSelectCard(card.id, checked as boolean)}
+                />
                 <div className={`w-3 h-3 rounded-full ${getCardTypeColor(card.card_type)}`} />
                 <div className="flex-1">
                   <div className="font-medium">{card.clients.name}</div>
@@ -174,6 +286,27 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
           ))}
         </div>
       </CardContent>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the selected {selectedCards.length} report(s).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteReports}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

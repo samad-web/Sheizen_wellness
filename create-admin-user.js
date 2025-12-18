@@ -58,6 +58,7 @@ async function createAdminUser() {
                 data: {
                     name,
                     phone,
+                    role: 'admin' // Pass role in metadata for the trigger to pick up
                 }
             }
         });
@@ -77,39 +78,41 @@ async function createAdminUser() {
         console.log('✅ User created in auth.users');
         console.log('   User ID:', authData.user.id);
 
-        // Create profile
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .upsert({
-                id: authData.user.id,
-                email: email,
-                name: name,
-                phone: phone,
-            });
+        // Profile and role should be created by trigger
+        // We can verify if they exist, or just fetch the role to confirm.
 
-        if (profileError) {
-            console.error('⚠️  Profile creation error:', profileError.message);
-        } else {
-            console.log('✅ Profile created');
-        }
+        console.log('⏳ Verifying admin role...');
+        // Wait a moment for trigger to fire
+        await new Promise(resolve => setTimeout(resolve, 2000));
 
-        // Assign admin role
-        const { error: roleError } = await supabase
+        const { data: roleData, error: roleCheckError } = await supabase
             .from('user_roles')
-            .upsert({
-                user_id: authData.user.id,
-                role: 'admin'
-            });
+            .select('role')
+            .eq('user_id', authData.user.id)
+            .single();
 
-        if (roleError) {
-            console.error('⚠️  Role assignment error:', roleError.message);
-            console.log('\n⚠️  IMPORTANT: You need to manually assign the admin role in Supabase Dashboard');
-            console.log('   1. Go to Supabase Dashboard → Table Editor → user_roles');
-            console.log('   2. Add a new row:');
-            console.log('      - user_id:', authData.user.id);
-            console.log('      - role: admin');
+        if (roleCheckError || !roleData) {
+            console.warn('⚠️  Could not verify role automatically. Trigger might not have fired yet.');
+            console.log('   Attempting manual assignment as fallback...');
+
+            const { error: roleError } = await supabase
+                .from('user_roles')
+                .upsert({
+                    user_id: authData.user.id,
+                    role: 'admin'
+                });
+
+            if (roleError) {
+                console.error('⚠️  Manual role assignment failed:', roleError.message);
+                console.log('   Please check Supabase Dashboard to ensure user has "admin" role.');
+            } else {
+                console.log('✅ Admin role assigned manually.');
+            }
+        } else if (roleData.role !== 'admin') {
+            console.warn(`⚠️  User created but has role "${roleData.role}" instead of "admin".`);
+            console.log('   Please update the role in Supabase Dashboard.');
         } else {
-            console.log('✅ Admin role assigned');
+            console.log('✅ Admin role verified!');
         }
 
         console.log('\n═══════════════════════════════════════════════════════');

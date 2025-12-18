@@ -100,6 +100,16 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
 
     setSending(true);
     try {
+      if (!clientId || !senderId) {
+        console.error('Missing required IDs:', { clientId, senderId });
+        toast({
+          title: "Unable to send message",
+          description: "Missing user information.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const messageData: any = {
         client_id: clientId,
         sender_id: senderId,
@@ -118,9 +128,19 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
         messageData.attachment_size = attachment.size;
       }
 
-      const { error } = await supabase.from('messages').insert(messageData);
+      console.log('Sending message payload:', messageData);
 
-      if (error) throw error;
+      const { data, error } = await supabase
+        .from('messages')
+        .insert(messageData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('SERVER ERROR SENDING MESSAGE:', error);
+        console.error('Error details:', error.details, error.message, error.hint);
+        throw error;
+      }
 
       setMessage('');
       setAttachment(null);

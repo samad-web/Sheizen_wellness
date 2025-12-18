@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { ModeToggle } from "@/components/mode-toggle";
+
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +25,7 @@ import { RecipeBuilder } from "@/components/RecipeBuilder";
 import { AdminClientEditor } from "@/components/AdminClientEditor";
 import { InterestSubmissionsManager } from "@/components/InterestSubmissionsManager";
 import { BulkMessageButton } from "@/components/BulkMessageButton";
-import { CronJobsManager } from "@/components/CronJobsManager";
+
 import { WorkflowStatusWidget } from "@/components/WorkflowStatusWidget";
 import { PendingReviewDashboard } from "@/components/PendingReviewDashboard";
 import { ReportManager } from "@/components/ReportManager";
@@ -142,6 +144,7 @@ export default function AdminDashboard() {
             </div>
           </div>
           <div className="flex gap-2">
+            <ModeToggle />
             <Button
               variant="outline"
               onClick={() => navigate('/community')}
@@ -230,15 +233,13 @@ export default function AdminDashboard() {
 
         {/* Main Content */}
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-7">
-            <TabsTrigger value="clients">Clients</TabsTrigger>
-            <TabsTrigger value="leads">Leads</TabsTrigger>
-            <TabsTrigger value="reports">Reports</TabsTrigger>
-            <TabsTrigger value="automation">Automation</TabsTrigger>
-            <TabsTrigger value="ingredients">Ingredients</TabsTrigger>
-            <TabsTrigger value="food">Food Items</TabsTrigger>
-            <TabsTrigger value="recipes">Recipes</TabsTrigger>
-
+          <TabsList className="grid w-full h-auto grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 bg-muted/50 p-2">
+            <TabsTrigger value="clients" className="h-full">Clients</TabsTrigger>
+            <TabsTrigger value="leads" className="h-full">Leads</TabsTrigger>
+            <TabsTrigger value="reports" className="h-full">Reports</TabsTrigger>
+            <TabsTrigger value="ingredients" className="h-full">Ingredients</TabsTrigger>
+            <TabsTrigger value="food" className="h-full">Food Items</TabsTrigger>
+            <TabsTrigger value="recipes" className="h-full">Recipes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="clients">
@@ -372,9 +373,7 @@ export default function AdminDashboard() {
             <ReportManager />
           </TabsContent>
 
-          <TabsContent value="automation">
-            <CronJobsManager />
-          </TabsContent>
+
         </Tabs>
 
         <AdminClientEditor

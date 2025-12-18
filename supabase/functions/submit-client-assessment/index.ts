@@ -78,7 +78,7 @@ serve(async (req) => {
 
     switch (assessment_type) {
       case 'health_assessment':
-        functionName = 'generate-health-assessment-card';
+        functionName = 'generate-health-assessment';
         break;
       case 'stress_assessment':
         functionName = 'generate-stress-assessment';
@@ -100,20 +100,31 @@ serve(async (req) => {
 
         if (aiResult.error) {
           console.error('Error generating AI card (nested invoke):', aiResult.error);
-          // Don't throw, just report it
+          throw new Error(`Assessment saved, but AI generation invocation failed: ${aiResult.error.message || 'Unknown error'}`);
+        } else if (aiResult.data && aiResult.data.success === false) {
+          console.error('Error in AI generation function:', aiResult.data.error);
+          throw new Error(`Assessment saved, but AI generation failed: ${aiResult.data.error}`);
         } else {
-          console.log('AI card generated successfully (or mocked)');
+          console.log('AI card generated successfully');
         }
-      } catch (invokeError) {
+      } catch (invokeError: any) {
         console.error('Exception invoking nested function:', invokeError);
+        // We want to alert the user that the AI part failed, even if the request was saved
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: 'Assessment saved, but AI generation failed. Please contact support.',
+            error: invokeError.message || 'AI Generation Error'
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Assessment submitted successfully.',
-        details: aiResult.error ? 'AI generation had issues but submission is saved.' : 'processed'
+        message: 'Assessment submitted and generated successfully.',
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

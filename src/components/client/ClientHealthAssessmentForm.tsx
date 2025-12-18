@@ -96,7 +96,7 @@ export function ClientHealthAssessmentForm({ requestId, clientId, clientName, on
   const onSubmit = async (data: z.infer<typeof healthAssessmentSchema>) => {
     setIsSubmitting(true);
     try {
-      const { error } = await supabase.functions.invoke('submit-client-assessment', {
+      const { data: responseData, error } = await supabase.functions.invoke('submit-client-assessment', {
         body: {
           request_id: requestId,
           form_data: data,
@@ -107,6 +107,9 @@ export function ClientHealthAssessmentForm({ requestId, clientId, clientName, on
       });
 
       if (error) throw error;
+      if (responseData && !responseData.success) {
+        throw new Error(responseData.error || 'Failed to generate assessment');
+      }
 
       toast.success('Health assessment submitted! Your results will be ready shortly.');
       onComplete();

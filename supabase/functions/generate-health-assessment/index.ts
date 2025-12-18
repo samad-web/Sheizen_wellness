@@ -1,5 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,70 +28,70 @@ serve(async (req) => {
       .single();
 
     // Create comprehensive AI prompt
-    const prompt = `You are a certified nutritionist analyzing a client's health assessment. Generate a comprehensive, professional health assessment report.
+    const prompt = `You are a certified nutritionist analyzing a client's health assessment. Generate a comprehensive, professional health assessment report in JSON format.
 
 **Client Information:**
 - Name: ${client_name}
-- Age: ${clientData?.age || form_data.sleepHours || 'Not specified'}
-- Gender: ${clientData?.gender || 'Not specified'}
-- Goals: ${clientData?.goals || form_data.weightGoals}
+- Age: ${clientData?.age || form_data.age || 'Not specified'}
+- Gender: ${clientData?.gender || form_data.gender || 'Not specified'}
+- Height: ${form_data.height_cm} cm
+- Weight: ${form_data.weight_kg} kg
+- BMI: ${form_data.bmi}
+- BMR: ${form_data.bmr_kcal}
+- Diet Recall: ${JSON.stringify(form_data.diet_recall || {})}
+- Medical Conditions: ${form_data.medical_condition || 'None'}
+- Goals: ${form_data.goal_weight_loss_kg ? `Weight loss: ${form_data.goal_weight_loss_kg}kg` : ''} ${form_data.goal_other || ''}
 
-**Diet Recall:**
-- Breakfast: ${form_data.breakfast}
-- Lunch: ${form_data.lunch}
-- Dinner: ${form_data.dinner}
-- Snacks: ${form_data.snacks || 'None mentioned'}
-- Eating Patterns: ${form_data.eatingPatterns}
+Return a valid JSON object with the following structure (do not include markdown formatting around the JSON):
+{
+  "client_details": {
+    "name": "${client_name}",
+    "age": number,
+    "gender": "string"
+  },
+  "key_findings": {
+    "height": number (cm),
+    "weight": number (kg),
+    "bmi": number,
+    "bmr": number,
+    "ideal_weight": number,
+    "calorie_intake": number,
+    "protein_intake": number
+  },
+  "medical_history": {
+    "conditions": ["string"],
+    "medications": ["string"],
+    "allergies": ["string"]
+  },
+  "lifestyle": {
+    "diet": "string summary",
+    "exercise": "string summary",
+    "sleep": "string summary",
+    "stress_level": "string selection"
+  },
+  "health_goals": ["string"],
+  "recommendations": ["string"],
+  "ai_analysis": "string (full Markdown formatted detailed analysis text)",
+  "summary": "string (brief summary)"
+}
+`;
 
-**Sleep Pattern:**
-- Average Hours: ${form_data.sleepHours} hours
-- Schedule: ${form_data.sleepSchedule}
-- Quality Rating: ${form_data.sleepQuality}/10
+    console.log('Calling OpenAI API for assessment generation...');
 
-**Hydration:**
-- Daily Water: ${form_data.dailyWater}ml
-- Beverage Habits: ${form_data.beverageHabits}
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
 
-**Physical Activity:**
-- Type: ${form_data.activityType}
-- Frequency: ${form_data.activityFrequency} times/week
-- Duration: ${form_data.activityDuration} minutes/session
-- Intensity: ${form_data.activityIntensity}
-
-**Medical History:**
-- Conditions: ${form_data.medicalConditions || 'None reported'}
-- Medications: ${form_data.medications || 'None'}
-- Supplements: ${form_data.supplements || 'None'}
-- Allergies: ${form_data.allergies || 'None'}
-
-**Goals & Timeline:**
-- Weight/Health Goals: ${form_data.weightGoals}
-- Timeline: ${form_data.timeline}
-- Dietary Restrictions: ${form_data.dietaryRestrictions || 'None'}
-
-Generate a detailed professional assessment covering:
-1. **Current Health Status Summary** - Overall health snapshot
-2. **Dietary Analysis** - Strengths, gaps, areas for improvement
-3. **Lifestyle Evaluation** - Sleep, hydration, activity assessment
-4. **Risk Factors & Concerns** - Any red flags or areas needing attention
-5. **Recommendations** - Specific, actionable nutrition and lifestyle advice
-6. **Action Items** - Prioritized steps to achieve goals
-
-Format as a structured, professional medical assessment document suitable for a nutrition consultation. Be specific, evidence-based, and actionable.`;
-
-    console.log('Calling Lovable AI for assessment generation...');
-
-    // Call Lovable AI for text generation
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Call OpenAI for text generation
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
+        response_format: { type: "json_object" },
         messages: [
-          { role: 'system', content: 'You are an expert nutritionist creating professional health assessments.' },
+          { role: 'system', content: 'You are an expert nutritionist creating professional health assessments. Always respond in valid JSON.' },
           { role: 'user', content: prompt }
         ],
       }),
@@ -104,30 +104,27 @@ Format as a structured, professional medical assessment document suitable for a 
     }
 
     const aiData = await aiResponse.json();
-    const assessmentText = aiData.choices[0].message.content;
+    let generatedContent = {};
+    try {
+      generatedContent = JSON.parse(aiData.choices[0].message.content);
+    } catch (e) {
+      console.error("Failed to parse AI JSON:", e);
+      // Fallback or re-throw
+      generatedContent = { ai_analysis: aiData.choices[0].message.content };
+    }
+
     console.log('Assessment generated successfully');
 
-    // Structure the assessment data
-    const assessmentData = {
-      summary: assessmentText,
-      diet_analysis: form_data,
-      generated_at: new Date().toISOString(),
-      client_info: {
-        name: client_name,
-        age: clientData?.age || form_data.sleepHours,
-        gender: clientData?.gender,
-        goals: form_data.weightGoals,
-      },
-    };
-
-    // Insert assessment into database
+    // Insert assessment into database (Assessments table)
     const { data: assessment, error: insertError } = await supabaseClient
       .from('assessments')
       .insert({
         client_id,
+        assessment_type: 'health',
         ai_generated: true,
-        assessment_data: assessmentData,
+        assessment_data: generatedContent,
         form_responses: form_data,
+        file_name: `Health Assessment - ${client_name} - ${new Date().toLocaleDateString()}`,
         notes: 'AI-generated health assessment',
       })
       .select()
@@ -138,12 +135,30 @@ Format as a structured, professional medical assessment document suitable for a 
       throw insertError;
     }
 
+    // Insert into pending_review_cards for Admin Review
+    const { error: cardError } = await supabaseClient
+      .from('pending_review_cards')
+      .insert({
+        client_id: client_id,
+        card_type: 'health_assessment',
+        generated_content: generatedContent,
+        workflow_stage: 'health_assessment_generated',
+        status: 'pending',
+        ai_generated_at: new Date().toISOString()
+      });
+
+    if (cardError) {
+      console.error('Error creating pending card:', cardError);
+      // CRITICAL UPDATE: Throw error so users know why it failed
+      throw new Error(`Failed to create pending review card: ${cardError.message}`);
+    }
+
     console.log('Assessment saved to database:', assessment.id);
 
     return new Response(
       JSON.stringify({
         assessment_id: assessment.id,
-        assessment_data: assessmentData,
+        assessment_data: generatedContent,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -151,10 +166,10 @@ Format as a structured, professional medical assessment document suitable for a 
   } catch (error: any) {
     console.error('Error in generate-health-assessment:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
-      { 
-        status: error.message.includes('429') ? 429 : error.message.includes('402') ? 402 : 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      JSON.stringify({ success: false, error: error.message, stack: error.stack }),
+      {
+        status: 200, // Return 200 so the caller (submit-client-assessment) can read the JSON body
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }
