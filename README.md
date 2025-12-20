@@ -1,73 +1,71 @@
-# Welcome to your Lovable project
+🌿 Sheizen Wellness Platform
 
-## Project info
+Sheizen Wellness is a comprehensive, full-stack health and nutrition management platform bridging the gap between Admins (Nutritionists) and Clients. The platform facilitates personalized health journeys through real-time tracking, AI-assisted assessments, and community engagement.
 
-**URL**: https://lovable.dev/projects/934cf9a3-ceed-4df8-a48b-f31db4f51d3d
+🚀 Key Features
 
-## How can I edit this code?
+👤 Authentication & Role Management
 
-There are several ways of editing your application.
+Secure Auth: Powered by Supabase Auth with secure role-based access control (Admin vs. Client).
 
-**Use Lovable**
+Smart Session Management: Auto-redirects based on user role and features a 15-minute inactivity timeout with cross-tab persistence.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/934cf9a3-ceed-4df8-a48b-f31db4f51d3d) and start prompting.
+📊 Dynamic Dashboards
 
-Changes made via Lovable will be committed automatically to this repo.
+Client View: Real-time logging for Calories, Meals (with photo uploads), Water, Activity, and Weight.
 
-**Use your preferred IDE**
+Activity Tracking: Specific categories for Aerobic, Muscle Strength, Flexibility, Stretch, and Lifestyle.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Instant Updates: Dashboards update immediately upon logging with full data persistence.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+Admin View: Centralized hub to onboard/manage clients, review assessments, and manage platform content.
 
-Follow these steps:
+🧠 Assessments & AI Insights
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Health Tracking: Standardized assessments for Sleep, Stress, and general Health.
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Reporting: Admins review AI-generated insights and send formatted reports directly to clients.
 
-# Step 3: Install the necessary dependencies.
-npm i
+Pending Queue: Dedicated "Pending Review" section for new assessments.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+💬 Messaging & Community
 
-**Edit a file directly in GitHub**
+Real-time Chat: WhatsApp-style messaging between Admin and Client with auto-scroll and unread counts.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Social Feed: Persistent community feed and group posts with persistent storage.
 
-**Use GitHub Codespaces**
+Engagement: Support for Likes, Comments, Hashtags, and Role Labels (Admin/Client).
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+Safety: Custom confirmation popups for post deletion.
 
-## What technologies are used for this project?
+🍽️ Nutrition & Content
 
-This project is built with:
+Meal Management: Supabase Storage integration for meal photos and recipe uploads.
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Recipe Builder: Detailed support for ingredients, instructions, and video URLs.
 
-## How can I deploy this project?
+Urgent Approval: Feature for clients to request immediate food approval from their nutritionist.
 
-Simply open [Lovable](https://lovable.dev/projects/934cf9a3-ceed-4df8-a48b-f31db4f51d3d) and click on Share -> Publish.
+🏆 Gamification
 
-## Can I connect a custom domain to my Lovable project?
+Achievements: Duolingo-style progression system using custom imagery and progress-based unlocks.
 
-Yes, you can!
+🛠️ Tech Stack
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Frontend: React + TypeScript
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Backend/BaaS: Supabase (Auth, PostgreSQL, Storage, Edge Functions)
+
+Styling: Tailwind CSS
+
+State Management: React Hooks
+
+Real-time: Supabase Realtime Engine
+
+🔐 Security & Persistence
+
+Row Level Security (RLS): Strict Supabase RLS policies for all INSERT/SELECT/DELETE actions.
+
+Data Integrity: No data loss on refresh; all timestamps utilize local time synchronization.
+
+Environment Safety: All API keys managed via .env with no exposure of secret keys on the client side.
