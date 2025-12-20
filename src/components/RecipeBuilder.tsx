@@ -38,6 +38,7 @@ interface Recipe {
   instructions: string | null;
   servings: number;
   total_kcal: number | null;
+  video_url: string | null;
   created_at: string;
 }
 
@@ -71,6 +72,7 @@ const recipeSchema = z.object({
   name: z.string().min(1, "Recipe name is required").max(100),
   description: z.string().max(500).optional(),
   instructions: z.string().optional(),
+  video_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   servings: z.number().min(1, "Servings must be at least 1"),
 });
 
@@ -87,6 +89,7 @@ export function RecipeBuilder() {
   const [recipeName, setRecipeName] = useState("");
   const [description, setDescription] = useState("");
   const [instructions, setInstructions] = useState("");
+  const [videoUrl, setVideoUrl] = useState("");
   const [servings, setServings] = useState(1);
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
 
@@ -104,7 +107,7 @@ export function RecipeBuilder() {
         .order("name", { ascending: true });
 
       if (recipesError) throw recipesError;
-      setRecipes(recipesData || []);
+      setRecipes((recipesData as any) || []);
 
       // Fetch ingredients
       const { data: ingredientsData, error: ingredientsError } = await supabase
@@ -125,6 +128,7 @@ export function RecipeBuilder() {
     setRecipeName("");
     setDescription("");
     setInstructions("");
+    setVideoUrl("");
     setServings(1);
     setRecipeIngredients([]);
     setEditingRecipe(null);
@@ -139,17 +143,19 @@ export function RecipeBuilder() {
     setRecipeName(recipe.name);
     setDescription(recipe.description || "");
     setInstructions(recipe.instructions || "");
+    setVideoUrl(recipe.video_url || "");
     setServings(recipe.servings);
     setEditingRecipe(recipe);
 
     // Fetch recipe ingredients
     const { data, error } = await supabase
       .from("recipe_ingredients")
-      .select("*, ingredients(*)")
+      .select("*, ingredients:ingredients!recipe_ingredients_ingredient_id_fkey(*)")
       .eq("recipe_id", recipe.id);
 
     if (error) {
-      toast.error("Failed to load recipe ingredients");
+      console.error("Error loading ingredients:", error);
+      toast.error(`Failed to load recipe ingredients: ${error.message} (${error.details || ''})`);
       return;
     }
 
@@ -185,7 +191,7 @@ export function RecipeBuilder() {
 
   const updateIngredient = (index: number, field: keyof RecipeIngredient, value: any) => {
     const updated = [...recipeIngredients];
-    
+
     if (field === "ingredient_id") {
       const ingredient = ingredients.find((f) => f.id === value);
       updated[index] = {
@@ -197,7 +203,7 @@ export function RecipeBuilder() {
     } else {
       updated[index] = { ...updated[index], [field]: value };
     }
-    
+
     setRecipeIngredients(updated);
   };
 
@@ -234,6 +240,7 @@ export function RecipeBuilder() {
         name: recipeName,
         description: description || undefined,
         instructions: instructions || undefined,
+        video_url: videoUrl || undefined,
         servings,
       });
 
@@ -250,6 +257,7 @@ export function RecipeBuilder() {
         name: validatedData.name,
         description: validatedData.description || null,
         instructions: validatedData.instructions || null,
+        video_url: validatedData.video_url || null,
         servings: validatedData.servings,
         total_kcal: Math.round(nutrition.kcal),
       };
@@ -487,6 +495,17 @@ export function RecipeBuilder() {
                     onChange={(e) => setInstructions(e.target.value)}
                     placeholder="Step-by-step cooking instructions..."
                     rows={3}
+                    disabled={saving}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="video-url">Video URL (Optional)</Label>
+                  <Input
+                    id="video-url"
+                    value={videoUrl}
+                    onChange={(e) => setVideoUrl(e.target.value)}
+                    placeholder="e.g., YouTube or Vimeo link"
                     disabled={saving}
                   />
                 </div>

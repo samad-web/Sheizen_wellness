@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import path from 'path';
 
 // Load environment variables
 dotenv.config();
@@ -22,52 +23,51 @@ if (!supabaseKey) {
 
 const supabase = createClient(SUPABASE_URL, supabaseKey);
 
-async function applyMigration() {
+// Define migrations to run in order
+const MIGRATIONS_TO_RUN = [
+    '20251219000400_create_achievements.sql',
+    '20251219000500_achievement_triggers.sql'
+];
+
+async function applyMigrations() {
     console.log('\n═══════════════════════════════════════════════════════');
-    console.log('🔧 APPLYING RLS FIX MIGRATION');
+    console.log('🔧 APPLYING ACHIEVEMENT MIGRATIONS');
     console.log('═══════════════════════════════════════════════════════\n');
 
-    try {
-        const migrationPath = process.argv[2] || './supabase/migrations/20251215000000_fix_user_registration_rls.sql';
-        const sql = fs.readFileSync(migrationPath, 'utf8');
+    for (const filename of MIGRATIONS_TO_RUN) {
+        try {
+            const migrationPath = `./supabase/migrations/${filename}`;
+            const sql = fs.readFileSync(migrationPath, 'utf8');
 
-        console.log('⏳ Applying migration...\n');
-        console.log(sql);
-        console.log('\n');
+            console.log(`\n⏳ Applying migration: ${filename}...`);
 
-        // Split SQL into individual statements
-        const statements = sql
-            .split(';')
-            .map(s => s.trim())
-            .filter(s => s.length > 0 && !s.startsWith('--'));
+            // Execute the entire file as a single block
+            const { error } = await supabase.rpc('exec_sql', { sql_query: sql });
 
-        for (const statement of statements) {
-            if (statement.trim()) {
-                console.log(`Executing: ${statement.substring(0, 60)}...`);
-                const { error } = await supabase.rpc('exec_sql', { sql_query: statement + ';' });
+            if (error) {
+                console.error(`❌ Error applying ${filename}:`, error.message);
 
-                if (error) {
-                    console.error('❌ Error:', error.message);
-                } else {
-                    console.log('✅ Success');
-                }
+                // Since RPC is unreliable for some users, print instruction
+                console.log('\n⚠️  MANUAL ACTION REQUIRED:');
+                console.log('Please apply the migration manually in Supabase Dashboard:');
+                console.log('1. Go to Supabase Dashboard → SQL Editor');
+                console.log(`2. Copy the contents of: supabase/migrations/${filename}`);
+                console.log('3. Paste and run the SQL\n');
+
+                process.exit(1);
+            } else {
+                console.log(`✅ Success: ${filename}`);
             }
+
+        } catch (error) {
+            console.error(`\n❌ Fatal Error processing ${filename}:`, error.message);
+            process.exit(1);
         }
-
-        console.log('\n═══════════════════════════════════════════════════════');
-        console.log('✅ MIGRATION APPLIED');
-        console.log('═══════════════════════════════════════════════════════\n');
-
-    } catch (error) {
-        console.error('\n❌ Error:', error.message);
-        console.log('\n⚠️  MANUAL ACTION REQUIRED:');
-        console.log('Please apply the migration manually in Supabase Dashboard:');
-        console.log('1. Go to Supabase Dashboard → SQL Editor');
-        console.log('2. Copy the contents of:');
-        console.log('   supabase/migrations/20251215000000_fix_user_registration_rls.sql');
-        console.log('3. Paste and run the SQL\n');
-        process.exit(1);
     }
+
+    console.log('\n═══════════════════════════════════════════════════════');
+    console.log('✅ MIGRATIONS COMPLETED');
+    console.log('═══════════════════════════════════════════════════════\n');
 }
 
-applyMigration();
+applyMigrations();

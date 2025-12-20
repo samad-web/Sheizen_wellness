@@ -18,7 +18,7 @@ interface MessageComposerProps {
   clientId: string;
   senderId: string;
   senderType: 'admin' | 'client';
-  onMessageSent?: () => void;
+  onMessageSent?: (message: any) => void;
 }
 
 const quickTemplates = [
@@ -118,6 +118,7 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
         content: message.trim() || '(File attachment)',
         metadata: {},
         is_read: false,
+        created_at: new Date().toISOString(),
       };
 
       // Add attachment data if present
@@ -148,7 +149,9 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
         title: "Message sent",
         description: "Your message has been delivered.",
       });
-      onMessageSent?.();
+      if (data) {
+        onMessageSent?.(data);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
       toast({

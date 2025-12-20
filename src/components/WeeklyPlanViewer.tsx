@@ -110,7 +110,7 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
     const dayCards = mealCards.filter(card => card.day_number === day);
     // Sort by meal type order
     const mealOrder = ["breakfast", "lunch", "evening_snack", "dinner"];
-    return dayCards.sort((a, b) => 
+    return dayCards.sort((a, b) =>
       mealOrder.indexOf(a.meal_type) - mealOrder.indexOf(b.meal_type)
     );
   };
@@ -167,11 +167,10 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
                 <button
                   key={plan.id}
                   onClick={() => setSelectedPlanId(plan.id)}
-                  className={`px-4 py-2 rounded-lg border transition-colors ${
-                    selectedPlanId === plan.id
+                  className={`px-4 py-2 rounded-lg border transition-colors ${selectedPlanId === plan.id
                       ? "bg-primary text-primary-foreground border-primary"
                       : "bg-background hover:bg-muted"
-                  }`}
+                    }`}
                 >
                   Week {plan.week_number}
                 </button>
@@ -227,13 +226,13 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
         <Card>
           <CardContent className="p-0">
             <Tabs value={`day-${currentDay}`} onValueChange={(v) => setCurrentDay(parseInt(v.split("-")[1]))}>
-              <div className="border-b p-4">
-                <TabsList className="grid grid-cols-7 w-full">
+              <div className="border-b p-4 overflow-x-auto">
+                <TabsList className="inline-flex w-full min-w-max sm:w-auto h-auto p-1">
                   {[1, 2, 3, 4, 5, 6, 7].map(day => (
-                    <TabsTrigger key={day} value={`day-${day}`}>
-                      <div className="flex flex-col items-center">
-                        <span className="text-xs">Day</span>
-                        <span className="font-bold">{day}</span>
+                    <TabsTrigger key={day} value={`day-${day}`} className="flex-1 min-w-[70px]">
+                      <div className="flex flex-col items-center py-1">
+                        <span className="text-[10px] uppercase text-muted-foreground">Day</span>
+                        <span className="font-bold text-lg">{day}</span>
                       </div>
                     </TabsTrigger>
                   ))}

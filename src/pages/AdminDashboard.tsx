@@ -27,6 +27,7 @@ import { InterestSubmissionsManager } from "@/components/InterestSubmissionsMana
 import { BulkMessageButton } from "@/components/BulkMessageButton";
 
 import { WorkflowStatusWidget } from "@/components/WorkflowStatusWidget";
+import { AdminRequestsWidget } from "@/components/AdminRequestsWidget";
 import { PendingReviewDashboard } from "@/components/PendingReviewDashboard";
 import { ReportManager } from "@/components/ReportManager";
 import { HealthAssessmentCardEditor } from "@/components/HealthAssessmentCardEditor";
@@ -218,7 +219,8 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
-        <div className="mb-8">
+        <div className="mb-8 space-y-6">
+          <AdminRequestsWidget />
           <WorkflowStatusWidget />
         </div>
 
@@ -244,18 +246,19 @@ export default function AdminDashboard() {
 
           <TabsContent value="clients">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle>All Clients</CardTitle>
                   <CardDescription>Manage your client roster</CardDescription>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <BulkMessageButton clients={clients} onSuccess={refetchDashboard} />
                   <Button
                     onClick={() => {
                       setEditingClientId(null);
                       setEditorOpen(true);
                     }}
+                    className="flex-1 sm:flex-none"
                   >
                     <Users className="mr-2 h-4 w-4" />
                     New Client
@@ -285,23 +288,23 @@ export default function AdminDashboard() {
                       >
                         <div className="absolute inset-0 bg-gradient-to-r from-wellness-light/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <CardContent className="p-6 relative">
-                          <div className="flex items-center justify-between">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="flex-1 space-y-3">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-gradient-to-br from-wellness-green to-wellness-mint rounded-full flex items-center justify-center text-white font-semibold shadow-md">
+                                <div className="w-10 h-10 bg-gradient-to-br from-wellness-green to-wellness-mint rounded-full flex items-center justify-center text-white font-semibold shadow-md shrink-0">
                                   {client.name.charAt(0)}
                                 </div>
-                                <div>
-                                  <h3 className="font-semibold text-lg flex items-center gap-2">
-                                    {client.name}
+                                <div className="min-w-0">
+                                  <h3 className="font-semibold text-lg flex flex-wrap items-center gap-2">
+                                    <span className="truncate">{client.name}</span>
                                     <Badge className={getStatusColor(client.status)} variant="outline">
                                       {client.status}
                                     </Badge>
                                   </h3>
-                                  <p className="text-sm text-muted-foreground">{client.email}</p>
+                                  <p className="text-sm text-muted-foreground truncate">{client.email}</p>
                                 </div>
                               </div>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <span>📱</span>
                                   <span>{client.phone}</span>
@@ -321,11 +324,11 @@ export default function AdminDashboard() {
                                 </div>
                               </div>
                             </div>
-                            <div className="flex gap-2 ml-4">
+                            <div className="flex gap-2 sm:ml-4 w-full sm:w-auto mt-2 sm:mt-0">
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="interactive-button"
+                                className="interactive-button flex-1 sm:flex-none"
                                 onClick={() => {
                                   setEditingClientId(client.id);
                                   setEditorOpen(true);
@@ -336,7 +339,7 @@ export default function AdminDashboard() {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                className="interactive-button group/btn"
+                                className="interactive-button group/btn flex-1 sm:flex-none"
                                 onClick={() => navigate(`/admin/client/${client.id}`)}
                               >
                                 <Eye className="mr-2 h-4 w-4 transition-transform group-hover/btn:scale-110" />

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 // VAPID public key - hardcoded for frontend use (public keys are meant to be public!)
-const VAPID_PUBLIC_KEY = "BFv9gpJ_NgTQYz93Tlw9Wru5K9-QHiAyhxrj_3DDRJWyk24_cum6G3q5fu8lmsmjdpnADJizI9iHQq-aU88Fxts";
+const VAPID_PUBLIC_KEY = "BKbNBg2FSUHZhfEJTfzFTUcoDRfqKHr5x5gQSDsTczmFv2-z1KZj0lVYv71ozBxKDcUwaX9vHm4pXIgxRFQ1dxs";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -61,7 +61,7 @@ export function usePushNotifications(clientId: string | null) {
     if (typeof Notification !== 'undefined') {
       const newStatus = Notification.permission;
       setPermissionStatus(newStatus);
-      
+
       // If permission is now granted, re-check subscription status
       if (newStatus === 'granted') {
         checkSubscriptionStatus();
@@ -72,7 +72,7 @@ export function usePushNotifications(clientId: string | null) {
   useEffect(() => {
     const supported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
     setIsSupported(supported);
-    
+
     // Set initial permission status
     if (typeof Notification !== 'undefined') {
       setPermissionStatus(Notification.permission);
@@ -85,13 +85,13 @@ export function usePushNotifications(clientId: string | null) {
         if (typeof Notification !== 'undefined') {
           setPermissionStatus(Notification.permission);
         }
-        
+
         // Listen for changes
         status.onchange = () => {
           if (typeof Notification !== 'undefined') {
             const newStatus = Notification.permission;
             setPermissionStatus(newStatus);
-            
+
             // Re-check subscription status when permission changes to granted
             if (newStatus === 'granted') {
               checkSubscriptionStatus();
@@ -105,7 +105,7 @@ export function usePushNotifications(clientId: string | null) {
         console.log('Permissions API not fully supported, using fallback');
       });
     }
-    
+
     if (clientId && supported) {
       checkSubscriptionStatus();
     }
@@ -119,7 +119,7 @@ export function usePushNotifications(clientId: string | null) {
 
     // Check current permission state first
     const currentPermission = Notification.permission;
-    
+
     if (currentPermission === 'denied') {
       toast.error('Notification permission was previously denied. Please enable it in your browser settings.');
       return false;
@@ -132,7 +132,7 @@ export function usePushNotifications(clientId: string | null) {
     // Only request permission if it's 'default' (not yet asked)
     const permission = await Notification.requestPermission();
     setPermissionStatus(permission);
-    
+
     if (permission !== 'granted') {
       toast.error('Notification permission denied');
       return false;
@@ -143,7 +143,7 @@ export function usePushNotifications(clientId: string | null) {
 
   const subscribe = async () => {
     if (!clientId) return;
-    
+
     setIsLoading(true);
     try {
       const hasPermission = await requestPermission();
@@ -153,9 +153,19 @@ export function usePushNotifications(clientId: string | null) {
       }
 
       const registration = await navigator.serviceWorker.ready;
+
+      // Check if already subscribed to push service (possibly with old key) and unsubscribe
+      const existingSubscription = await registration.pushManager.getSubscription();
+      if (existingSubscription) {
+        await existingSubscription.unsubscribe();
+      }
+
+      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      console.log('Subscribing with key:', applicationServerKey);
+
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        applicationServerKey
       });
 
       // Save subscription to database
@@ -171,9 +181,9 @@ export function usePushNotifications(clientId: string | null) {
 
       setIsSubscribed(true);
       toast.success('Notifications enabled successfully!');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error subscribing to push:', error);
-      toast.error('Failed to enable notifications');
+      toast.error(`Failed to enable notifications: ${error.message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
@@ -186,7 +196,7 @@ export function usePushNotifications(clientId: string | null) {
     try {
       const registration = await navigator.serviceWorker.ready;
       const subscription = await registration.pushManager.getSubscription();
-      
+
       if (subscription) {
         await subscription.unsubscribe();
 

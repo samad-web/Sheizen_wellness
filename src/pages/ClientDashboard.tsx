@@ -20,7 +20,11 @@ import {
   Flame,
   LogOut,
   FileText,
-  Plus
+  Plus,
+  HelpCircle,
+  AlertCircle,
+  Image as ImageIcon,
+  X
 } from "lucide-react";
 import { CustomLogo } from "@/components/CustomLogo";
 import { MealPhotoUpload } from "@/components/MealPhotoUpload";
@@ -60,6 +64,9 @@ import { NotificationSettings } from "@/components/NotificationSettings";
 import { ClientReportList } from "@/components/ClientReportList";
 import { ModeToggle } from "@/components/mode-toggle";
 
+import { ClientRecipeList } from "@/components/client/ClientRecipeList";
+import { Textarea } from "@/components/ui/textarea"; // Ensure this is imported or use Input as fallback
+
 export default function ClientDashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -83,8 +90,16 @@ export default function ClientDashboard() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [newMessage, setNewMessage] = useState<Message | null>(null);
+
   const [showAssessmentForm, setShowAssessmentForm] = useState(false);
   const [selectedAssessmentRequest, setSelectedAssessmentRequest] = useState<{ requestId: string; type: string } | null>(null);
+
+  // Urgent Query State
+  const [showUrgentQuery, setShowUrgentQuery] = useState(false);
+  const [urgentQueryText, setUrgentQueryText] = useState("");
+  const [sendingQuery, setSendingQuery] = useState(false);
+  const [urgentQueryImage, setUrgentQueryImage] = useState<File | null>(null);
+  const [urgentQueryImagePreview, setUrgentQueryImagePreview] = useState<string | null>(null);
 
   const fetchClientData = async () => {
     if (!user?.id) throw new Error("No user");
@@ -292,8 +307,7 @@ export default function ClientDashboard() {
       const { data: allAchievements } = await supabase
         .from("achievements")
         .select("*")
-        .eq("is_active", true)
-        .order("points", { ascending: false });
+        .order("target_value", { ascending: true });
 
       if (allAchievements) {
         setAchievements(allAchievements);
@@ -323,7 +337,7 @@ export default function ClientDashboard() {
 
   const updateUnreadCount = async () => {
     if (!clientData?.id) return;
-    const count = await getUnreadCount(clientData.id);
+    const count = await getUnreadCount(clientData.id, 'client');
     setUnreadCount(count);
   };
 
@@ -513,6 +527,93 @@ export default function ClientDashboard() {
     }
   };
 
+  const requestMealUpdate = async (mealId: string, mealName: string | null) => {
+    if (!clientData?.id) return;
+
+    try {
+      const { error } = await supabase
+        .from('admin_requests')
+        .insert({
+          client_id: clientData.id,
+          request_type: 'meal_update',
+          metadata: { meal_id: mealId, meal_name: mealName || 'Unnamed Meal' },
+          status: 'pending'
+        });
+
+      if (error) throw error;
+      toast.success("Request sent to admin");
+    } catch (error) {
+      console.error("Error sending request:", error);
+      toast.error("Failed to send request");
+    }
+  };
+
+  const handleUrgentQuerySubmit = async () => {
+    if (!clientData?.id) return;
+    if (!urgentQueryText.trim()) {
+      toast.error("Please enter your question");
+      return;
+    }
+
+    try {
+      setSendingQuery(true);
+
+      let imagePath = null;
+      if (urgentQueryImage) {
+        // Use client ID as root folder to satisfy RLS policies
+        const fileName = `${clientData.id}/urgent-queries/${Date.now()}-${urgentQueryImage.name}`;
+        const { error: uploadError } = await supabase.storage
+          .from("meal-photos")
+          .upload(fileName, urgentQueryImage);
+
+        if (uploadError) throw uploadError;
+        imagePath = fileName;
+      }
+
+      const { error } = await supabase
+        .from('admin_requests')
+        .insert({
+          client_id: clientData.id,
+          request_type: 'urgent_query',
+          metadata: {
+            message: urgentQueryText.trim(),
+            image_path: imagePath
+          },
+          status: 'pending',
+          admin_notes: null
+        });
+
+      if (error) throw error;
+
+      toast.success("Urgent query sent to admin");
+      setShowUrgentQuery(false);
+      setUrgentQueryText("");
+      setUrgentQueryImage(null);
+      setUrgentQueryImagePreview(null);
+    } catch (error) {
+      console.error("Error sending urgent query:", error);
+      toast.error("Failed to send query");
+    } finally {
+      setSendingQuery(false);
+    }
+  };
+
+  const handleUrgentImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("Image size must be less than 5MB");
+        return;
+      }
+      setUrgentQueryImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUrgentQueryImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleNavigateToCalendar = (date: Date) => {
     setActiveTab('calendar');
   };
@@ -529,13 +630,13 @@ export default function ClientDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-wellness-light via-background to-wellness-light/30">
       <div className="container mx-auto p-4 md:p-8 max-w-7xl">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
-            <CustomLogo className="w-12 h-12" />
-            <div>
-              <h1 className="text-3xl font-bold">Welcome, {clientData?.name}!</h1>
-              <div className="flex items-center gap-2">
-                <p className="text-muted-foreground">Your wellness dashboard</p>
+            <CustomLogo className="w-12 h-12 shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-3xl font-bold truncate">Welcome, {clientData?.name}!</h1>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm sm:text-base text-muted-foreground truncate">Your wellness dashboard</p>
                 {clientData?.service_type && (
                   <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs border ${getServiceTypeBadgeColor(clientData.service_type)}`}>
                     {formatServiceType(clientData.service_type)}
@@ -544,28 +645,29 @@ export default function ClientDashboard() {
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-2 w-full lg:w-auto">
             <ModeToggle />
             <NotificationBell clientId={clientData?.id} onNavigate={handleNavigateToCalendar} />
             {pushSupported && !isSubscribed && permissionStatus !== 'denied' && (
-              <Button variant="default" onClick={subscribe} disabled={pushLoading} size="sm" className="bg-primary hover:bg-primary/90">
+              <Button variant="default" onClick={subscribe} disabled={pushLoading} size="sm" className="bg-primary hover:bg-primary/90 flex-1 sm:flex-none">
                 Enable Notifications
               </Button>
             )}
             {pushSupported && permissionStatus === 'denied' && (
-              <Button variant="outline" size="sm" onClick={() => setActiveTab('today')} className="text-muted-foreground">
+              <Button variant="outline" size="sm" onClick={() => setActiveTab('today')} className="text-muted-foreground flex-1 sm:flex-none">
                 <BellOff className="h-4 w-4 mr-2" />
-                Notifications Blocked
+                Blocked
               </Button>
             )}
             <Button
               variant="outline"
               onClick={() => navigate('/community')}
+              className="flex-1 sm:flex-none"
             >
               <MessageCircle className="mr-2 h-4 w-4" />
               Community
             </Button>
-            <Button variant="outline" onClick={signOut}>
+            <Button variant="outline" onClick={signOut} className="flex-1 sm:flex-none">
               <LogOut className="mr-2 h-4 w-4" />
               Sign Out
             </Button>
@@ -686,24 +788,24 @@ export default function ClientDashboard() {
           onValueChange={(value) => setActiveTab(value as typeof activeTab)}
           className=""
         >
-          <div className="tabs-container flex items-center gap-2 flex-wrap p-1 rounded-lg bg-muted/50">
-            <TabsList className="flex-1 min-w-0 flex items-center gap-1 flex-wrap bg-transparent">
-              <TabsTrigger value="today" className="whitespace-nowrap">Today</TabsTrigger>
-              <TabsTrigger value="plan" className="whitespace-nowrap">Plan</TabsTrigger>
-              <TabsTrigger value="logs" className="whitespace-nowrap">Meals</TabsTrigger>
-              <TabsTrigger value="files" className="whitespace-nowrap">Files</TabsTrigger>
-              <TabsTrigger value="achievements" className="whitespace-nowrap">Achievements</TabsTrigger>
-              <TabsTrigger value="assessments" className="relative whitespace-nowrap">
-                <ClipboardList className="w-4 h-4 mr-1" />
-                Assessments
+          <div className="tabs-container flex items-center gap-2 flex-wrap p-1 rounded-lg bg-muted/50 overflow-x-auto">
+            <TabsList className="flex flex-wrap h-auto justify-start gap-2 bg-transparent p-0 w-full sm:w-auto">
+              <TabsTrigger value="today" className="flex-1 sm:flex-none whitespace-nowrap">Today</TabsTrigger>
+              <TabsTrigger value="plan" className="flex-1 sm:flex-none whitespace-nowrap">Plan</TabsTrigger>
+              <TabsTrigger value="logs" className="flex-1 sm:flex-none whitespace-nowrap">Meals</TabsTrigger>
+              <TabsTrigger value="files" className="flex-1 sm:flex-none whitespace-nowrap">Files</TabsTrigger>
+              <TabsTrigger value="achievements" className="flex-1 sm:flex-none whitespace-nowrap">Achievements</TabsTrigger>
+              <TabsTrigger value="assessments" className="flex-1 sm:flex-none relative whitespace-nowrap">
+                <ClipboardList className="w-4 h-4 mr-1 hidden sm:inline-block" />
+                <span className="sm:inline">Assessments</span>
                 {assessmentCards.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {assessmentCards.length}
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="reports" className="whitespace-nowrap">Reports</TabsTrigger>
-              <TabsTrigger value="messages" className="relative whitespace-nowrap" onClick={handleMessagesTabOpen}>
+              <TabsTrigger value="reports" className="flex-1 sm:flex-none whitespace-nowrap">Reports</TabsTrigger>
+              <TabsTrigger value="messages" className="flex-1 sm:flex-none relative whitespace-nowrap" onClick={handleMessagesTabOpen}>
                 Messages
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
@@ -711,9 +813,10 @@ export default function ClientDashboard() {
                   </span>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="calendar" className="whitespace-nowrap">Calendar</TabsTrigger>
+              <TabsTrigger value="calendar" className="flex-1 sm:flex-none whitespace-nowrap">Calendar</TabsTrigger>
+              <TabsTrigger value="recipes" className="flex-1 sm:flex-none whitespace-nowrap">Recipes</TabsTrigger>
               {clientData?.service_type === 'hundred_days' && (
-                <TabsTrigger value="progress" className="whitespace-nowrap">100-Day</TabsTrigger>
+                <TabsTrigger value="progress" className="flex-1 sm:flex-none whitespace-nowrap">100-Day</TabsTrigger>
               )}
             </TabsList>
           </div>
@@ -742,12 +845,12 @@ export default function ClientDashboard() {
                     {/* Water Quick Add */}
                     <div>
                       <Label className="mb-2 block">Add Water</Label>
-                      <div className="flex flex-wrap gap-2 mb-2">
+                      <div className="grid grid-cols-3 gap-2 mb-2">
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => quickAddWater(250)}
-                          className="flex-1 min-w-[100px]"
+                          className="w-full"
                         >
                           <Plus className="mr-1 h-3 w-3" />
                           250ml
@@ -756,7 +859,7 @@ export default function ClientDashboard() {
                           variant="outline"
                           size="sm"
                           onClick={() => quickAddWater(500)}
-                          className="flex-1 min-w-[100px]"
+                          className="w-full"
                         >
                           <Plus className="mr-1 h-3 w-3" />
                           500ml
@@ -765,7 +868,7 @@ export default function ClientDashboard() {
                           variant="outline"
                           size="sm"
                           onClick={() => quickAddWater(750)}
-                          className="flex-1 min-w-[100px]"
+                          className="w-full"
                         >
                           <Plus className="mr-1 h-3 w-3" />
                           750ml
@@ -931,8 +1034,21 @@ export default function ClientDashboard() {
 
                 <Card className="animate-fade-in">
                   <CardHeader>
-                    <CardTitle>Today's Meals</CardTitle>
-                    <CardDescription>Track your nutrition</CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle>Today's Meals</CardTitle>
+                        <CardDescription>Track your nutrition</CardDescription>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setShowUrgentQuery(true)}
+                        className="animate-pulse"
+                      >
+                        <AlertCircle className="mr-2 h-4 w-4" />
+                        Ask Admin / Urgent
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <Button className="w-full" onClick={() => setActiveTab("logs")}>
@@ -1009,9 +1125,20 @@ export default function ClientDashboard() {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center justify-between mb-1 gap-2">
                                 <p className="font-semibold capitalize">{log.meal_type.replace("_", " ")}</p>
-                                <p className="text-sm text-muted-foreground whitespace-nowrap">
-                                  {new Date(log.logged_at).toLocaleString()}
-                                </p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm text-muted-foreground whitespace-nowrap">
+                                    {new Date(log.logged_at).toLocaleString()}
+                                  </p>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-6 w-6"
+                                    onClick={() => requestMealUpdate(log.id, log.meal_name)}
+                                    title="Request help/update"
+                                  >
+                                    <HelpCircle className="h-4 w-4 text-muted-foreground hover:text-primary" />
+                                  </Button>
+                                </div>
                               </div>
                               {log.meal_name && <p className="text-sm truncate">{log.meal_name}</p>}
                               {log.kcal && <p className="text-sm text-muted-foreground">{log.kcal} kcal</p>}
@@ -1138,7 +1265,7 @@ export default function ClientDashboard() {
 
           <TabsContent value="messages">
             <div className="h-[600px] flex flex-col">
-              <Card className="flex-1 flex flex-col">
+              <Card className="flex-1 flex flex-col overflow-hidden">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageCircle className="h-5 w-5" />
@@ -1175,6 +1302,10 @@ export default function ClientDashboard() {
               {clientData?.id && <HundredDayProgress clientId={clientData.id} />}
             </TabsContent>
           )}
+
+          <TabsContent value="recipes">
+            <ClientRecipeList />
+          </TabsContent>
         </Tabs>
 
         {/* Achievement Notifications */}
@@ -1226,6 +1357,84 @@ export default function ClientDashboard() {
                 }}
               />
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Urgent Query Dialog */}
+        <Dialog open={showUrgentQuery} onOpenChange={setShowUrgentQuery}>
+          <DialogContent>
+            <CardHeader className="px-0 pt-0">
+              <CardTitle className="text-red-600 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" />
+                Urgent Food Query
+              </CardTitle>
+              <CardDescription>
+                Use this for immediate questions about food approvals or urgent diet concerns.
+              </CardDescription>
+            </CardHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Your Question</Label>
+                <Textarea
+                  placeholder="e.g., Can I eat the grilled chicken at this restaurant?"
+                  value={urgentQueryText}
+                  onChange={(e) => setUrgentQueryText(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Attach Photo (Optional)</Label>
+                {urgentQueryImagePreview ? (
+                  <div className="relative inline-block mt-2">
+                    <img
+                      src={urgentQueryImagePreview}
+                      alt="Preview"
+                      className="h-32 w-auto object-cover rounded-md border"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute -top-2 -right-2 h-6 w-6 rounded-full"
+                      onClick={() => {
+                        setUrgentQueryImage(null);
+                        setUrgentQueryImagePreview(null);
+                      }}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleUrgentImageSelect}
+                      className="hidden"
+                      id="urgent-query-image"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => document.getElementById('urgent-query-image')?.click()}
+                    >
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Select Image
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setShowUrgentQuery(false)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleUrgentQuerySubmit}
+                  disabled={sendingQuery || !urgentQueryText.trim()}
+                >
+                  {sendingQuery ? "Sending..." : "Send Urgent Query"}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

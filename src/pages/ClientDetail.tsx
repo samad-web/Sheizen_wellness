@@ -21,12 +21,13 @@ import { getSignedUrl } from "@/lib/storage";
 import { MealPhotoDisplay } from "@/components/MealPhotoDisplay";
 import { MessageFeed } from "@/components/MessageFeed";
 import { MessageComposer } from "@/components/MessageComposer";
-import { type Message } from "@/lib/messages";
+import { type Message, getUnreadCount, markMessagesAsRead } from "@/lib/messages";
 import { CalendarView } from "@/components/CalendarView";
 import { HundredDayProgress } from "@/components/HundredDayProgress";
 import { WorkflowTimeline } from "@/components/WorkflowTimeline";
 import { exportDietPlanToExcel } from "@/lib/excelExport";
-import { FileText, Brain, Moon } from "lucide-react";
+import { FileText, Brain, Moon, FileEdit } from "lucide-react";
+import { AdminNotes } from "@/components/admin/AdminNotes";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -122,6 +123,9 @@ const ClientDetail = () => {
   const [isRequestingAssessment, setIsRequestingAssessment] = useState(false);
   const [editAssessmentId, setEditAssessmentId] = useState<string | null>(null);
 
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   useEffect(() => {
     if (userRole !== "admin") {
       navigate("/auth");
@@ -192,22 +196,14 @@ const ClientDetail = () => {
       .order("logged_at", { ascending: false })
       .limit(50);
 
-    // Fetch messages
-    const { data: messagesData } = await supabase
-      .from("messages")
-      .select("*")
-      .eq("client_id", id)
-      .order("created_at", { ascending: true });
-
     return {
       client: clientData,
-      assessments: assessmentsData || [],
-      plans: plansData || [],
-      dailyLogs: logsData || [],
-      files: filesData || [],
-      reports: reportsData || [],
-      mealLogs: mealLogsData || [],
-      messages: (messagesData as Message[]) || [],
+      assessments: (assessmentsData as unknown as Assessment[]) || [],
+      plans: (plansData as unknown as WeeklyPlan[]) || [],
+      dailyLogs: (logsData as unknown as DailyLog[]) || [],
+      files: (filesData as unknown as FileRecord[]) || [],
+      reports: (reportsData as unknown as WeeklyReport[]) || [],
+      mealLogs: (mealLogsData as unknown as MealLog[]) || [],
     };
   };
 
@@ -224,11 +220,67 @@ const ClientDetail = () => {
   const files = data?.files || [];
   const reports = data?.reports || [];
   const mealLogs = data?.mealLogs || [];
-  const messages = data?.messages || [];
 
   const refetchClientData = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-client-detail', id] });
   };
+
+  const fetchMessages = async () => {
+    if (!id) return;
+
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('client_id', id)
+      .order('created_at', { ascending: true });
+
+    if (!error && data) {
+      setMessages(data as Message[]);
+    }
+  };
+
+  const updateUnreadCount = async () => {
+    if (!id) return;
+    const count = await getUnreadCount(id, 'admin');
+    setUnreadCount(count);
+  };
+
+  useEffect(() => {
+    fetchMessages();
+    updateUnreadCount();
+  }, [id]);
+
+  const handleMessagesTabOpen = async () => {
+    if (id) {
+      await markMessagesAsRead(id);
+      setUnreadCount(0);
+    }
+  };
+
+  // Real-time messages subscription
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel('admin-messages-realtime')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `client_id=eq.${id}`
+      }, (payload) => {
+        const newMsg = payload.new as Message;
+        setMessages(prev => [...prev, newMsg]);
+        if (newMsg.sender_type === 'client') {
+          setUnreadCount(prev => prev + 1);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
 
   const getStatusColor = (status: string | null) => {
     switch (status) {
@@ -285,6 +337,18 @@ const ClientDetail = () => {
     } finally {
       setDeletePlanId(null);
     }
+  };
+
+  const handleMessageSent = (newMessage: Message) => {
+    if (!newMessage) return;
+    // Optimistically add the message to the list immediately
+    setMessages(prev => {
+      // Check if message already exists to avoid duplicates
+      if (prev.some(msg => msg.id === newMessage.id)) {
+        return prev;
+      }
+      return [...prev, newMessage];
+    });
   };
 
   const handleRequestAssessment = async (assessmentType: string) => {
@@ -350,13 +414,13 @@ const ClientDetail = () => {
         {/* Client Header */}
         <Card className="mb-6">
           <CardHeader>
-            <div className="flex justify-between items-start">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
               <div>
-                <CardTitle className="text-3xl">{client.name}</CardTitle>
+                <CardTitle className="text-2xl sm:text-3xl">{client.name}</CardTitle>
                 <CardDescription className="mt-2 space-y-1">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    {client.email}
+                    <span className="break-all">{client.email}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
@@ -416,14 +480,25 @@ const ClientDetail = () => {
 
         {/* Tabbed Interface */}
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex flex-wrap h-auto justify-start gap-2 bg-transparent p-0">
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="notes">
+              <FileEdit className="h-4 w-4 mr-2" />
+              Notes
+            </TabsTrigger>
             <TabsTrigger value="assessments">Assessments ({assessments.length})</TabsTrigger>
             <TabsTrigger value="plans">Plans ({plans.length})</TabsTrigger>
             <TabsTrigger value="logs">Daily Logs ({dailyLogs.length})</TabsTrigger>
             <TabsTrigger value="files">Files ({files.length})</TabsTrigger>
             <TabsTrigger value="reports">Reports ({reports.length})</TabsTrigger>
-            <TabsTrigger value="messages">Messages ({messages.length})</TabsTrigger>
+            <TabsTrigger value="messages" onClick={handleMessagesTabOpen}>
+              Messages
+              {unreadCount > 0 && (
+                <span className="ml-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="calendar">Calendar</TabsTrigger>
             <TabsTrigger value="workflow">
               <Activity className="h-4 w-4 mr-1" />
@@ -476,10 +551,14 @@ const ClientDetail = () => {
             <ProgressCharts clientId={id!} daysToShow={30} />
           </TabsContent>
 
+          <TabsContent value="notes">
+            <AdminNotes clientId={id!} clientName={client.name} />
+          </TabsContent>
+
           <TabsContent value="assessments">
             <div className="space-y-6">
               <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                     <CardTitle>Assessments</CardTitle>
                     <CardDescription>View and manage client assessments</CardDescription>
@@ -586,7 +665,7 @@ const ClientDetail = () => {
 
           <TabsContent value="plans">
             <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle>Weekly Plans</CardTitle>
                   <CardDescription>Manage client meal plans</CardDescription>
@@ -862,7 +941,7 @@ const ClientDetail = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="space-y-6">
-            <Card className="h-[600px] flex flex-col">
+            <Card className="h-[600px] flex flex-col overflow-hidden">
               <CardHeader>
                 <CardTitle>Messages</CardTitle>
                 <CardDescription>Communication with {client.name}</CardDescription>
@@ -873,7 +952,7 @@ const ClientDetail = () => {
                   clientId={id}
                   senderId={user.id}
                   senderType="admin"
-                  onMessageSent={fetchClientData}
+                  onMessageSent={handleMessageSent}
                 />
               )}
             </Card>

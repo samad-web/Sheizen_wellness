@@ -57,14 +57,14 @@ const ingredientSchema = z.object({
 
 type IngredientFormData = z.infer<typeof ingredientSchema>;
 
-const FormFields = ({ 
-  formData, 
-  setFormData, 
+const FormFields = ({
+  formData,
+  setFormData,
   saving,
   categories
-}: { 
-  formData: IngredientFormData; 
-  setFormData: (data: IngredientFormData) => void; 
+}: {
+  formData: IngredientFormData;
+  setFormData: (data: IngredientFormData) => void;
   saving: boolean;
   categories: string[];
 }) => (
@@ -228,7 +228,7 @@ export function IngredientsManager() {
         .order("category", { ascending: true });
 
       if (error) throw error;
-      
+
       const uniqueCategories = [...new Set(data.map(item => item.category).filter(Boolean))] as string[];
       return uniqueCategories;
     },
@@ -350,23 +350,23 @@ export function IngredientsManager() {
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <CardTitle>Ingredients Database</CardTitle>
               <CardDescription>Manage base ingredients for recipe creation</CardDescription>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleDownloadTemplate}>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-start sm:justify-end">
+              <Button variant="outline" onClick={handleDownloadTemplate} size="sm" className="flex-1 sm:flex-none">
                 <Download className="mr-2 h-4 w-4" />
-                Download Template
+                Template
               </Button>
               <IngredientsImport onImportComplete={() => {
                 queryClient.invalidateQueries({ queryKey: ['ingredients'] });
                 queryClient.invalidateQueries({ queryKey: ['ingredient-categories'] });
               }} />
-              <Button onClick={handleAdd}>
+              <Button onClick={handleAdd} size="sm" className="flex-1 sm:flex-none">
                 <Plus className="mr-2 h-4 w-4" />
-                Add Ingredient
+                Add
               </Button>
             </div>
           </div>
@@ -395,8 +395,8 @@ export function IngredientsManager() {
               </p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
+            <div className="border rounded-lg overflow-hidden overflow-x-auto">
+              <Table className="min-w-[800px]">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
@@ -464,11 +464,11 @@ export function IngredientsManager() {
               {editingItem ? "Update the ingredient details" : "Add a new ingredient to your database"}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex-1 overflow-y-auto px-6 min-h-0">
             <FormFields formData={formData} setFormData={setFormData} saving={saving} categories={categories} />
           </div>
-          
+
           <DialogFooter className="p-6 pt-4 shrink-0">
             <Button
               variant="outline"

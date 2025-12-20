@@ -48,13 +48,23 @@ export const sendAutomatedMessage = async (
   }
 };
 
-export const getUnreadCount = async (clientId: string): Promise<number> => {
+export const getUnreadCount = async (clientId: string, viewerType: 'admin' | 'client' = 'client'): Promise<number> => {
   try {
-    const { count, error } = await supabase
+    let query = supabase
       .from('messages')
       .select('*', { count: 'exact', head: true })
       .eq('client_id', clientId)
       .eq('is_read', false);
+
+    // If viewer is client, count only ADMIN/SYSTEM messages (exclude client's own)
+    // If viewer is admin, count only CLIENT messages
+    if (viewerType === 'client') {
+      query = query.neq('sender_type', 'client');
+    } else {
+      query = query.eq('sender_type', 'client');
+    }
+
+    const { count, error } = await query;
 
     if (error) {
       console.error('Error fetching unread count:', error);
@@ -120,7 +130,7 @@ export const sendBulkMessage = async (
     const batchSize = 10;
     for (let i = 0; i < clientIds.length; i += batchSize) {
       const batchClientIds = clientIds.slice(i, i + batchSize);
-      
+
       const messages = batchClientIds.map(clientId => {
         const client = clients?.find(c => c.id === clientId);
         if (!client) return null;
@@ -177,7 +187,7 @@ export const sendBulkMessage = async (
     return { success: successCount, failed: failedCount, batchId };
   } catch (error) {
     console.error('Error in sendBulkMessage:', error);
-    
+
     // Update batch status to failed
     await supabase
       .from('bulk_message_batches')

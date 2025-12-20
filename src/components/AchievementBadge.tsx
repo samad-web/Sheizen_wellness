@@ -7,19 +7,18 @@ import { cn } from "@/lib/utils";
 interface AchievementBadgeProps {
   achievement: {
     id: string;
-    name: string;
+    title: string;
     description: string;
-    icon: string;
-    badge_color: string;
-    points: number;
+    icon_name: string;
     category: string;
-    criteria_value: number;
+    target_value: number;
+    // points is removed from DB, so we remove it here or make it optional/computed
   };
   earned?: boolean;
   earnedAt?: string;
   progress?: {
     current_value: number;
-    target_value: number;
+    // target_value is redundant if it matches achievement, but useful if passed from progress table
   };
   size?: "sm" | "md" | "lg";
 }
@@ -31,13 +30,33 @@ export function AchievementBadge({
   progress,
   size = "md",
 }: AchievementBadgeProps) {
-  const IconComponent = (LucideIcons as any)[achievement.icon] || LucideIcons.Award;
-  
-  const badgeColorClasses = {
-    gold: "bg-yellow-100 text-yellow-800 border-yellow-300",
-    silver: "bg-gray-100 text-gray-800 border-gray-300",
-    bronze: "bg-orange-100 text-orange-800 border-orange-300",
+  // Helper to convert 'kebab-case' or 'snake_case' to 'PascalCase' for Lucide icons
+  const getIconComponent = (name: string) => {
+    if (!name) return LucideIcons.Award;
+
+    // Convert to PascalCase: "chef-hat" -> "ChefHat"
+    const pascalName = name
+      .split(/[-_]/)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join('');
+
+    // @ts-ignore - Dynamic lookup
+    return LucideIcons[pascalName] || LucideIcons[name] || LucideIcons.Award;
   };
+
+  const IconComponent = getIconComponent(achievement.icon_name);
+
+  // Category-based coloring (Duolingo style)
+  const categoryColors: Record<string, string> = {
+    streak: "text-orange-500 bg-orange-100 border-orange-200",
+    meal: "text-green-500 bg-green-100 border-green-200",
+    water: "text-blue-500 bg-blue-100 border-blue-200",
+    activity: "text-red-500 bg-red-100 border-red-200",
+    assessment: "text-purple-500 bg-purple-100 border-purple-200",
+    default: "text-primary bg-primary/10 border-border"
+  };
+
+  const colorClass = categoryColors[achievement.category] || categoryColors.default;
 
   const iconSizes = {
     sm: "h-8 w-8",
@@ -51,78 +70,73 @@ export function AchievementBadge({
     lg: "p-6",
   };
 
-  const progressPercent = progress
-    ? Math.min(100, (progress.current_value / progress.target_value) * 100)
-    : earned
+  const currentVal = progress?.current_value || 0;
+  const targetVal = achievement.target_value;
+
+  const progressPercent = earned
     ? 100
-    : 0;
+    : Math.min(100, (currentVal / targetVal) * 100);
 
   return (
     <Card
       className={cn(
         cardSizes[size],
-        "relative transition-all duration-300",
-        earned ? "border-primary shadow-md" : "opacity-60 border-muted",
-        !earned && "grayscale"
+        "relative transition-all duration-300 border-2",
+        earned
+          ? `shadow-lg ${colorClass.split(" ").pop()}` // Use border color
+          : "opacity-70 border-dashed bg-muted/30",
+        !earned && "grayscale-[0.9] hover:grayscale-[0.5]"
       )}
     >
-      {/* Badge Color Indicator */}
+      {/* Universal Unlocked Indicator */}
       {earned && (
-        <div
-          className={cn(
-            "absolute top-2 right-2 h-3 w-3 rounded-full",
-            achievement.badge_color === "gold" && "bg-yellow-400",
-            achievement.badge_color === "silver" && "bg-gray-400",
-            achievement.badge_color === "bronze" && "bg-orange-400"
-          )}
-        />
+        <div className="absolute top-2 right-2 text-primary animate-in zoom-in spin-in-12 duration-500">
+          <div className="bg-background rounded-full p-0.5">
+            <LucideIcons.CheckCircle2 className="h-5 w-5 fill-primary text-background" />
+          </div>
+        </div>
       )}
 
       <div className="flex flex-col items-center text-center space-y-3">
         {/* Icon */}
         <div
           className={cn(
-            "rounded-full p-3 transition-colors",
-            earned
-              ? "bg-primary/10 text-primary"
-              : "bg-muted text-muted-foreground"
+            "rounded-full p-4 transition-transform duration-300 hover:scale-110",
+            earned ? colorClass : "bg-muted text-muted-foreground",
+            "shadow-sm"
           )}
         >
-          <IconComponent className={iconSizes[size]} />
+          <IconComponent className={iconSizes[size]} strokeWidth={1.5} />
         </div>
 
         {/* Name & Description */}
-        <div className="space-y-1">
-          <h4 className="font-semibold text-sm">{achievement.name}</h4>
-          <p className="text-xs text-muted-foreground">{achievement.description}</p>
+        <div className="space-y-1 w-full overflow-hidden">
+          <h4 className="font-bold text-sm truncate" title={achievement.title}>{achievement.title}</h4>
+          <p className="text-xs text-muted-foreground line-clamp-2 leading-tight" title={achievement.description}>{achievement.description}</p>
         </div>
 
-        {/* Points Badge */}
-        <Badge
-          variant="secondary"
-          className={cn(
-            "text-xs",
-            earned && badgeColorClasses[achievement.badge_color as keyof typeof badgeColorClasses]
-          )}
-        >
-          {achievement.points} pts
-        </Badge>
-
-        {/* Progress Bar (if not earned) */}
-        {!earned && progress && (
-          <div className="w-full space-y-1">
-            <Progress value={progressPercent} className="h-2" />
-            <p className="text-xs text-muted-foreground">
-              {progress.current_value} / {progress.target_value}
-            </p>
-          </div>
+        {/* Category Badge (Replaces Points) */}
+        {!earned && (
+          <Badge variant="outline" className="text-[10px] capitalize font-normal bg-background/50">
+            {achievement.category}
+          </Badge>
         )}
 
         {/* Earned Date */}
         {earned && earnedAt && (
-          <p className="text-xs text-muted-foreground">
-            Earned {new Date(earnedAt).toLocaleDateString()}
-          </p>
+          <Badge variant="secondary" className="text-[10px] bg-background/80 backdrop-blur-sm">
+            {new Date(earnedAt).toLocaleDateString()}
+          </Badge>
+        )}
+
+        {/* Progress Bar (if not earned) */}
+        {!earned && (
+          <div className="w-full space-y-1 mt-2">
+            <Progress value={progressPercent} className={`h-2`} />
+            <p className="text-[10px] text-muted-foreground font-mono">
+              {currentVal} / {targetVal}
+            </p>
+          </div>
         )}
       </div>
     </Card>

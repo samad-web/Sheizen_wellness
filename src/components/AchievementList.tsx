@@ -6,13 +6,11 @@ import { Search } from "lucide-react";
 
 interface Achievement {
   id: string;
-  name: string;
+  title: string;
   description: string;
-  icon: string;
-  badge_color: string;
-  points: number;
+  icon_name: string;
   category: string;
-  criteria_value: number;
+  target_value: number;
 }
 
 interface AchievementListProps {
@@ -24,7 +22,6 @@ interface AchievementListProps {
   progress: Array<{
     achievement_id: string;
     current_value: number;
-    target_value: number;
   }>;
 }
 
@@ -48,10 +45,8 @@ export function AchievementList({
       filtered = filtered.filter((a) => earnedIds.has(a.id));
     } else if (filterTab === "in-progress") {
       filtered = filtered.filter((a) => !earnedIds.has(a.id) && progressMap.has(a.id));
-    } else if (filterTab === "locked") {
-      filtered = filtered.filter((a) => !earnedIds.has(a.id));
     } else if (filterTab !== "all") {
-      // Category filter
+      // Category filter strategy: If tab is 'streak' match strictly, else try generic
       filtered = filtered.filter((a) => a.category === filterTab);
     }
 
@@ -60,50 +55,52 @@ export function AchievementList({
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (a) =>
-          a.name.toLowerCase().includes(query) ||
+          a.title.toLowerCase().includes(query) ||
           a.description.toLowerCase().includes(query)
       );
     }
 
-    // Sort: earned first, then by progress, then by points
+    // Sort: earned first, then by progress percent, then by target value (difficulty)
     return filtered.sort((a, b) => {
       const aEarned = earnedIds.has(a.id);
       const bEarned = earnedIds.has(b.id);
-      
+
       if (aEarned && !bEarned) return -1;
       if (!aEarned && bEarned) return 1;
-      
+
       const aProgress = progressMap.get(a.id);
       const bProgress = progressMap.get(b.id);
-      
+
       if (aProgress && bProgress) {
-        const aPercent = (aProgress.current_value / aProgress.target_value) * 100;
-        const bPercent = (bProgress.current_value / bProgress.target_value) * 100;
+        const aPercent = (aProgress.current_value / a.target_value);
+        const bPercent = (bProgress.current_value / b.target_value);
         return bPercent - aPercent;
       }
-      
-      return b.points - a.points;
+
+      // Default: easier (lower target) first? Or harder first?
+      // Let's go harder first for aspiration, or easier for momentum.
+      // Let's do ascending target value (easier first).
+      return a.target_value - b.target_value;
     });
   }, [achievements, filterTab, searchQuery, earnedIds, progressMap]);
 
   const earnedCount = achievements.filter((a) => earnedIds.has(a.id)).length;
-  const totalPoints = achievements
-    .filter((a) => earnedIds.has(a.id))
-    .reduce((sum, a) => sum + a.points, 0);
+  // Points removed, so removing Total Points calc or replacing with simple count
 
   return (
     <div className="space-y-6">
       {/* Stats Header */}
       <div className="flex gap-4 flex-wrap">
-        <div className="bg-primary/10 rounded-lg p-4 flex-1 min-w-[150px]">
-          <p className="text-sm text-muted-foreground">Achievements</p>
-          <p className="text-2xl font-bold">
-            {earnedCount} / {achievements.length}
-          </p>
-        </div>
-        <div className="bg-primary/10 rounded-lg p-4 flex-1 min-w-[150px]">
-          <p className="text-sm text-muted-foreground">Total Points</p>
-          <p className="text-2xl font-bold">{totalPoints}</p>
+        <div className="bg-primary/10 rounded-lg p-4 flex-1 min-w-[200px] flex items-center justify-between">
+          <div>
+            <p className="text-sm text-muted-foreground">Unlocked</p>
+            <p className="text-2xl font-bold">
+              {earnedCount} / {achievements.length}
+            </p>
+          </div>
+          <div className="h-10 w-10 bg-primary/20 rounded-full flex items-center justify-center text-primary">
+            <span role="img" aria-label="trophy">🏆</span>
+          </div>
         </div>
       </div>
 
@@ -120,19 +117,18 @@ export function AchievementList({
 
       {/* Filters */}
       <Tabs value={filterTab} onValueChange={setFilterTab}>
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="earned">Earned</TabsTrigger>
-          <TabsTrigger value="in-progress">Progress</TabsTrigger>
-          <TabsTrigger value="consistency">Daily</TabsTrigger>
-          <TabsTrigger value="streak">Streak</TabsTrigger>
-          <TabsTrigger value="milestone">Milestone</TabsTrigger>
-          <TabsTrigger value="special">Special</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-6 h-auto gap-2 bg-transparent p-0">
+          <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border">All</TabsTrigger>
+          <TabsTrigger value="earned" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border">Earned</TabsTrigger>
+          <TabsTrigger value="streak" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border">Streaks</TabsTrigger>
+          <TabsTrigger value="meal" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border">Food</TabsTrigger>
+          <TabsTrigger value="water" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border">Water</TabsTrigger>
+          <TabsTrigger value="activity" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border">Activity</TabsTrigger>
         </TabsList>
 
         <TabsContent value={filterTab} className="mt-6">
           {filteredAchievements.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
+            <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
               <p>No achievements found</p>
             </div>
           ) : (
