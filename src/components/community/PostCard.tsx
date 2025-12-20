@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { formatDistanceToNow } from "date-fns";
-import { Heart, MessageCircle, Award, MoreHorizontal, Flag, Pin, Trash2, Image as ImageIcon } from "lucide-react";
+import { formatDateTime } from "@/lib/formatters";
+import { Heart, MessageCircle, MoreHorizontal, Flag, Pin, Trash2, Image as ImageIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +38,7 @@ export function PostCard({
   onAuthorClick,
 }: PostCardProps) {
   const [isLiking, setIsLiking] = useState(false);
-  
+
   const handleLike = async () => {
     if (isLiking) return;
     setIsLiking(true);
@@ -48,16 +48,16 @@ export function PostCard({
       setIsLiking(false);
     }
   };
-  
+
   const initials = post.author_display_name
     .split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
-  
+
   const isOwner = currentClientId === post.author_client_id;
-  
+
   return (
     <Card className={cn(
       "transition-all hover:shadow-md",
@@ -67,7 +67,7 @@ export function PostCard({
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <Avatar 
+            <Avatar
               className="h-10 w-10 cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               onClick={() => onAuthorClick(post.author_client_id)}
             >
@@ -77,7 +77,7 @@ export function PostCard({
             </Avatar>
             <div>
               <div className="flex items-center gap-2">
-                <span 
+                <span
                   className="font-medium hover:underline cursor-pointer"
                   onClick={() => onAuthorClick(post.author_client_id)}
                 >
@@ -88,18 +88,23 @@ export function PostCard({
                 )}
               </div>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Badge 
-                  variant="outline" 
-                  className={cn("text-[10px] px-1.5 py-0", getServiceTypeBadgeColor(post.author_service_type))}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] px-1.5 py-0",
+                    post.author_role === 'admin'
+                      ? "bg-purple-100 text-purple-800 border-purple-200"
+                      : "bg-blue-100 text-blue-800 border-blue-200"
+                  )}
                 >
-                  {formatServiceTypeForCommunity(post.author_service_type)}
+                  {post.author_role === 'admin' ? "Admin" : "Client"}
                 </Badge>
                 <span>•</span>
-                <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
+                <span>{formatDateTime(post.created_at)}</span>
               </div>
             </div>
           </div>
-          
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -120,7 +125,7 @@ export function PostCard({
                 </DropdownMenuItem>
               )}
               {(isOwner || isAdmin) && onDelete && (
-                <DropdownMenuItem 
+                <DropdownMenuItem
                   onClick={() => onDelete(post.id)}
                   className="text-destructive"
                 >
@@ -131,15 +136,15 @@ export function PostCard({
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        
+
         {/* Title */}
         {post.title && (
           <h3 className="font-semibold text-lg mb-2">{post.title}</h3>
         )}
-        
+
         {/* Content */}
         <p className="text-foreground whitespace-pre-wrap mb-3">{post.content}</p>
-        
+
         {/* Media */}
         {post.media_urls && post.media_urls.length > 0 && (
           <div className={cn(
@@ -147,12 +152,12 @@ export function PostCard({
             post.media_urls.length === 1 ? "grid-cols-1" : "grid-cols-2"
           )}>
             {post.media_urls.slice(0, 4).map((url, index) => (
-              <div 
+              <div
                 key={index}
                 className="relative rounded-lg overflow-hidden bg-muted aspect-video"
               >
-                <img 
-                  src={url} 
+                <img
+                  src={url}
                   alt={`Post media ${index + 1}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
@@ -168,14 +173,14 @@ export function PostCard({
             ))}
           </div>
         )}
-        
+
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-3">
             {post.tags.map((tag) => (
-              <Badge 
-                key={tag} 
-                variant="secondary" 
+              <Badge
+                key={tag}
+                variant="secondary"
                 className="text-xs cursor-pointer hover:bg-secondary/80"
               >
                 #{tag}
@@ -183,7 +188,7 @@ export function PostCard({
             ))}
           </div>
         )}
-        
+
         {/* Attachments */}
         {post.attachments && post.attachments.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
@@ -201,7 +206,7 @@ export function PostCard({
             ))}
           </div>
         )}
-        
+
         {/* Actions */}
         <div className="flex items-center gap-1 pt-2 border-t">
           <Button
@@ -217,7 +222,7 @@ export function PostCard({
             <Heart className={cn("h-4 w-4", post.user_reaction && "fill-current")} />
             <span>{post.likes_count}</span>
           </Button>
-          
+
           <Button
             variant="ghost"
             size="sm"
@@ -226,15 +231,6 @@ export function PostCard({
           >
             <MessageCircle className="h-4 w-4" />
             <span>{post.comments_count}</span>
-          </Button>
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5"
-            onClick={handleLike}
-          >
-            <Award className="h-4 w-4" />
           </Button>
         </div>
       </CardContent>

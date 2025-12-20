@@ -3,7 +3,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Bell, X } from "lucide-react";
-import { format, formatDistanceToNow, addDays, parseISO } from "date-fns";
+import { format, addDays, parseISO } from "date-fns";
+import { formatDateTime } from "@/lib/formatters";
 
 interface UpcomingMeeting {
   id: string;
@@ -68,7 +69,7 @@ export function UpcomingMeetingsBanner({ clientId, onNavigate }: UpcomingMeeting
           <div>
             <p className="font-medium text-blue-900 dark:text-blue-100">{nextMeeting.title}</p>
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              {formatDistanceToNow(meetingDate, { addSuffix: true })} • {format(meetingDate, 'MMM d, yyyy')}
+              {formatDateTime(meetingDate)}
               {nextMeeting.metadata?.time && ` at ${nextMeeting.metadata.time}`}
             </p>
           </div>

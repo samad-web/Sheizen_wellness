@@ -10,6 +10,8 @@ interface GroupCardProps {
   onLeave: (groupId: string) => void;
   onClick: (groupId: string) => void;
   isJoining?: boolean;
+  isAdmin?: boolean;
+  onDelete?: (groupId: string) => void;
 }
 
 export function GroupCard({
@@ -18,9 +20,11 @@ export function GroupCard({
   onLeave,
   onClick,
   isJoining,
+  isAdmin,
+  onDelete,
 }: GroupCardProps) {
   return (
-    <Card 
+    <Card
       className="cursor-pointer hover:shadow-md transition-shadow"
       onClick={() => onClick(group.id)}
     >
@@ -39,7 +43,7 @@ export function GroupCard({
             <Users className="h-10 w-10 text-primary/50" />
           </div>
         )}
-        
+
         <div className="space-y-2">
           <div className="flex items-start justify-between">
             <div>
@@ -63,29 +67,46 @@ export function GroupCard({
               </div>
             </div>
           </div>
-          
+
           {group.description && (
             <p className="text-sm text-muted-foreground line-clamp-2">
               {group.description}
             </p>
           )}
-          
-          <Button
-            variant={group.is_member ? "outline" : "default"}
-            size="sm"
-            className="w-full"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (group.is_member) {
-                onLeave(group.id);
-              } else {
-                onJoin(group.id);
-              }
-            }}
-            disabled={isJoining}
-          >
-            {group.is_member ? "Leave" : group.is_private ? "Request to Join" : "Join"}
-          </Button>
+
+          <div className="flex gap-2 pt-1">
+            <Button
+              variant={group.is_member ? "outline" : "default"}
+              size="sm"
+              className="flex-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (group.is_member) {
+                  onLeave(group.id);
+                } else {
+                  onJoin(group.id);
+                }
+              }}
+              disabled={isJoining}
+            >
+              {group.is_member ? "Leave" : group.is_private ? "Request to Join" : "Join"}
+            </Button>
+
+            {isAdmin && onDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (confirm("Are you sure you want to delete this group? All members will be removed.")) {
+                    onDelete(group.id);
+                  }
+                }}
+              >
+                Delete
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -129,7 +129,7 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
         messageData.attachment_size = attachment.size;
       }
 
-      console.log('Sending message payload:', messageData);
+
 
       const { data, error } = await supabase
         .from('messages')

@@ -102,7 +102,7 @@ export function usePushNotifications(clientId: string | null) {
         };
       }).catch(() => {
         // Fallback for browsers that don't support this - just use initial value
-        console.log('Permissions API not fully supported, using fallback');
+
       });
     }
 
@@ -161,7 +161,7 @@ export function usePushNotifications(clientId: string | null) {
       }
 
       const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-      console.log('Subscribing with key:', applicationServerKey);
+
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,

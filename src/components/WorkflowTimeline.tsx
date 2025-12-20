@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { CheckCircle2, Clock, Circle, Play, Loader2 } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateTime } from "@/lib/formatters";
 
 interface WorkflowState {
   id: string;
@@ -167,12 +167,12 @@ export const WorkflowTimeline = ({ clientId }: WorkflowTimelineProps) => {
                   </div>
                   {isCompleted && workflowState.stage_completed_at && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Completed {format(new Date(workflowState.stage_completed_at), 'MMM d, yyyy h:mm a')}
+                      Completed {formatDateTime(workflowState.stage_completed_at)}
                     </p>
                   )}
                   {isCurrent && workflowState.next_action_due_at && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Due {format(new Date(workflowState.next_action_due_at), 'MMM d, yyyy h:mm a')}
+                      Due {formatDateTime(workflowState.next_action_due_at)}
                     </p>
                   )}
                 </div>
@@ -190,7 +190,7 @@ export const WorkflowTimeline = ({ clientId }: WorkflowTimelineProps) => {
               <div key={index} className="text-sm border-l-2 border-muted pl-4 py-2">
                 <p className="font-medium">{item.action}</p>
                 <p className="text-muted-foreground text-xs">
-                  {format(new Date(item.triggered_at), 'MMM d, yyyy h:mm a')} • 
+                  {formatDateTime(item.triggered_at)} •
                   Triggered by {item.triggered_by === 'system' ? 'System' : 'Admin'}
                 </p>
               </div>

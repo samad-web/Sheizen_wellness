@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDateTime } from "@/lib/formatters";
 import { Bell, MessageCircle, Heart, Shield, Users, AtSign, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,11 +38,11 @@ export function CommunityNotifications({
   const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [open, setOpen] = useState(false);
-  
+
   useEffect(() => {
     loadNotifications();
     loadUnreadCount();
-    
+
     // Realtime subscription
     const channel = supabase
       .channel("community-notifications")
@@ -60,12 +60,12 @@ export function CommunityNotifications({
         }
       )
       .subscribe();
-    
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [clientId]);
-  
+
   const loadNotifications = async () => {
     try {
       const data = await fetchNotifications(clientId);
@@ -74,7 +74,7 @@ export function CommunityNotifications({
       console.error("Failed to load notifications:", error);
     }
   };
-  
+
   const loadUnreadCount = async () => {
     try {
       const count = await getUnreadNotificationCount(clientId);
@@ -83,7 +83,7 @@ export function CommunityNotifications({
       console.error("Failed to load unread count:", error);
     }
   };
-  
+
   const handleMarkAllRead = async () => {
     try {
       await markNotificationsRead(clientId);
@@ -93,7 +93,7 @@ export function CommunityNotifications({
       console.error("Failed to mark notifications as read:", error);
     }
   };
-  
+
   const handleNotificationClick = async (notification: CommunityNotification) => {
     if (!notification.read) {
       await markNotificationsRead(clientId, [notification.id]);
@@ -102,14 +102,14 @@ export function CommunityNotifications({
       );
       setUnreadCount((prev) => Math.max(0, prev - 1));
     }
-    
+
     onNotificationClick?.(notification);
     setOpen(false);
   };
-  
+
   const getNotificationMessage = (notification: CommunityNotification): string => {
     const payload = notification.payload;
-    
+
     switch (notification.type) {
       case "comment":
         return `${payload.commenter_name || "Someone"} commented on your post`;
@@ -127,14 +127,14 @@ export function CommunityNotifications({
         return "New notification";
     }
   };
-  
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <Badge 
+            <Badge
               className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-[10px]"
             >
               {unreadCount > 9 ? "9+" : unreadCount}
@@ -157,7 +157,7 @@ export function CommunityNotifications({
             </Button>
           )}
         </div>
-        
+
         <ScrollArea className="max-h-80">
           {notifications.length === 0 ? (
             <p className="text-center text-muted-foreground py-8 text-sm">
@@ -167,18 +167,16 @@ export function CommunityNotifications({
             <div className="divide-y">
               {notifications.map((notification) => {
                 const Icon = NOTIFICATION_ICONS[notification.type] || Bell;
-                
+
                 return (
                   <div
                     key={notification.id}
-                    className={`flex gap-3 p-3 cursor-pointer hover:bg-muted/50 ${
-                      !notification.read ? "bg-primary/5" : ""
-                    }`}
+                    className={`flex gap-3 p-3 cursor-pointer hover:bg-muted/50 ${!notification.read ? "bg-primary/5" : ""
+                      }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
-                    <div className={`rounded-full p-2 ${
-                      !notification.read ? "bg-primary/10 text-primary" : "bg-muted"
-                    }`}>
+                    <div className={`rounded-full p-2 ${!notification.read ? "bg-primary/10 text-primary" : "bg-muted"
+                      }`}>
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -186,7 +184,7 @@ export function CommunityNotifications({
                         {getNotificationMessage(notification)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                        {formatDateTime(notification.created_at)}
                       </p>
                     </div>
                     {!notification.read && (

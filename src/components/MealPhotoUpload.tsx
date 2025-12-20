@@ -39,9 +39,9 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
         toast.error("File size must be less than 50MB");
         return;
       }
-      
+
       setFile(selectedFile);
-      
+
       // Create preview for images only
       if (selectedFile.type.startsWith("image/")) {
         const reader = new FileReader();
@@ -77,11 +77,7 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
       return;
     }
 
-    console.log("Attempting to log meal:", {
-      clientId,
-      mealType,
-      hasFile: !!file,
-    });
+
 
     setUploading(true);
 
@@ -107,6 +103,38 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
 
       if (existingLog) {
         dailyLogId = existingLog.id;
+      } else {
+        // Create today's log if it doesn't exist
+        try {
+          const { data: newLog, error: createError } = await supabase
+            .from("daily_logs")
+            .insert({
+              client_id: clientId,
+              log_date: today
+            })
+            .select("id")
+            .single();
+
+          if (createError) {
+            // If duplicate key error (race condition), fetch the existing one
+            if (createError.code === '23505') {
+              const { data: retryLog } = await supabase
+                .from("daily_logs")
+                .select("id")
+                .eq("client_id", clientId)
+                .eq("log_date", today)
+                .single();
+              if (retryLog) dailyLogId = retryLog.id;
+            } else {
+              throw createError;
+            }
+          } else if (newLog) {
+            dailyLogId = newLog.id;
+          }
+        } catch (err) {
+          console.error("Error ensuring daily log exists:", err);
+          // We continue without dailyLogId if creation fails, relying on meal_logs standalone
+        }
       }
 
       // Insert meal log with file path and file type
@@ -137,7 +165,7 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
         evening_snack: 'Evening Snack',
         dinner: 'Dinner'
       };
-      
+
       await sendAutomatedMessage(clientId, `meal_logged_${mealType}`, {
         name: '', // Will be filled by edge function if needed
         meal_type: mealTypeLabels[mealType as keyof typeof mealTypeLabels],

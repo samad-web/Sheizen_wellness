@@ -117,7 +117,7 @@ export default function ClientDashboard() {
       }
 
       if (!client) {
-        console.warn("ClientDashboard: No client profile found for user", user.id);
+
         navigate("/onboarding");
         return null; // Return null to signal no data, but handled
       }
@@ -142,7 +142,7 @@ export default function ClientDashboard() {
     }
 
     if (!client) {
-      console.log("No client found, redirecting to onboarding");
+
       navigate("/onboarding");
       throw new Error("Redirecting to onboarding"); // Stop execution
     }
@@ -236,14 +236,18 @@ export default function ClientDashboard() {
         table: 'messages',
         filter: `client_id=eq.${clientData.id}`
       }, (payload) => {
+
         const newMsg = payload.new as Message;
         setMessages(prev => [...prev, newMsg]);
         setNewMessage(newMsg);
         setUnreadCount(prev => prev + 1);
       })
-      .subscribe();
+      .subscribe((status) => {
+
+      });
 
     return () => {
+
       supabase.removeChannel(channel);
     };
   }, [clientData?.id]);
@@ -376,101 +380,109 @@ export default function ClientDashboard() {
 
   const quickAddWater = async (amount: number) => {
     if (!clientData) return;
-
-    const currentWater = Number(todayLog?.water_intake) || 0;
-    const newAmount = currentWater + amount;
-
-    const today = new Date().toISOString().split("T")[0];
-    const updateData = {
-      client_id: clientData.id,
-      log_date: today,
-      water_intake: newAmount,
-    };
-
-    if (todayLog) {
-      await supabase.from("daily_logs").update(updateData).eq("id", todayLog.id);
-    } else {
-      const { data } = await supabase.from("daily_logs").insert(updateData).select().single();
-      setTodayLog(data);
+    if (!amount || isNaN(amount) || amount <= 0) {
+      toast.error("Please enter a valid amount");
+      return;
     }
 
-    toast.success(`Added ${amount}ml water`);
-    setWaterInput("");
-    fetchClientDataLegacy();
+    try {
+      const today = new Date().toISOString().split("T")[0];
 
-    // Check for achievements
-    if (clientData?.id) {
-      checkAchievements(clientData.id, "water_log");
+      const { data, error } = await supabase.rpc('log_daily_metric', {
+        p_client_id: clientData.id,
+        p_metric_type: 'water',
+        p_value: amount,
+        p_date: today
+      });
+
+      if (error) throw error;
+
+      setTodayLog(data);
+      toast.success(`Added ${amount}ml water`);
+      setWaterInput("");
+      refetchClientData();
+
+      // Check for achievements
+      if (clientData?.id) {
+        checkAchievements(clientData.id, "water_log");
+      }
+    } catch (error: any) {
+      console.error("Error adding water:", error);
+      toast.error(error.message || "Failed to add water");
     }
   };
 
   const quickAddActivity = async (minutes: number) => {
     if (!clientData) return;
+    if (!minutes || isNaN(minutes) || minutes <= 0) {
+      toast.error("Please enter a valid duration");
+      return;
+    }
 
-    const currentActivity = Number(todayLog?.activity_minutes) || 0;
-    const newAmount = currentActivity + minutes;
+    try {
+      const today = new Date().toISOString().split("T")[0];
 
-    const today = new Date().toISOString().split("T")[0];
-    const updateData = {
-      client_id: clientData.id,
-      log_date: today,
-      activity_minutes: newAmount,
-      activity_type: activityType || null,
-    };
+      const { data, error } = await supabase.rpc('log_daily_metric', {
+        p_client_id: clientData.id,
+        p_metric_type: 'activity',
+        p_value: minutes,
+        p_date: today
+      });
 
-    if (todayLog) {
-      await supabase.from("daily_logs").update(updateData).eq("id", todayLog.id);
-    } else {
-      const { data } = await supabase.from("daily_logs").insert(updateData).select().single();
+      if (error) throw error;
+
       setTodayLog(data);
-    }
+      toast.success(`Added ${minutes} minutes`);
+      setActivityInput("");
+      refetchClientData();
 
-    toast.success(`Added ${minutes} minutes`);
-    setActivityInput("");
-    fetchClientDataLegacy();
+      // Send automated message based on new total
+      const newTotal = (Number(todayLog?.activity_minutes) || 0) + minutes;
 
-    // Send automated message
-    if (newAmount >= 30) {
-      await sendAutomatedMessage(clientData.id, 'activity_milestone_30', {
-        name: clientData.name,
-        minutes: newAmount
-      });
-    } else {
-      await sendAutomatedMessage(clientData.id, 'activity_logged', {
-        name: clientData.name,
-        minutes
-      });
-    }
+      if (newTotal >= 30) {
+        await sendAutomatedMessage(clientData.id, 'activity_milestone_30', {
+          name: clientData.name,
+          minutes: newTotal
+        });
+      } else {
+        await sendAutomatedMessage(clientData.id, 'activity_logged', {
+          name: clientData.name,
+          minutes
+        });
+      }
 
-    // Check for achievements
-    if (clientData?.id) {
-      checkAchievements(clientData.id, "activity_log");
+      // Check for achievements
+      if (clientData?.id) {
+        checkAchievements(clientData.id, "activity_log");
+      }
+    } catch (error) {
+      console.error("Error adding activity:", error);
+      toast.error("Failed to add activity");
     }
   };
 
   const logWeight = async (weight: number) => {
     if (!clientData) return;
-
-    const today = new Date().toISOString().split("T")[0];
-    const updateData = {
-      client_id: clientData.id,
-      log_date: today,
-      weight: weight,
-    };
+    if (!weight || isNaN(weight) || weight <= 0) {
+      toast.error("Please enter a valid weight");
+      return;
+    }
 
     try {
-      if (todayLog) {
-        await supabase.from("daily_logs").update(updateData).eq("id", todayLog.id);
-      } else {
-        const { data } = await supabase.from("daily_logs").insert(updateData).select().single();
-        setTodayLog(data);
-      }
+      const today = new Date().toISOString().split("T")[0];
 
-      // Update last_weight in clients table for tracking
-      await supabase.from("clients").update({ last_weight: weight }).eq("id", clientData.id);
+      const { data, error } = await supabase.rpc('log_daily_metric', {
+        p_client_id: clientData.id,
+        p_metric_type: 'weight',
+        p_value: weight,
+        p_date: today
+      });
 
+      if (error) throw error;
+
+      setTodayLog(data);
       toast.success(`Weight logged: ${weight} kg`);
-      fetchClientDataLegacy();
+      refetchClientData();
 
       // Send automated message
       const previousWeight = clientData.last_weight || weight;
@@ -788,8 +800,8 @@ export default function ClientDashboard() {
           onValueChange={(value) => setActiveTab(value as typeof activeTab)}
           className=""
         >
-          <div className="tabs-container flex items-center gap-2 flex-wrap p-1 rounded-lg bg-muted/50 overflow-x-auto">
-            <TabsList className="flex flex-wrap h-auto justify-start gap-2 bg-transparent p-0 w-full sm:w-auto">
+          <div className="tabs-container flex items-center justify-center gap-2 flex-wrap p-1 rounded-lg bg-muted/50 overflow-x-auto">
+            <TabsList className="flex flex-wrap h-auto justify-center gap-2 bg-transparent p-0 w-full sm:w-auto">
               <TabsTrigger value="today" className="flex-1 sm:flex-none whitespace-nowrap">Today</TabsTrigger>
               <TabsTrigger value="plan" className="flex-1 sm:flex-none whitespace-nowrap">Plan</TabsTrigger>
               <TabsTrigger value="logs" className="flex-1 sm:flex-none whitespace-nowrap">Meals</TabsTrigger>
@@ -1073,7 +1085,7 @@ export default function ClientDashboard() {
                 <MealPhotoUpload
                   clientId={clientData.id}
                   onSuccess={() => {
-                    fetchClientData();
+                    refetchClientData();
                     checkAchievements(clientData.id, "meal_log");
                   }}
                 />

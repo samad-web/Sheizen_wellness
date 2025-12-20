@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, Search, Filter, MessageCircle, Plus, Loader2 } from "lucide-react";
+import { Users, Search, Filter, MessageCircle, Plus, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -18,6 +18,17 @@ import { CommunityGuidelinesModal } from "@/components/community/CommunityGuidel
 import { GroupCard } from "@/components/community/GroupCard";
 import { MessagesPanel } from "@/components/community/MessagesPanel";
 import { CommunityNotifications } from "@/components/community/CommunityNotifications";
+import { CreateGroupModal } from "@/components/community/CreateGroupModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import {
   CommunityPost,
@@ -29,6 +40,8 @@ import {
   fetchGroups,
   joinGroup,
   leaveGroup,
+  deletePost,
+  deleteGroup,
 } from "@/lib/community";
 
 export default function Community() {
@@ -41,6 +54,8 @@ export default function Community() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("feed");
+  const [selectedGroup, setSelectedGroup] = useState<CommunityGroup | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
   // Modals
   const [showGuidelines, setShowGuidelines] = useState(false);
@@ -48,13 +63,17 @@ export default function Community() {
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [reportTarget, setReportTarget] = useState<{ type: "post" | "comment" | "user"; id: string } | null>(null);
   const [showMessages, setShowMessages] = useState(false);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [postToDelete, setPostToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (user) {
       if (userRole !== 'admin') {
         loadClientData();
       } else {
-        // Admin doesn't have a client profile, but can view data
+        // Admins should also have a client profile for posting
+        loadClientData();
         loadPosts();
         loadGroups();
       }
@@ -73,14 +92,73 @@ export default function Community() {
     }
   }, [client]);
 
-  const loadClientData = async () => {
-    const { data } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("user_id", user?.id)
-      .single();
+  // Reload posts when tag or group changes
+  useEffect(() => {
+    if (client || userRole === 'admin') {
+      loadPosts();
+    }
+  }, [selectedGroup, selectedTag]);
 
-    setClient(data);
+  const loadClientData = async () => {
+    try {
+      // Try to find existing client profile
+      const { data, error: selectError } = await supabase
+        .from("clients")
+        .select("*")
+        .eq("user_id", user?.id)
+        .maybeSingle();
+
+      if (selectError) {
+        console.error("Select client error:", selectError);
+      }
+
+      if (data) {
+
+        setClient(data);
+      } else if (userRole === 'admin' && user) {
+        // Auto-create profile for admin if missing
+
+        const { data: newAdmin, error: createError } = await supabase
+          .from("clients")
+          .upsert({
+            user_id: user.id,
+            email: user.email || "admin@example.com",
+            name: "Admin",
+            display_name: "Admin",
+            phone: "0000000000",
+            program_type: 'general_wellness',
+            service_type: 'hundred_days',
+            status: 'active'
+          } as any, { onConflict: 'user_id' })
+          .select()
+          .maybeSingle();
+
+        if (createError) {
+          console.error("Community: Failed to create admin profile:", createError);
+          toast.error(`Could not initialize admin profile: ${createError.message}`);
+        } else if (newAdmin) {
+
+          setClient(newAdmin);
+          toast.success("Admin profile initialized");
+        } else {
+          // Final fallback - try one more direct select to handle RLS race conditions
+          const { data: retryData } = await supabase
+            .from("clients")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (retryData) {
+            setClient(retryData);
+          } else {
+
+            toast.error("Profile initialization failed. Some features may be limited.");
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading client:", error);
+    }
   };
 
   const loadPosts = async () => {
@@ -89,6 +167,8 @@ export default function Community() {
       const { posts: data } = await fetchPosts({
         clientId: client?.id,
         search: searchQuery || undefined,
+        groupId: selectedGroup?.id,
+        tag: selectedTag || undefined,
       });
       setPosts(data);
     } catch (error) {
@@ -114,20 +194,31 @@ export default function Community() {
     mediaUrls: string[];
     attachments: { name: string; url: string; type: string }[];
   }) => {
-    if (!client) return;
+    if (!client?.id) {
+      toast.error("You must have a valid profile to post");
+      return;
+    }
 
-    const post = await createPost({
-      clientId: client.id,
-      displayName: client.display_name || client.name,
-      serviceType: client.service_type,
-      content: data.content,
-      title: data.title,
-      tags: data.tags,
-      mediaUrls: data.mediaUrls,
-      attachments: data.attachments,
-    });
+    try {
+      const post = await createPost({
+        clientId: client.id,
+        displayName: client.display_name || client.name,
+        serviceType: userRole === 'admin' ? 'admin' : (client.service_type || client.program_type),
+        content: data.content,
+        title: data.title,
+        tags: data.tags,
+        mediaUrls: data.mediaUrls,
+        attachments: data.attachments,
+        groupId: selectedGroup?.id,
+        authorRole: userRole as 'admin' | 'client',
+      });
 
-    setPosts((prev) => [post, ...prev]);
+      setPosts((prev) => [post, ...prev]);
+      toast.success("Post created!");
+    } catch (error: any) {
+      console.error("Failed to create post:", error);
+      toast.error(error.message || "Failed to create post");
+    }
   };
 
   const handleLikePost = async (postId: string) => {
@@ -156,6 +247,7 @@ export default function Community() {
       clientId: client.id,
       displayName: client.display_name || client.name,
       serviceType: client.service_type,
+      authorRole: userRole as 'admin' | 'client',
       content,
     });
 
@@ -164,6 +256,26 @@ export default function Community() {
         p.id === postId ? { ...p, comments_count: p.comments_count + 1 } : p
       )
     );
+  };
+
+  const handleDeletePost = (postId: string) => {
+    setPostToDelete(postId);
+  };
+
+  const confirmDeletePost = async () => {
+    if (!postToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await deletePost(postToDelete, client?.id || "admin");
+      setPosts((prev) => prev.filter(p => p.id !== postToDelete));
+      toast.success("Post deleted");
+      setPostToDelete(null);
+    } catch (error) {
+      toast.error("Failed to delete post");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleJoinGroup = async (groupId: string) => {
@@ -198,6 +310,20 @@ export default function Community() {
     }
   };
 
+  const handleDeleteGroup = async (groupId: string) => {
+    try {
+      await deleteGroup(groupId);
+      setGroups((prev) => prev.filter((g) => g.id !== groupId));
+      toast.success("Group deleted");
+      if (selectedGroup?.id === groupId) {
+        setSelectedGroup(null);
+      }
+    } catch (error) {
+      console.error("Failed to delete group:", error);
+      toast.error("Failed to delete group");
+    }
+  };
+
   if (!user) {
     return (
       <div className="container mx-auto py-8 text-center">
@@ -208,6 +334,14 @@ export default function Community() {
       </div>
     );
   }
+
+  // Clear group selection when tab changes
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === 'feed') {
+      setSelectedGroup(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -248,15 +382,15 @@ export default function Community() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-4">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <Tabs value={activeTab} onValueChange={handleTabChange}>
               <TabsList>
                 <TabsTrigger value="feed">Feed</TabsTrigger>
                 <TabsTrigger value="groups">Groups</TabsTrigger>
               </TabsList>
 
               <TabsContent value="feed" className="space-y-4 mt-4">
-                {/* Search */}
-                <div className="flex gap-2">
+                {/* Search & Filter */}
+                <div className="flex gap-2 items-center">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -267,6 +401,11 @@ export default function Community() {
                       className="pl-10"
                     />
                   </div>
+                  {selectedTag && (
+                    <Button variant="secondary" size="sm" onClick={() => setSelectedTag(null)}>
+                      #{selectedTag} <span className="ml-2">✕</span>
+                    </Button>
+                  )}
                   <Button variant="outline" size="icon">
                     <Filter className="h-4 w-4" />
                   </Button>
@@ -277,7 +416,7 @@ export default function Community() {
                   <PostComposer
                     clientId={client.id}
                     displayName={client.display_name || client.name}
-                    serviceType={client.service_type}
+                    serviceType={userRole === 'admin' ? 'admin' : (client.service_type || client.program_type)}
                     onPost={handleCreatePost}
                   />
                 )}
@@ -300,12 +439,14 @@ export default function Community() {
                         key={post.id}
                         post={post}
                         currentClientId={client?.id}
+                        isAdmin={userRole === 'admin'}
                         onLike={handleLikePost}
                         onComment={(postId) => {
                           const post = posts.find((p) => p.id === postId);
                           if (post) setSelectedPost(post);
                         }}
                         onReport={(postId) => setReportTarget({ type: "post", id: postId })}
+                        onDelete={handleDeletePost}
                         onAuthorClick={setSelectedProfileId}
                       />
                     ))}
@@ -314,17 +455,109 @@ export default function Community() {
               </TabsContent>
 
               <TabsContent value="groups" className="mt-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {groups.map((group) => (
-                    <GroupCard
-                      key={group.id}
-                      group={group}
-                      onJoin={handleJoinGroup}
-                      onLeave={handleLeaveGroup}
-                      onClick={() => { }}
-                    />
-                  ))}
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-semibold">Community Groups</h2>
+                  {userRole === 'admin' && (
+                    <Button onClick={() => setShowCreateGroup(true)} size="sm">
+                      <Plus className="mr-2 h-4 w-4" /> Create Group
+                    </Button>
+                  )}
                 </div>
+
+                {selectedGroup ? (
+                  <div className="space-y-4">
+                    <Button
+                      variant="ghost"
+                      className="gap-2 pl-0 hover:bg-transparent"
+                      onClick={() => setSelectedGroup(null)}
+                    >
+                      <ArrowLeft className="h-4 w-4" /> Back to Groups
+                    </Button>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>{selectedGroup.name}</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {selectedGroup.cover_image_url && (
+                          <img
+                            src={selectedGroup.cover_image_url}
+                            alt={selectedGroup.name}
+                            className="w-full h-48 object-cover rounded-md mb-4"
+                          />
+                        )}
+                        <p className="text-muted-foreground mb-4">{selectedGroup.description}</p>
+                        <div className="flex items-center gap-4 text-sm">
+                          <span>{selectedGroup.member_count} members</span>
+                          {!selectedGroup.is_member ? (
+                            <Button size="sm" onClick={() => handleJoinGroup(selectedGroup.id)}>Join Group</Button>
+                          ) : (
+                            <Button variant="outline" size="sm" onClick={() => handleLeaveGroup(selectedGroup.id)}>Leave Group</Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Group Feed */}
+                    <div className="space-y-4">
+                      {client && selectedGroup.is_member && (
+                        <PostComposer
+                          clientId={client.id}
+                          displayName={client.display_name || client.name}
+                          serviceType={userRole === 'admin' ? 'admin' : (client.service_type || client.program_type)}
+                          onPost={handleCreatePost}
+                          groupId={selectedGroup.id}
+                        />
+                      )}
+
+                      {isLoading ? (
+                        <div className="flex justify-center py-8">
+                          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : posts.length === 0 ? (
+                        <Card>
+                          <CardContent className="py-8 text-center">
+                            <p className="text-muted-foreground">No posts in this group yet.</p>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        posts.map((post) => (
+                          <PostCard
+                            key={post.id}
+                            post={post}
+                            currentClientId={client?.id}
+                            isAdmin={userRole === 'admin'}
+                            onLike={handleLikePost}
+                            onComment={(postId) => {
+                              const post = posts.find((p) => p.id === postId);
+                              if (post) setSelectedPost(post);
+                            }}
+                            onReport={(postId) => setReportTarget({ type: "post", id: postId })}
+                            onDelete={handleDeletePost}
+                            onAuthorClick={setSelectedProfileId}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {groups.map((group) => (
+                      <GroupCard
+                        key={group.id}
+                        group={group}
+                        onJoin={handleJoinGroup}
+                        onLeave={handleLeaveGroup}
+                        isAdmin={userRole === 'admin'}
+                        onDelete={handleDeleteGroup}
+                        onClick={(groupId) => {
+                          const group = groups.find(g => g.id === groupId);
+                          if (group) setSelectedGroup(group);
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
@@ -346,7 +579,12 @@ export default function Community() {
                 </CardHeader>
                 <CardContent className="flex flex-wrap gap-2">
                   {["weightloss", "healthyeating", "motivation", "recipes", "progress"].map((tag) => (
-                    <Button key={tag} variant="secondary" size="sm" onClick={() => setSearchQuery(`#${tag}`)}>
+                    <Button
+                      key={tag}
+                      variant={selectedTag === tag ? "default" : "secondary"}
+                      size="sm"
+                      onClick={() => setSelectedTag(tag === selectedTag ? null : tag)}
+                    >
                       #{tag}
                     </Button>
                   ))}
@@ -371,8 +609,9 @@ export default function Community() {
             open={!!selectedPost}
             onClose={() => setSelectedPost(null)}
             clientId={client.id}
-            displayName={client.display_name || client.name}
-            serviceType={client.service_type}
+            displayName={client?.display_name || client?.name}
+            serviceType={client?.service_type}
+            userRole={userRole as 'admin' | 'client'}
             onComment={handleComment}
             onLikeComment={() => { }}
             onAuthorClick={setSelectedProfileId}
@@ -395,8 +634,39 @@ export default function Community() {
               reporterClientId={client.id}
             />
           )}
+
+          <CreateGroupModal
+            open={showCreateGroup}
+            onClose={() => setShowCreateGroup(false)}
+            onSuccess={(newGroup) => {
+              setGroups(prev => [newGroup, ...prev]);
+              setSelectedGroup(newGroup);
+            }}
+            ownerClientId={client.id}
+          />
         </>
       )}
+
+      <AlertDialog open={!!postToDelete} onOpenChange={(open) => !open && setPostToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this post?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently remove your post from the community.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeletePost}
+              disabled={isDeleting}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Confirm"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

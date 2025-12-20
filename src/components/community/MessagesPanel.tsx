@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDateTime } from "@/lib/formatters";
 import { Send, ArrowLeft, Loader2, MessageCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,26 +44,26 @@ export function MessagesPanel({
   const [isSending, setIsSending] = useState(false);
   const [canMessage, setCanMessage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   useEffect(() => {
     loadConversations();
   }, [clientId]);
-  
+
   useEffect(() => {
     if (selectedPeerId) {
       loadMessages(selectedPeerId);
       checkCanMessage(selectedPeerId);
     }
   }, [selectedPeerId]);
-  
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
-  
+
   // Realtime subscription
   useEffect(() => {
     if (!selectedPeerId) return;
-    
+
     const channel = supabase
       .channel("dm-messages")
       .on(
@@ -83,12 +83,12 @@ export function MessagesPanel({
         }
       )
       .subscribe();
-    
+
     return () => {
       supabase.removeChannel(channel);
     };
   }, [selectedPeerId, clientId]);
-  
+
   const loadConversations = async () => {
     try {
       const data = await fetchConversations(clientId);
@@ -97,7 +97,7 @@ export function MessagesPanel({
       console.error("Failed to load conversations:", error);
     }
   };
-  
+
   const loadMessages = async (peerId: string) => {
     setIsLoading(true);
     try {
@@ -110,15 +110,15 @@ export function MessagesPanel({
       setIsLoading(false);
     }
   };
-  
+
   const checkCanMessage = async (peerId: string) => {
     const can = await canSendDM(clientId, peerId);
     setCanMessage(can);
   };
-  
+
   const handleSendMessage = async () => {
     if (!selectedPeerId || !newMessage.trim()) return;
-    
+
     setIsSending(true);
     try {
       const message = await sendDirectMessage(clientId, selectedPeerId, newMessage);
@@ -131,9 +131,9 @@ export function MessagesPanel({
       setIsSending(false);
     }
   };
-  
+
   const selectedPeer = conversations.find((c) => c.peerId === selectedPeerId);
-  
+
   return (
     <Card className="h-[500px] flex flex-col">
       <CardHeader className="pb-3 border-b shrink-0">
@@ -152,7 +152,7 @@ export function MessagesPanel({
           {selectedPeer ? selectedPeer.peerName : "Messages"}
         </CardTitle>
       </CardHeader>
-      
+
       <CardContent className="flex-1 p-0 overflow-hidden">
         {!selectedPeerId ? (
           // Conversations list
@@ -173,7 +173,7 @@ export function MessagesPanel({
                     .join("")
                     .toUpperCase()
                     .slice(0, 2);
-                  
+
                   return (
                     <div
                       key={conv.peerId}
@@ -187,7 +187,7 @@ export function MessagesPanel({
                         <div className="flex items-center justify-between">
                           <span className="font-medium">{conv.peerName}</span>
                           <span className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(conv.lastMessageAt), { addSuffix: true })}
+                            {formatDateTime(conv.lastMessageAt)}
                           </span>
                         </div>
                         <p className="text-sm text-muted-foreground truncate">
@@ -221,22 +221,21 @@ export function MessagesPanel({
                 <div className="space-y-3">
                   {messages.map((msg) => {
                     const isOwn = msg.sender_client_id === clientId;
-                    
+
                     return (
                       <div
                         key={msg.id}
                         className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[70%] rounded-lg px-3 py-2 ${
-                            isOwn
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          }`}
+                          className={`max-w-[70%] rounded-lg px-3 py-2 ${isOwn
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted"
+                            }`}
                         >
                           <p className="text-sm">{msg.content}</p>
                           <p className={`text-[10px] mt-1 ${isOwn ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                            {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                            {formatDateTime(msg.created_at)}
                           </p>
                         </div>
                       </div>
@@ -246,7 +245,7 @@ export function MessagesPanel({
                 </div>
               )}
             </ScrollArea>
-            
+
             {canMessage ? (
               <div className="p-3 border-t flex gap-2">
                 <Input

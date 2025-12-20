@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { formatDistanceToNow } from "date-fns";
+import { formatDateTime } from "@/lib/formatters";
 import { Heart, Send, Loader2, X } from "lucide-react";
 import { PreviewModal } from "@/components/ui/preview-modal";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
   CommunityPost,
@@ -24,6 +25,7 @@ interface PostDetailModalProps {
   clientId?: string;
   displayName?: string;
   serviceType?: string | null;
+  userRole?: 'admin' | 'client';
   onComment: (postId: string, content: string) => Promise<void>;
   onLikeComment: (commentId: string) => void;
   onAuthorClick: (clientId: string) => void;
@@ -36,6 +38,7 @@ export function PostDetailModal({
   clientId,
   displayName,
   serviceType,
+  userRole,
   onComment,
   onLikeComment,
   onAuthorClick,
@@ -44,16 +47,16 @@ export function PostDetailModal({
   const [isLoading, setIsLoading] = useState(false);
   const [commentText, setCommentText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   useEffect(() => {
     if (post && open) {
       loadComments();
     }
   }, [post?.id, open]);
-  
+
   const loadComments = async () => {
     if (!post) return;
-    
+
     setIsLoading(true);
     try {
       const data = await fetchComments(post.id, clientId);
@@ -64,29 +67,55 @@ export function PostDetailModal({
       setIsLoading(false);
     }
   };
-  
+
   const handleSubmitComment = async () => {
     if (!post || !commentText.trim() || !clientId) return;
-    
+
+    const newCommentContent = sanitizeContent(commentText);
     setIsSubmitting(true);
+
+    // Create optimistic comment
+    const optimisticComment: CommunityComment = {
+      id: `temp-${Date.now()}`,
+      post_id: post.id,
+      author_client_id: clientId,
+      author_display_name: displayName || "Me",
+      author_service_type: serviceType,
+      author_role: userRole || 'client',
+      content: newCommentContent,
+      likes_count: 0,
+      created_at: new Date().toISOString(),
+      user_reaction: null,
+    };
+
+    // Optimistic update
+    setComments(prev => [...prev, optimisticComment]);
+
     try {
-      await onComment(post.id, sanitizeContent(commentText));
+      // We pass the role to the onComment function
+      await onComment(post.id, newCommentContent);
       setCommentText("");
+      // Refresh to get the real ID and server-side data
       await loadComments();
+    } catch (error) {
+      // Rollback optimistic update on error
+      setComments(prev => prev.filter(c => c.id !== optimisticComment.id));
+      console.error("Failed to submit comment:", error);
+      toast.error("Failed to post comment");
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   if (!post) return null;
-  
+
   const authorInitials = post.author_display_name
     .split(" ")
     .map((n) => n[0])
     .join("")
     .toUpperCase()
     .slice(0, 2);
-  
+
   return (
     <PreviewModal
       open={open}
@@ -98,7 +127,7 @@ export function PostDetailModal({
         {/* Post content */}
         <div className="space-y-3">
           <div className="flex items-center gap-3">
-            <Avatar 
+            <Avatar
               className="h-10 w-10 cursor-pointer"
               onClick={() => onAuthorClick(post.author_client_id)}
             >
@@ -107,31 +136,36 @@ export function PostDetailModal({
               </AvatarFallback>
             </Avatar>
             <div>
-              <span 
+              <span
                 className="font-medium hover:underline cursor-pointer"
                 onClick={() => onAuthorClick(post.author_client_id)}
               >
                 {post.author_display_name}
               </span>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Badge 
-                  variant="outline" 
-                  className={cn("text-[10px] px-1.5 py-0", getServiceTypeBadgeColor(post.author_service_type))}
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] px-1.5 py-0",
+                    post.author_role === 'admin'
+                      ? "bg-purple-100 text-purple-800 border-purple-200"
+                      : "bg-blue-100 text-blue-800 border-blue-200"
+                  )}
                 >
-                  {formatServiceTypeForCommunity(post.author_service_type)}
+                  {post.author_role === 'admin' ? "Admin" : "Client"}
                 </Badge>
                 <span>•</span>
-                <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
+                <span>{formatDateTime(post.created_at)}</span>
               </div>
             </div>
           </div>
-          
+
           {post.title && (
             <h3 className="font-semibold text-lg">{post.title}</h3>
           )}
-          
+
           <p className="whitespace-pre-wrap">{post.content}</p>
-          
+
           {post.media_urls && post.media_urls.length > 0 && (
             <div className="grid grid-cols-2 gap-2">
               {post.media_urls.map((url, index) => (
@@ -144,7 +178,7 @@ export function PostDetailModal({
               ))}
             </div>
           )}
-          
+
           {post.tags && post.tags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {post.tags.map((tag) => (
@@ -154,17 +188,17 @@ export function PostDetailModal({
               ))}
             </div>
           )}
-          
+
           <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2 border-t">
             <span>{post.likes_count} likes</span>
             <span>{post.comments_count} comments</span>
           </div>
         </div>
-        
+
         {/* Comments section */}
         <div className="border-t pt-4">
           <h4 className="font-medium mb-3">Comments</h4>
-          
+
           {isLoading ? (
             <div className="flex justify-center py-4">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -183,10 +217,10 @@ export function PostDetailModal({
                     .join("")
                     .toUpperCase()
                     .slice(0, 2);
-                  
+
                   return (
                     <div key={comment.id} className="flex gap-3">
-                      <Avatar 
+                      <Avatar
                         className="h-8 w-8 cursor-pointer"
                         onClick={() => onAuthorClick(comment.author_client_id)}
                       >
@@ -197,24 +231,29 @@ export function PostDetailModal({
                       <div className="flex-1">
                         <div className="bg-muted rounded-lg p-2">
                           <div className="flex items-center gap-2">
-                            <span 
+                            <span
                               className="font-medium text-sm hover:underline cursor-pointer"
                               onClick={() => onAuthorClick(comment.author_client_id)}
                             >
                               {comment.author_display_name}
                             </span>
-                            <Badge 
-                              variant="outline" 
-                              className={cn("text-[9px] px-1 py-0", getServiceTypeBadgeColor(comment.author_service_type))}
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[9px] px-1 py-0",
+                                comment.author_role === 'admin'
+                                  ? "bg-purple-100 text-purple-800 border-purple-200"
+                                  : "bg-blue-100 text-blue-800 border-blue-200"
+                              )}
                             >
-                              {formatServiceTypeForCommunity(comment.author_service_type)}
+                              {comment.author_role === 'admin' ? "Admin" : "Client"}
                             </Badge>
                           </div>
                           <p className="text-sm">{comment.content}</p>
                         </div>
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                          <span>{formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}</span>
-                          <button 
+                          <span>{formatDateTime(comment.created_at)}</span>
+                          <button
                             className={cn(
                               "hover:text-foreground flex items-center gap-1",
                               comment.user_reaction && "text-red-500"
@@ -232,7 +271,7 @@ export function PostDetailModal({
               </div>
             </ScrollArea>
           )}
-          
+
           {/* Comment input */}
           {clientId && (
             <div className="flex gap-2 mt-4">

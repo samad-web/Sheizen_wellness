@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as React from "react";
 import { format, isToday, isYesterday } from "date-fns";
+import { formatDateTime } from "@/lib/formatters";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Bot, User, Download, ExternalLink } from "lucide-react";
@@ -21,7 +22,7 @@ export function MessageFeed({ messages, currentUserType, onStartAssessment, inve
     const topSentinelRef = useRef<HTMLDivElement>(null);
     const bottomSentinelRef = useRef<HTMLDivElement>(null);
     const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
-    const [displayCount, setDisplayCount] = useState(4);
+    const [displayCount, setDisplayCount] = useState(20);
     const [isLoadingMore, setIsLoadingMore] = useState(false);
     const prevMessagesLengthRef = useRef(messages.length);
     const oldScrollHeightRef = useRef<number>(0);
@@ -38,14 +39,7 @@ export function MessageFeed({ messages, currentUserType, onStartAssessment, inve
         : messages.slice(-Math.min(displayCount, messages.length))
     ).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
-    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
-        if (!inverted && scrollRef.current) {
-            scrollRef.current.scrollTo({
-                top: scrollRef.current.scrollHeight,
-                behavior
-            });
-        }
-    };
+
 
     const loadMore = () => {
         if (displayCount < messages.length && !isLoadingMore) {
@@ -95,25 +89,35 @@ export function MessageFeed({ messages, currentUserType, onStartAssessment, inve
         }
     }, [displayCount, isLoadingMore, inverted]);
 
-    // Auto-scroll logic for new messages & Initial Load
+    // Auto-scroll logic
     useEffect(() => {
-        // Condition 1: New message received (auto-scroll)
+        // Condition 1: New message received -> Increase display count to show it
         if (messages.length > prevMessagesLengthRef.current) {
             setDisplayCount(prev => prev + 1);
-            if (!inverted) {
-                // Use setTimeout to allow DOM to layout
-                setTimeout(() => scrollToBottom('smooth'), 100);
-            }
             prevMessagesLengthRef.current = messages.length;
         }
-        // Condition 2: Initial mount or re-activation (instant snap)
-        else if (!isLoadingMore && !inverted) {
-            // We can check if we are near the bottom or just force it on first load?
-            // Since we only show 20 messages initially, snapping to bottom is always correct for standard view.
-            // We use a small timeout to ensure the element is rendered and has height.
-            setTimeout(() => scrollToBottom('auto'), 100);
+
+        // Condition 2: Scroll to bottom
+        // If we are in standard mode (not inverted), we want to stay at the bottom
+        // whenever messages change or on initial load.
+        if (!inverted && messagesEndRef.current) {
+            // Use a small timeout to ensure DOM update is complete
+            const timeoutId = setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+            return () => clearTimeout(timeoutId);
         }
-    }, [messages.length, isLoadingMore, inverted]);
+    }, [messages.length, inverted, displayCount]);
+
+    // Initial scroll to bottom
+    useEffect(() => {
+        if (!inverted && messagesEndRef.current) {
+            const timeoutId = setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+            }, 100);
+            return () => clearTimeout(timeoutId);
+        }
+    }, []);
 
     // Load signed URLs
     useEffect(() => {
@@ -346,7 +350,7 @@ export function MessageFeed({ messages, currentUserType, onStartAssessment, inve
                                             )}
                                         </div>
                                         <span className="text-[10px] text-muted-foreground px-2 opacity-70">
-                                            {format(new Date(message.created_at), 'h:mm a')}
+                                            {formatDateTime(message.created_at)}
                                         </span>
                                     </div>
                                 </div>

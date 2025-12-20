@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Edit2, Save, X, } from "lucide-react";
-import { format } from "date-fns";
+import { formatDateTime } from "@/lib/formatters";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -257,7 +257,7 @@ export function AdminNotes({ clientId, clientName }: AdminNotesProps) {
                                             </div>
                                         </div>
                                         <div className="text-xs text-muted-foreground flex justify-between pt-2 border-t mt-2">
-                                            <span>{format(new Date(note.created_at), "MMM d, yyyy 'at' h:mm a")}</span>
+                                            <span>{formatDateTime(note.created_at)}</span>
                                             {/* Could add author name here if we joined with profiles */}
                                         </div>
                                     </div>

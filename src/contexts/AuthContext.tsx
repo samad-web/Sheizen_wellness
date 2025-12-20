@@ -23,35 +23,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    const fetchUserRole = async (userId: string) => {
+    const fetchUserRole = async (userId: string, retries = 3): Promise<"admin" | "client" | null> => {
         try {
-            console.log("Fetching role for user:", userId);
-            // 5 second timeout to prevent hanging
+
+
+            // Use RPC to avoid RLS recursion loops and guarantee 200 OK
+            // @ts-ignore
             const { data, error } = await Promise.race([
-                supabase
-                    .from("user_roles")
-                    .select("role")
-                    .eq("user_id", userId)
-                    .maybeSingle(), // Use maybeSingle to avoid 406
-                new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error("Timeout fetching role")), 5000)
-                )
+                supabase.rpc('get_user_role', { target_user_id: userId }),
+                new Promise((_, reject) => setTimeout(() => reject(new Error("RPC Timeout")), 5000))
             ]) as { data: any, error: any };
 
             if (error) {
                 console.error("Error fetching user role:", error);
+                if (retries > 0) {
+
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+                    return fetchUserRole(userId, retries - 1);
+                }
                 return null;
             }
 
             if (!data) {
-                console.warn("No role found for user:", userId);
+                if (retries > 0) {
+                    // console.warn("No role found for user:", userId);
+                    return null;
+                }
                 return null;
             }
 
-            console.log("Fetched role:", data.role);
-            return data.role as "admin" | "client" | null;
+
+            return (data as unknown) as "admin" | "client" | null;
         } catch (error) {
             console.error("Error or timeout fetching user role:", error);
+            if (retries > 0) {
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                return fetchUserRole(userId, retries - 1);
+            }
             return null;
         }
     };
@@ -93,25 +102,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                console.log("Auth State Change:", event);
+
 
                 if (session?.user) {
                     setSession(session);
                     setUser(session.user);
 
                     try {
-                        // Only fetch role if we don't have it or user changed
+                        // Optimizing: if we already have the role for this user, don't clear it immediately on error.
                         const role = await fetchUserRole(session.user.id);
-                        setUserRole(role);
+                        if (role) {
+                            setUserRole(role);
+                        } else {
+                            // Only set to null if we genuinely failed after retries AND we don't have a stale valid role?
+                            // Actually, if we fail to fetch role, we might have been downgraded or banned.
+                            // But for transient network errors, keeping the old role is safer for UX.
+                            // However, 'fetchUserRole' returns null on error. 
+
+                            // If we don't set userRole to null, we keep the previous one.
+                            // But we should verify if the previous user was the SAME user.
+                            // setUser is called above: setUser(session.user).
+                            // If session.user.id matches user?.id from simple state?
+                            // Safest: Only update if non-null. Access Denied if truly null context.
+                            if (!userRole) {
+                                // If we had no role, we remain having no role -> Access Denied
+                                setUserRole(null);
+                            }
+                        }
                     } catch (err) {
                         console.error("Error fetching user role:", err);
-                        setUserRole(null);
+                        // Do not clear userRole here to be safe against transient errors
                     }
                 } else {
                     setSession(null);
                     setUser(null);
                     setUserRole(null);
-                    clearStoredSession();
+                    // Do NOT clear stored session here. Wait for explicit SIGNED_OUT event.
+                    // clearStoredSession(); 
                 }
 
                 // Explicitly handle signed out event with navigation
@@ -132,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (logoutTimer) clearTimeout(logoutTimer);
             if (session?.user) {
                 logoutTimer = setTimeout(() => {
-                    console.log("Session timed out due to inactivity");
+
                     signOut();
                     toast.info("Session expired due to inactivity. Please sign in again.");
                 }, TIMEOUT_DURATION);

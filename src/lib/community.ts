@@ -27,7 +27,8 @@ export interface CommunityPost {
   visibility: 'public' | 'archived';
   created_at: string;
   updated_at: string;
-  user_reaction?: string | null;
+  author_role: 'admin' | 'client' | null;
+  user_reaction?: 'like' | null;
 }
 
 export interface CommunityComment {
@@ -39,7 +40,8 @@ export interface CommunityComment {
   content: string;
   likes_count: number;
   created_at: string;
-  user_reaction?: string | null;
+  author_role: 'admin' | 'client' | null;
+  user_reaction?: 'like' | null;
 }
 
 export interface CommunityGroup {
@@ -208,6 +210,7 @@ export async function createPost(data: {
   mediaUrls?: string[];
   attachments?: { name: string; url: string; type: string }[];
   groupId?: string;
+  authorRole: 'admin' | 'client';
 }): Promise<CommunityPost> {
   // Check rate limit
   const canPost = await checkRateLimit(data.clientId, 'posts');
@@ -227,6 +230,8 @@ export async function createPost(data: {
       media_urls: data.mediaUrls || [],
       attachments: data.attachments || [],
       group_id: data.groupId || null,
+      author_role: data.authorRole,
+      visibility: 'public',
     })
     .select()
     .single();
@@ -238,6 +243,17 @@ export async function createPost(data: {
   return post as CommunityPost;
 }
 
+// Delete a post
+export async function deletePost(postId: string, clientId: string): Promise<void> {
+  // First verify ownership or admin status (handled by RLS, but doesn't hurt to check client-side too if we had the post data, but we rely on RLS)
+  const { error } = await supabase
+    .from('community_posts')
+    .delete()
+    .eq('id', postId);
+
+  if (error) throw error;
+}
+
 // Create a comment
 export async function createComment(data: {
   postId: string;
@@ -245,6 +261,7 @@ export async function createComment(data: {
   displayName: string;
   serviceType: string | null;
   content: string;
+  authorRole: 'admin' | 'client';
 }): Promise<CommunityComment> {
   const canComment = await checkRateLimit(data.clientId, 'comments');
   if (!canComment) {
@@ -258,6 +275,7 @@ export async function createComment(data: {
       author_client_id: data.clientId,
       author_display_name: data.displayName,
       author_service_type: data.serviceType,
+      author_role: data.authorRole,
       content: data.content.slice(0, 500),
     })
     .select()
@@ -294,7 +312,7 @@ export async function toggleReaction(
   clientId: string,
   targetType: 'post' | 'comment',
   targetId: string,
-  reaction: 'like' | 'love' | 'celebrate'
+  reaction: 'like'
 ): Promise<{ added: boolean }> {
   // Check if reaction exists
   const { data: existing } = await supabase
@@ -569,6 +587,56 @@ export async function joinGroup(groupId: string, clientId: string): Promise<void
     client_id: clientId,
     role: 'member',
   });
+
+  if (error) throw error;
+}
+
+// Create group
+export async function createGroup(data: {
+  name: string;
+  slug: string;
+  description?: string;
+  coverImageUrl?: string;
+  isPrivate: boolean;
+  ownerClientId: string;
+}): Promise<CommunityGroup> {
+  const { data: group, error } = await supabase
+    .from('community_groups')
+    .insert({
+      name: data.name,
+      slug: data.slug,
+      description: data.description,
+      cover_image_url: data.coverImageUrl,
+      is_private: data.isPrivate,
+      owner_client_id: data.ownerClientId,
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Add owner to group members
+  const { error: memberError } = await supabase
+    .from('community_group_members')
+    .insert({
+      group_id: group.id,
+      client_id: data.ownerClientId,
+      role: 'owner',
+    });
+
+  if (memberError) {
+    console.error('Failed to add owner as member:', memberError);
+  }
+
+  return group as CommunityGroup;
+}
+
+// Delete group
+export async function deleteGroup(groupId: string): Promise<void> {
+  const { error } = await supabase
+    .from('community_groups')
+    .delete()
+    .eq('id', groupId);
 
   if (error) throw error;
 }

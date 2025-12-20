@@ -41,9 +41,7 @@ export default function Auth() {
 
   useEffect(() => {
     // Debug logging for auth state
-    if (user || userRole) {
-      console.log("Auth State:", { user: user?.email, userRole, isLoading });
-    }
+
 
     if (!isLoading && user && userRole) {
       if (userRole === "admin") {
@@ -54,7 +52,7 @@ export default function Auth() {
     } else if (!isLoading && user && !userRole) {
       // Fallback: if user is logged in but role is missing, try to redirect to dashboard
       // or wait for role (but if it takes too long, we might want to handle it)
-      console.log("User logged in but no role found yet.");
+
     }
   }, [user, userRole, isLoading, navigate]);
 
@@ -89,7 +87,7 @@ export default function Auth() {
 
     try {
       loginSchema.parse(data);
-      console.log("AuthPage: Login submission valid. Calling signIn...");
+
       await signIn(data.email, data.password);
     } catch (error) {
       if (error instanceof z.ZodError) {

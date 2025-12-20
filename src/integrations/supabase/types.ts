@@ -2044,6 +2044,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      log_daily_metric: {
+        Args: {
+          p_client_id: string
+          p_metric_type: string
+          p_value: number
+          p_date: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       achievement_category: "consistency" | "milestone" | "streak" | "special"

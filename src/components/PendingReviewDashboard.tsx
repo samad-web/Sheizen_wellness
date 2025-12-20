@@ -16,8 +16,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Clock, Eye, Send, Loader2, Trash2 } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { formatDateTime } from "@/lib/formatters";
 
 interface PendingCard {
   id: string;
@@ -42,14 +42,14 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPendingCards = async () => {
-    console.log('Fetching pending cards...');
+
     const { data, error } = await supabase
       .from('pending_review_cards')
       .select('*, clients(name)')
       .in('status', ['pending', 'edited'])
       .order('ai_generated_at', { ascending: false });
 
-    console.log('PendingReviewDashboard: Fetched cards result:', { data, error });
+
 
     if (error) {
       console.error('PendingReviewDashboard: Error details:', error);
@@ -254,7 +254,7 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="h-4 w-4" />
-                  {formatDistanceToNow(new Date(card.ai_generated_at), { addSuffix: true })}
+                  {formatDateTime(card.ai_generated_at)}
                 </div>
                 {card.status === 'edited' && (
                   <Badge variant="outline">Edited</Badge>
