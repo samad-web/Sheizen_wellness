@@ -128,6 +128,7 @@ export function AssessmentUploadDialog({ clientId, onSuccess }: AssessmentUpload
               placeholder="Add notes about this assessment..."
               disabled={uploading}
               rows={4}
+              maxLength={1000}
             />
           </div>
         </div>

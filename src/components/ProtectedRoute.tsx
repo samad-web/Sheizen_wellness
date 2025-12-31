@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
-    requiredRole?: "admin" | "client";
+    requiredRole?: "admin" | "client" | "manager";
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
@@ -43,8 +43,14 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
             );
         }
 
+        // Allow managers to access admin routes
+        if (requiredRole === "admin" && userRole === "manager") {
+            // Manager can access admin dashboard
+            return <>{children}</>;
+        }
+
         // Redirect to correct dashboard if role doesn't match
-        if (userRole === "admin") {
+        if (userRole === "admin" || userRole === "manager") {
             return <Navigate to="/admin" replace />;
         } else {
             // If we are already on dashboard, don't redirect (loop protection)

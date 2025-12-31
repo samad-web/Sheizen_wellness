@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Leaf, ArrowRight, Users, TrendingUp, Heart } from "lucide-react";
+import { ModeToggle } from "@/components/mode-toggle";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -21,6 +22,11 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-wellness-light via-background to-wellness-light/30">
+      {/* Theme Toggle - Fixed Position */}
+      <div className="fixed top-4 right-4 z-50">
+        <ModeToggle />
+      </div>
+
       {/* Hero Section */}
       <div className="container mx-auto px-4 py-16 md:py-24">
         <div className="text-center max-w-4xl mx-auto mb-16 animate-fade-in">

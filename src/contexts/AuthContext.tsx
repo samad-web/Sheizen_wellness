@@ -7,7 +7,7 @@ import { toast } from "sonner";
 interface AuthContextType {
     user: User | null;
     session: Session | null;
-    userRole: "admin" | "client" | null;
+    userRole: "admin" | "client" | "manager" | null;
     loading: boolean;
     signIn: (email: string, password: string) => Promise<{ error: any }>;
     signUp: (email: string, password: string, name: string, phone: string) => Promise<{ error: any }>;
@@ -19,11 +19,11 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [session, setSession] = useState<Session | null>(null);
-    const [userRole, setUserRole] = useState<"admin" | "client" | null>(null);
+    const [userRole, setUserRole] = useState<"admin" | "client" | "manager" | null>(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    const fetchUserRole = async (userId: string, retries = 3): Promise<"admin" | "client" | null> => {
+    const fetchUserRole = async (userId: string, retries = 3): Promise<"admin" | "client" | "manager" | null> => {
         try {
 
 
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
 
 
-            return (data as unknown) as "admin" | "client" | null;
+            return (data as unknown) as "admin" | "client" | "manager" | null;
         } catch (error) {
             console.error("Error or timeout fetching user role:", error);
             if (retries > 0) {
@@ -211,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUserRole(role);
 
                 // Force navigation based on role
-                if (role === 'admin') {
+                if (role === 'admin' || role === 'manager') {
                     navigate("/admin");
                 } else {
                     // Default to dashboard for clients or if role is missing (handled by ProtectedRoute if invalid)

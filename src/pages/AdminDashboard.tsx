@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { CustomLogo } from "@/components/CustomLogo";
 import { AdminClientEditor } from "@/components/AdminClientEditor";
+import { CreateManagerDialog } from "@/components/CreateManagerDialog";
 
 // Lazy load tab components for better initial load performance
 const FoodItemsManager = lazy(() => import("@/components/FoodItemsManager").then(m => ({ default: m.FoodItemsManager })));
@@ -36,6 +37,7 @@ import { HealthAssessmentCardEditor } from "@/components/HealthAssessmentCardEdi
 import { StressCardEditor } from "@/components/StressCardEditor";
 import { SleepCardEditor } from "@/components/SleepCardEditor";
 import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
+import { toast } from "sonner";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -45,6 +47,10 @@ export default function AdminDashboard() {
   const [editingClientId, setEditingClientId] = useState<string | null>(null);
   const [reviewCardId, setReviewCardId] = useState<string | null>(null);
   const [reviewCardType, setReviewCardType] = useState<string | null>(null);
+  const [managerDialogOpen, setManagerDialogOpen] = useState(false);
+
+  // Helper: Managers cannot view personal client info
+  const canViewClientDetails = userRole === "admin";
 
   // Auth check handled by ProtectedRoute
 
@@ -52,28 +58,28 @@ export default function AdminDashboard() {
     // Optimize: Run admin roles and today's logs queries in parallel
     const today = new Date().toISOString().split("T")[0];
 
-    const [adminRolesResult, todayLogsResult] = await Promise.all([
+    const [adminAndManagerRoles, todayLogsResult] = await Promise.all([
       supabase
         .from("user_roles")
         .select("user_id")
-        .eq("role", "admin"),
+        .in("role", ["admin", "manager"]),
       supabase
         .from("daily_logs")
         .select("*", { count: "exact", head: true })
         .eq("log_date", today)
     ]);
 
-    const adminUserIds = adminRolesResult.data?.map((r) => r.user_id) || [];
+    const adminAndManagerUserIds = adminAndManagerRoles.data?.map((r) => r.user_id) || [];
 
-    // Fetch clients excluding admins
+    // Fetch clients excluding admins and managers
     let query = supabase
       .from("clients")
       .select("*")
       .order("created_at", { ascending: false });
 
-    // Exclude admin user_ids if any exist
-    if (adminUserIds.length > 0) {
-      query = query.not("user_id", "in", `(${adminUserIds.join(",")})`);
+    // Exclude admin and manager user_ids if any exist
+    if (adminAndManagerUserIds.length > 0) {
+      query = query.not("user_id", "in", `(${adminAndManagerUserIds.join(",")})`);
     }
 
     const { data: clientsData, error: clientsError } = await query;
@@ -98,7 +104,7 @@ export default function AdminDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ['admin-dashboard'],
     queryFn: fetchDashboardData,
-    enabled: !!user && userRole === "admin",
+    enabled: !!user && (userRole === "admin" || userRole === "manager"),
   });
 
   const clients = data?.clients || [];
@@ -142,12 +148,21 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <CustomLogo className="w-12 h-12" />
             <div>
-              <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+              <h1 className="text-3xl font-bold">Welcome {userRole === "manager" ? "Manager" : "Admin"}</h1>
               <p className="text-muted-foreground">Manage your clients and programs</p>
             </div>
           </div>
           <div className="flex gap-2">
             <ModeToggle />
+            {userRole === "admin" && (
+              <Button
+                variant="outline"
+                onClick={() => setManagerDialogOpen(true)}
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Add Manager
+              </Button>
+            )}
             <Button
               variant="outline"
               onClick={() => navigate('/community')}
@@ -303,13 +318,15 @@ export default function AdminDashboard() {
                                       {client.status}
                                     </Badge>
                                   </h3>
-                                  <p className="text-sm text-muted-foreground truncate">{client.email}</p>
+                                  <p className="text-sm text-muted-foreground truncate">
+                                    {canViewClientDetails ? client.email : "***@***.com"}
+                                  </p>
                                 </div>
                               </div>
                               <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <span>📱</span>
-                                  <span>{client.phone}</span>
+                                  <span>{canViewClientDetails ? client.phone : "***-***-****"}</span>
                                 </div>
                                 <div>
                                   <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getServiceTypeBadgeColor(client.service_type)}`}>
@@ -448,6 +465,15 @@ export default function AdminDashboard() {
             onSave={() => queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] })}
           />
         )}
+
+        {/* Create Manager Dialog */}
+        <CreateManagerDialog
+          open={managerDialogOpen}
+          onOpenChange={setManagerDialogOpen}
+          onSuccess={() => {
+            toast.success("Manager created successfully");
+          }}
+        />
       </div>
     </div>
   );

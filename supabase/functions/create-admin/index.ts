@@ -24,11 +24,23 @@ serve(async (req) => {
             }
         );
 
-        const { email, password, userData } = await req.json();
+        const { email, password, userData, role } = await req.json();
 
         if (!email || !password) {
             return new Response(
                 JSON.stringify({ error: "Email and password are required" }),
+                {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                    status: 200,
+                }
+            );
+        }
+
+        // Validate role if provided
+        const assignedRole = role || "admin"; // Default to admin for backwards compatibility
+        if (!['admin', 'manager'].includes(assignedRole)) {
+            return new Response(
+                JSON.stringify({ error: "Invalid role. Must be 'admin' or 'manager'" }),
                 {
                     headers: { ...corsHeaders, "Content-Type": "application/json" },
                     status: 200,
@@ -63,12 +75,12 @@ serve(async (req) => {
             console.error("Profile creation error:", profileError);
         }
 
-        // Explicitly assign 'admin' role
+        // Assign the specified role (admin or manager)
         const { error: roleError } = await supabaseClient
             .from("user_roles")
             .upsert({
                 user_id: user.user.id,
-                role: "admin"
+                role: assignedRole
             }, { onConflict: 'user_id' });
 
         if (roleError) {

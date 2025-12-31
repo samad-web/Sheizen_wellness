@@ -26,7 +26,7 @@ import { CalendarView } from "@/components/CalendarView";
 import { HundredDayProgress } from "@/components/HundredDayProgress";
 import { WorkflowTimeline } from "@/components/WorkflowTimeline";
 import { exportDietPlanToExcel } from "@/lib/excelExport";
-import { FileText, Brain, Moon, FileEdit } from "lucide-react";
+import { FileText, Brain, Moon, FileEdit, HeartPulse } from "lucide-react";
 import { AdminNotes } from "@/components/admin/AdminNotes";
 import {
   AlertDialog,
@@ -126,8 +126,11 @@ const ClientDetail = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Helper: Managers cannot view personal client info
+  const canViewPersonalInfo = userRole === "admin";
+
   useEffect(() => {
-    if (userRole !== "admin") {
+    if (userRole !== "admin" && userRole !== "manager") {
       navigate("/auth");
       return;
     }
@@ -196,6 +199,18 @@ const ClientDetail = () => {
       .order("logged_at", { ascending: false })
       .limit(50);
 
+    // Fetch assessment request counts for this client
+    const { data: assessmentRequestsData } = await supabase
+      .from('assessment_requests')
+      .select('assessment_type')
+      .eq('client_id', id);
+
+    // Count assessment requests by type for this client
+    const assessmentRequests = (assessmentRequestsData || []);
+    const healthRequestCount = assessmentRequests.filter(a => a.assessment_type === 'health_assessment').length;
+    const stressRequestCount = assessmentRequests.filter(a => a.assessment_type === 'stress').length;
+    const sleepRequestCount = assessmentRequests.filter(a => a.assessment_type === 'sleep').length;
+
     return {
       client: clientData,
       assessments: (assessmentsData as unknown as Assessment[]) || [],
@@ -204,13 +219,18 @@ const ClientDetail = () => {
       files: (filesData as unknown as FileRecord[]) || [],
       reports: (reportsData as unknown as WeeklyReport[]) || [],
       mealLogs: (mealLogsData as unknown as MealLog[]) || [],
+      assessmentRequestCounts: {
+        health: healthRequestCount,
+        stress: stressRequestCount,
+        sleep: sleepRequestCount,
+      },
     };
   };
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-client-detail', id],
     queryFn: fetchClientData,
-    enabled: !!id && userRole === "admin",
+    enabled: !!id && (userRole === "admin" || userRole === "manager"),
   });
 
   const client = data?.client || null;
@@ -368,6 +388,8 @@ const ClientDetail = () => {
       }
 
       toast.success('Assessment request sent to client');
+      // Refresh client data to update assessment request counts
+      refetchClientData();
     } catch (error: any) {
       console.error('Error requesting assessment:', error);
       toast.error(error.message || 'Failed to send assessment request');
@@ -420,11 +442,13 @@ const ClientDetail = () => {
                 <CardDescription className="mt-2 space-y-1">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
-                    <span className="break-all">{client.email}</span>
+                    <span className="break-all">
+                      {canViewPersonalInfo ? client.email : "***@***.com"}
+                    </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
-                    {client.phone}
+                    {canViewPersonalInfo ? client.phone : "***-***-****"}
                   </div>
                 </CardDescription>
               </div>
@@ -454,7 +478,9 @@ const ClientDetail = () => {
                 <Weight className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm text-muted-foreground">Last Weight</p>
-                  <p className="font-semibold">{client.last_weight ? `${client.last_weight} kg` : "—"}</p>
+                  <p className="font-semibold">
+                    {client.last_weight ? `${client.last_weight} kg` : "—"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -469,7 +495,7 @@ const ClientDetail = () => {
                 <p className="font-semibold capitalize">{client.program_type?.replace("_", " ") || "—"}</p>
               </div>
             </div>
-            {client.goals && (
+            {client.goals && canViewPersonalInfo && (
               <div className="mt-4 pt-4 border-t">
                 <p className="text-sm text-muted-foreground mb-1">Goals</p>
                 <p>{client.goals}</p>
@@ -711,7 +737,10 @@ const ClientDetail = () => {
                                     .eq('plan_id', plan.id);
 
                                   exportDietPlanToExcel(
-                                    { name: client.name, program_type: client.program_type },
+                                    {
+                                      name: client.name,
+                                      program_type: client.program_type
+                                    },
                                     plan,
                                     mealCards || []
                                   );
@@ -964,6 +993,32 @@ const ClientDetail = () => {
 
           <TabsContent value="workflow">
             {id && <WorkflowTimeline clientId={id} />}
+
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Assessment Request History</CardTitle>
+                <CardDescription>Total requests sent to this client</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="flex flex-col items-center p-4 border rounded-lg">
+                    <HeartPulse className="h-8 w-8 text-blue-600 mb-2" />
+                    <div className="text-2xl font-bold">{data?.assessmentRequestCounts?.health || 0}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Health</p>
+                  </div>
+                  <div className="flex flex-col items-center p-4 border rounded-lg">
+                    <Brain className="h-8 w-8 text-purple-600 mb-2" />
+                    <div className="text-2xl font-bold">{data?.assessmentRequestCounts?.stress || 0}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Stress</p>
+                  </div>
+                  <div className="flex flex-col items-center p-4 border rounded-lg">
+                    <Moon className="h-8 w-8 text-indigo-600 mb-2" />
+                    <div className="text-2xl font-bold">{data?.assessmentRequestCounts?.sleep || 0}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Sleep</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="mt-6">
               <CardHeader>
