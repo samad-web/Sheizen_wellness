@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -56,50 +57,45 @@ function RequestImage({ path }: { path: string }) {
 
 export function AdminRequestsWidget() {
     const navigate = useNavigate();
-    const [requests, setRequests] = useState<AdminRequest[]>([]);
-    const [loading, setLoading] = useState(true);
+    const queryClient = useQueryClient();
 
     const fetchRequests = async () => {
-        try {
-            const { data, error } = await supabase
-                .from("admin_requests")
-                .select(`
+        const { data, error } = await supabase
+            .from("admin_requests")
+            .select(`
           *,
           client:clients (
             name,
             email
           )
         `)
-                .eq("status", "pending")
-                .order("created_at", { ascending: false });
+            .eq("status", "pending")
+            .order("created_at", { ascending: false });
 
-            if (error) throw error;
+        if (error) throw error;
 
-            // Transform data to match interface (handling the array/object nature of join)
-            const formattedData = data?.map(item => ({
-                ...item,
-                client: Array.isArray(item.client) ? item.client[0] : item.client
-            })) as AdminRequest[];
+        // Transform data to match interface (handling the array/object nature of join)
+        const formattedData = data?.map(item => ({
+            ...item,
+            client: Array.isArray(item.client) ? item.client[0] : item.client
+        })) as AdminRequest[];
 
-            setRequests(formattedData || []);
-        } catch (error) {
-            console.error("Error fetching requests:", error);
-        } finally {
-            setLoading(false);
-        }
+        return formattedData || [];
     };
 
-    useEffect(() => {
-        fetchRequests();
+    const { data: requests = [], isLoading } = useQuery({
+        queryKey: ['admin-requests'],
+        queryFn: fetchRequests,
+    });
 
-        // specific realtime subscription
+    // Realtime subscription for live updates
+    useEffect(() => {
         const channel = supabase
             .channel('admin-requests-widget')
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'admin_requests' },
                 () => {
-                    fetchRequests();
-                    // Optional: play sound or show toast
+                    queryClient.invalidateQueries({ queryKey: ['admin-requests'] });
                 }
             )
             .subscribe();
@@ -107,7 +103,7 @@ export function AdminRequestsWidget() {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, []);
+    }, [queryClient]);
 
     const handleUpdateStatus = async (id: string, newStatus: 'resolved' | 'dismissed') => {
         try {
@@ -119,14 +115,14 @@ export function AdminRequestsWidget() {
             if (error) throw error;
 
             toast.success(`Request ${newStatus}`);
-            setRequests(current => current.filter(r => r.id !== id));
+            queryClient.invalidateQueries({ queryKey: ['admin-requests'] });
         } catch (error) {
             console.error("Error updating request:", error);
             toast.error("Failed to update status");
         }
     };
 
-    if (!loading && requests.length === 0) return null;
+    if (isLoading || requests.length === 0) return null;
 
     return (
         <Card className="border-l-4 border-l-amber-500 animate-fade-in shadow-md">

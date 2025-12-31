@@ -34,6 +34,9 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
     sleep_hours_per_night: "",
     stress_level_1_to_10: "",
     water_intake_liters_per_day: "",
+    smoking_habits: "",
+    alcohol_consumption: "",
+    lifestyle_others: "",
     cbc_done: false,
     lipid_profile_done: false,
     blood_sugar_done: false,
@@ -188,6 +191,46 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
               <Label htmlFor="water">Water Intake (Liters/Day)</Label>
               <Input id="water" value={formData.water_intake_liters_per_day} onChange={(e) => setFormData({ ...formData, water_intake_liters_per_day: e.target.value })} className="mt-1" />
             </div>
+            <div>
+              <Label htmlFor="smoking">Smoking Habits</Label>
+              <Select value={formData.smoking_habits} onValueChange={(value) => setFormData({ ...formData, smoking_habits: value })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select smoking habit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">Never</SelectItem>
+                  <SelectItem value="occasionally">Occasionally</SelectItem>
+                  <SelectItem value="daily_half_pack">Daily (&lt; 1/2 pack)</SelectItem>
+                  <SelectItem value="daily_pack">Daily (1 pack)</SelectItem>
+                  <SelectItem value="daily_more">Daily (&gt; 1 pack)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="alcohol">Alcohol Consumption</Label>
+              <Select value={formData.alcohol_consumption} onValueChange={(value) => setFormData({ ...formData, alcohol_consumption: value })}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select alcohol consumption" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">Never</SelectItem>
+                  <SelectItem value="occasionally">Occasionally</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="daily">Daily</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="lifestyle_others">Others (Additional Lifestyle Notes)</Label>
+            <Textarea
+              id="lifestyle_others"
+              rows={3}
+              placeholder="Any other lifestyle factors, habits, or notes..."
+              value={formData.lifestyle_others}
+              onChange={(e) => setFormData({ ...formData, lifestyle_others: e.target.value })}
+              className="mt-1"
+            />
           </div>
         </div>
 
@@ -238,7 +281,7 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
         {/* Dietary Assessment */}
         <div className="space-y-4">
           <h4 className="font-semibold text-sm">Dietary Assessment</h4>
-          
+
           <div>
             <Label className="mb-2">Meal Preparation</Label>
             <div className="flex flex-wrap gap-3">
@@ -317,11 +360,11 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
                 </div>
               ))}
             </div>
-            <Input 
-              placeholder="Other diet pattern" 
-              value={formData.diet_pattern_other} 
-              onChange={(e) => setFormData({ ...formData, diet_pattern_other: e.target.value })} 
-              className="mt-2" 
+            <Input
+              placeholder="Other diet pattern"
+              value={formData.diet_pattern_other}
+              onChange={(e) => setFormData({ ...formData, diet_pattern_other: e.target.value })}
+              className="mt-2"
             />
           </div>
         </div>
@@ -329,13 +372,13 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
         {/* Food Recall */}
         <div>
           <Label htmlFor="food_recall">Food Recall Details</Label>
-          <Textarea 
-            id="food_recall" 
-            rows={4} 
-            placeholder="Describe typical daily meals and eating patterns..." 
-            value={formData.food_recall_details} 
-            onChange={(e) => setFormData({ ...formData, food_recall_details: e.target.value })} 
-            className="mt-1" 
+          <Textarea
+            id="food_recall"
+            rows={4}
+            placeholder="Describe typical daily meals and eating patterns..."
+            value={formData.food_recall_details}
+            onChange={(e) => setFormData({ ...formData, food_recall_details: e.target.value })}
+            className="mt-1"
           />
         </div>
 
@@ -374,12 +417,12 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
           </div>
           <div>
             <Label htmlFor="ack_date">Acknowledgment Date</Label>
-            <Input 
-              id="ack_date" 
-              type="date" 
-              value={formData.client_acknowledgment_date} 
-              onChange={(e) => setFormData({ ...formData, client_acknowledgment_date: e.target.value })} 
-              className="mt-1" 
+            <Input
+              id="ack_date"
+              type="date"
+              value={formData.client_acknowledgment_date}
+              onChange={(e) => setFormData({ ...formData, client_acknowledgment_date: e.target.value })}
+              className="mt-1"
             />
           </div>
         </div>
@@ -387,13 +430,13 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
         {/* Next Steps */}
         <div>
           <Label htmlFor="next_steps">Next Steps Notes (Optional)</Label>
-          <Textarea 
-            id="next_steps" 
-            rows={3} 
-            placeholder="Any additional notes or next steps..." 
-            value={formData.next_steps_notes} 
-            onChange={(e) => setFormData({ ...formData, next_steps_notes: e.target.value })} 
-            className="mt-1" 
+          <Textarea
+            id="next_steps"
+            rows={3}
+            placeholder="Any additional notes or next steps..."
+            value={formData.next_steps_notes}
+            onChange={(e) => setFormData({ ...formData, next_steps_notes: e.target.value })}
+            className="mt-1"
           />
         </div>
       </div>

@@ -32,9 +32,9 @@ serve(async (req) => {
     const dietPrefs = client.diet_preferences;
     const targetKcal = client.target_kcal || 1800;
 
-    // Generate AI diet plan table using Lovable AI with image generation
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    
+    // Generate AI diet plan table using OpenAI DALL-E for image generation
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+
     const prompt = `Create a professional diet plan table image for ${client_name}.
 
 Target Calories: ${targetKcal} kcal/day
@@ -53,18 +53,19 @@ Total daily calories should equal ${targetKcal} kcal
 
 Style: Professional table format, clean typography, wellness colors (green theme), easy to read. Include total row at bottom.`;
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // OpenAI DALL-E for image generation
+    const aiResponse = await fetch('https://api.openai.com/v1/images/generations', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image',
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        modalities: ['image', 'text']
+        model: 'dall-e-3',
+        prompt: prompt,
+        n: 1,
+        size: '1024x1024',
+        quality: 'standard'
       }),
     });
 
@@ -75,7 +76,7 @@ Style: Professional table format, clean typography, wellness colors (green theme
     }
 
     const aiData = await aiResponse.json();
-    const imageUrl = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    const imageUrl = aiData.data?.[0]?.url;
 
     if (!imageUrl) {
       throw new Error('No image generated from AI');
@@ -108,8 +109,8 @@ Style: Professional table format, clean typography, wellness colors (green theme
     console.log(`Diet plan card generated for client ${client_id}, card ID: ${card.id}`);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         card_id: card.id,
         message: 'Diet plan card generated and pending admin review'
       }),

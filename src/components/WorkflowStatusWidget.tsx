@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { Activity, AlertCircle } from "lucide-react";
 
 interface WorkflowStats {
@@ -10,43 +10,37 @@ interface WorkflowStats {
 }
 
 export const WorkflowStatusWidget = () => {
-  const [stats, setStats] = useState<WorkflowStats>({ overdueCount: 0, upcomingCount: 0 });
-  const [loading, setLoading] = useState(true);
+  const fetchStats = async (): Promise<WorkflowStats> => {
+    const now = new Date().toISOString();
+    const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-  useEffect(() => {
-    fetchStats();
-  }, []);
-
-  const fetchStats = async () => {
-    try {
-      const now = new Date().toISOString();
-      const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-
-      const { data: overdue } = await supabase
+    // Run both queries in parallel
+    const [overdueResult, upcomingResult] = await Promise.all([
+      supabase
         .from('client_workflow_state')
         .select('id')
         .not('next_action_due_at', 'is', null)
-        .lt('next_action_due_at', now);
-
-      const { data: upcoming } = await supabase
+        .lt('next_action_due_at', now),
+      supabase
         .from('client_workflow_state')
         .select('id')
         .not('next_action_due_at', 'is', null)
         .gte('next_action_due_at', now)
-        .lt('next_action_due_at', next24Hours);
+        .lt('next_action_due_at', next24Hours)
+    ]);
 
-      setStats({
-        overdueCount: overdue?.length || 0,
-        upcomingCount: upcoming?.length || 0,
-      });
-    } catch (error) {
-      console.error('Error fetching workflow stats:', error);
-    } finally {
-      setLoading(false);
-    }
+    return {
+      overdueCount: overdueResult.data?.length || 0,
+      upcomingCount: upcomingResult.data?.length || 0,
+    };
   };
 
-  if (loading) return null;
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ['workflow-stats'],
+    queryFn: fetchStats,
+  });
+
+  if (isLoading || !stats) return null;
 
   return (
     <Card className="p-6">

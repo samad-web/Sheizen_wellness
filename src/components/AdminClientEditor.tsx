@@ -309,11 +309,27 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
                   <SelectItem value="weight_loss">Weight Loss</SelectItem>
                   <SelectItem value="weight_gain">Weight Gain</SelectItem>
                   <SelectItem value="maintenance">Maintenance</SelectItem>
-                  <SelectItem value="muscle_building">Muscle Building</SelectItem>
+                  <SelectItem value="manage_pcod">Manage PCOD</SelectItem>
+                  <SelectItem value="thyroid">Thyroid</SelectItem>
+                  <SelectItem value="diabetes">Diabetes</SelectItem>
+                  <SelectItem value="cholesterol">Cholesterol</SelectItem>
                   <SelectItem value="general_wellness">General Wellness</SelectItem>
+                  <SelectItem value="others">Others</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {formData.program_type === "others" && (
+              <div>
+                <Label htmlFor="other_goal">Please specify your health goal</Label>
+                <Input
+                  id="other_goal"
+                  value={formData.goals}
+                  onChange={(e) => setFormData({ ...formData, goals: e.target.value })}
+                  placeholder="Enter your specific health goal"
+                />
+              </div>
+            )}
 
             <div>
               <Label htmlFor="target_kcal">Target Kcal</Label>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense, useCallback } from "react";
 import { ModeToggle } from "@/components/mode-toggle";
 
 import { useNavigate } from "react-router-dom";
@@ -19,17 +19,19 @@ import {
   Calendar
 } from "lucide-react";
 import { CustomLogo } from "@/components/CustomLogo";
-import { FoodItemsManager } from "@/components/FoodItemsManager";
-import { IngredientsManager } from "@/components/IngredientsManager";
-import { RecipeBuilder } from "@/components/RecipeBuilder";
 import { AdminClientEditor } from "@/components/AdminClientEditor";
-import { InterestSubmissionsManager } from "@/components/InterestSubmissionsManager";
+
+// Lazy load tab components for better initial load performance
+const FoodItemsManager = lazy(() => import("@/components/FoodItemsManager").then(m => ({ default: m.FoodItemsManager })));
+const IngredientsManager = lazy(() => import("@/components/IngredientsManager").then(m => ({ default: m.IngredientsManager })));
+const RecipeBuilder = lazy(() => import("@/components/RecipeBuilder").then(m => ({ default: m.RecipeBuilder })));
+const InterestSubmissionsManager = lazy(() => import("@/components/InterestSubmissionsManager").then(m => ({ default: m.InterestSubmissionsManager })));
+const ReportManager = lazy(() => import("@/components/ReportManager").then(m => ({ default: m.ReportManager })));
 import { BulkMessageButton } from "@/components/BulkMessageButton";
 
 import { WorkflowStatusWidget } from "@/components/WorkflowStatusWidget";
 import { AdminRequestsWidget } from "@/components/AdminRequestsWidget";
 import { PendingReviewDashboard } from "@/components/PendingReviewDashboard";
-import { ReportManager } from "@/components/ReportManager";
 import { HealthAssessmentCardEditor } from "@/components/HealthAssessmentCardEditor";
 import { StressCardEditor } from "@/components/StressCardEditor";
 import { SleepCardEditor } from "@/components/SleepCardEditor";
@@ -47,14 +49,21 @@ export default function AdminDashboard() {
   // Auth check handled by ProtectedRoute
 
   const fetchDashboardData = async () => {
-    // Fetch only clients (exclude admins)
-    // First get all admin user_ids
-    const { data: adminRoles } = await supabase
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "admin");
+    // Optimize: Run admin roles and today's logs queries in parallel
+    const today = new Date().toISOString().split("T")[0];
 
-    const adminUserIds = adminRoles?.map((r) => r.user_id) || [];
+    const [adminRolesResult, todayLogsResult] = await Promise.all([
+      supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin"),
+      supabase
+        .from("daily_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("log_date", today)
+    ]);
+
+    const adminUserIds = adminRolesResult.data?.map((r) => r.user_id) || [];
 
     // Fetch clients excluding admins
     let query = supabase
@@ -75,20 +84,13 @@ export default function AdminDashboard() {
     const activeClients = clientsData?.filter((c) => c.status === "active").length || 0;
     const pendingClients = clientsData?.filter((c) => c.status === "pending").length || 0;
 
-    // Fetch today's logs count
-    const today = new Date().toISOString().split("T")[0];
-    const { count } = await supabase
-      .from("daily_logs")
-      .select("*", { count: "exact", head: true })
-      .eq("log_date", today);
-
     return {
       clients: clientsData || [],
       stats: {
         totalClients: clientsData?.length || 0,
         activeClients,
         pendingClients,
-        todayLogs: count || 0,
+        todayLogs: todayLogsResult.count || 0,
       }
     };
   };
@@ -111,7 +113,7 @@ export default function AdminDashboard() {
     queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = useCallback((status: string) => {
     switch (status) {
       case "active":
         return "bg-wellness-green/20 text-wellness-green";
@@ -122,7 +124,7 @@ export default function AdminDashboard() {
       default:
         return "bg-muted text-muted-foreground";
     }
-  };
+  }, []);
 
   if (isLoading) {
     return (
@@ -357,23 +359,33 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="leads">
-            <InterestSubmissionsManager />
+            <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
+              <InterestSubmissionsManager />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="ingredients">
-            <IngredientsManager />
+            <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
+              <IngredientsManager />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="food">
-            <FoodItemsManager />
+            <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
+              <FoodItemsManager />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="recipes">
-            <RecipeBuilder />
+            <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
+              <RecipeBuilder />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="reports">
-            <ReportManager />
+            <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
+              <ReportManager />
+            </Suspense>
           </TabsContent>
 
 

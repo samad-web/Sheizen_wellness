@@ -84,21 +84,21 @@ ${filteredFoods.slice(0, 50).map(f => `- ${f.name}: ${f.kcal_per_serving} kcal p
 9. Respect dietary restrictions and allergies
 10. Provide cooking instructions for each meal`;
 
-    console.log('Calling Lovable AI with tool calling for structured meal plan...');
+    console.log('Calling OpenAI with function calling for structured meal plan...');
 
-    // Call Lovable AI with tool calling for structured output
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Call OpenAI with function calling for structured output
+    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('LOVABLE_API_KEY')}`,
+        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+        model: 'gpt-4o-mini',
         messages: [
-          { 
-            role: 'system', 
-            content: 'You are an expert nutritionist creating personalized meal plans. Generate balanced, culturally appropriate, and easy-to-prepare meals.' 
+          {
+            role: 'system',
+            content: 'You are an expert nutritionist creating personalized meal plans. Generate balanced, culturally appropriate, and easy-to-prepare meals.'
           },
           { role: 'user', content: userPrompt }
         ],
@@ -187,7 +187,7 @@ ${filteredFoods.slice(0, 50).map(f => `- ${f.name}: ${f.kcal_per_serving} kcal p
 
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices[0].message.tool_calls?.[0];
-    
+
     if (!toolCall || !toolCall.function.arguments) {
       throw new Error('No structured meal plan generated');
     }
@@ -204,8 +204,8 @@ ${filteredFoods.slice(0, 50).map(f => `- ${f.name}: ${f.kcal_per_serving} kcal p
     // Calculate total kcal
     let totalKcal = 0;
     mealPlan.days.forEach((day: any) => {
-      totalKcal += day.meals.breakfast.kcal + day.meals.lunch.kcal + 
-                   day.meals.evening_snack.kcal + day.meals.dinner.kcal;
+      totalKcal += day.meals.breakfast.kcal + day.meals.lunch.kcal +
+        day.meals.evening_snack.kcal + day.meals.dinner.kcal;
     });
 
     // Insert weekly plan
@@ -277,9 +277,9 @@ ${filteredFoods.slice(0, 50).map(f => `- ${f.name}: ${f.kcal_per_serving} kcal p
     console.error('Error in generate-diet-plan:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { 
+      {
         status: error.message.includes('429') ? 429 : error.message.includes('402') ? 402 : 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

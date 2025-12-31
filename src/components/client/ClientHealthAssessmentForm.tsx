@@ -23,6 +23,9 @@ const healthAssessmentSchema = z.object({
   sleep_hours_per_night: z.string().optional(),
   stress_level_1_to_10: z.coerce.number().min(0).max(10).optional(),
   water_intake_liters_per_day: z.string().optional(),
+  smoking_habits: z.string().optional(),
+  alcohol_consumption: z.string().optional(),
+  lifestyle_others: z.string().optional(),
   cbc_done: z.boolean().default(false),
   lipid_profile_done: z.boolean().default(false),
   blood_sugar_done: z.boolean().default(false),
@@ -203,7 +206,29 @@ export function ClientHealthAssessmentForm({ requestId, clientId, clientName, on
                 <FormMessage />
               </FormItem>
             )} />
+            <FormField control={form.control} name="smoking_habits" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Smoking Habits</FormLabel>
+                <FormControl><Input placeholder="e.g., Never, Occasionally, Daily" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField control={form.control} name="alcohol_consumption" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Alcohol Consumption</FormLabel>
+                <FormControl><Input placeholder="e.g., Never, Occasionally, Weekly" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
           </div>
+
+          <FormField control={form.control} name="lifestyle_others" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Other Lifestyle Notes</FormLabel>
+              <FormControl><Textarea {...field} rows={2} placeholder="Any other relevant lifestyle information..." /></FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
 
           <div>
             <FormLabel className="mb-3 block">Biochemical Tests Done</FormLabel>

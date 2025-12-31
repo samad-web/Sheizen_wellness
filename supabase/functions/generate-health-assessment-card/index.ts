@@ -1,4 +1,4 @@
-cd import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -77,11 +77,11 @@ serve(async (req) => {
     const proteinIntake = (parseFloat(idealWeight) * 1.4).toFixed(1);
 
     // Generate AI assessment
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     let aiAnalysis = '';
 
-    if (!LOVABLE_API_KEY) {
-      console.warn('Missing Lovable API Key, using mock response');
+    if (!OPENAI_API_KEY) {
+      console.warn('Missing OpenAI API Key, using mock response');
       aiAnalysis = `## Health Assessment (Mock)
 Based on your metrics (BMI: ${bmi}), here is a preliminary analysis:
 1. **Activity**: You reported ${latestLog?.activity_minutes || 0} minutes of activity.
@@ -121,14 +121,14 @@ Generate a professional health assessment with key findings and recommendations.
 
 Format as a detailed professional report suitable for a dietitian review.`;
 
-        const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+            'Authorization': `Bearer ${OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
+            model: 'gpt-4o-mini',
             messages: [
               { role: 'system', content: 'You are an expert dietitian creating professional health assessment cards.' },
               { role: 'user', content: prompt }
