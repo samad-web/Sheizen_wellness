@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import * as LucideIcons from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatDate } from "@/lib/formatters";
 
 interface AchievementBadgeProps {
   achievement: {
@@ -125,7 +126,7 @@ export function AchievementBadge({
         {/* Earned Date */}
         {earned && earnedAt && (
           <Badge variant="secondary" className="text-[10px] bg-background/80 backdrop-blur-sm">
-            {new Date(earnedAt).toLocaleDateString()}
+            {formatDate(earnedAt)}
           </Badge>
         )}
 

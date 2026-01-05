@@ -27,30 +27,37 @@ export function CommunityGuidelinesModal({
 }: CommunityGuidelinesModalProps) {
   const [accepted, setAccepted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   const handleAccept = async () => {
     if (!accepted) {
       toast.error("Please accept the community guidelines");
       return;
     }
-    
+
     setIsSubmitting(true);
     try {
-      await supabase
+      const { error } = await supabase
         .from("clients")
         .update({ community_terms_accepted_at: new Date().toISOString() })
         .eq("id", clientId);
-      
+
+      if (error) {
+        console.error("Error accepting guidelines:", error);
+        throw error;
+      }
+
+      toast.success("Welcome to the community!");
       onAccept();
-    } catch (error) {
-      toast.error("Failed to accept guidelines");
+    } catch (error: any) {
+      console.error("Failed to accept guidelines:", error);
+      toast.error(error.message || "Failed to accept guidelines. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
-  
+
   return (
-    <Dialog open={open} onOpenChange={() => {}}>
+    <Dialog open={open} onOpenChange={() => { }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -61,7 +68,7 @@ export function CommunityGuidelinesModal({
             Please read and accept our community guidelines before participating.
           </DialogDescription>
         </DialogHeader>
-        
+
         <ScrollArea className="max-h-[400px] pr-4">
           <div className="space-y-4">
             <div className="flex gap-3">
@@ -73,7 +80,7 @@ export function CommunityGuidelinesModal({
                 </p>
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <Users className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
               <div>
@@ -83,7 +90,7 @@ export function CommunityGuidelinesModal({
                 </p>
               </div>
             </div>
-            
+
             <div className="flex gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
               <div>
@@ -93,7 +100,7 @@ export function CommunityGuidelinesModal({
                 </p>
               </div>
             </div>
-            
+
             <div className="border-t pt-4 mt-4">
               <h4 className="font-medium mb-2">Prohibited Content</h4>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
@@ -105,7 +112,7 @@ export function CommunityGuidelinesModal({
                 <li>Inappropriate or offensive content</li>
               </ul>
             </div>
-            
+
             <div className="border-t pt-4 mt-4">
               <h4 className="font-medium mb-2">Consequences</h4>
               <p className="text-sm text-muted-foreground">
@@ -114,10 +121,10 @@ export function CommunityGuidelinesModal({
             </div>
           </div>
         </ScrollArea>
-        
+
         <div className="flex items-center space-x-2 pt-4 border-t">
-          <Checkbox 
-            id="accept" 
+          <Checkbox
+            id="accept"
             checked={accepted}
             onCheckedChange={(checked) => setAccepted(checked === true)}
           />
@@ -128,9 +135,9 @@ export function CommunityGuidelinesModal({
             I have read and agree to follow the community guidelines
           </label>
         </div>
-        
+
         <DialogFooter>
-          <Button 
+          <Button
             onClick={handleAccept}
             disabled={!accepted || isSubmitting}
             className="w-full"

@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ShoppingCart, Copy, Printer, Check } from "lucide-react";
 import { toast } from "sonner";
+import { formatDate } from "@/lib/formatters";
 
 interface GroceryItem {
   name: string;
@@ -120,7 +121,7 @@ export const GroceryListGenerator = ({
 
   const copyToClipboard = () => {
     let text = `🛒 Grocery List - Week ${weekNumber}\n`;
-    text += `${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}\n\n`;
+    text += `${formatDate(startDate)} - ${formatDate(endDate)}\n\n`;
 
     groceryList.forEach(category => {
       text += `${category.name}\n`;
@@ -166,7 +167,7 @@ export const GroceryListGenerator = ({
             Grocery List - Week {weekNumber}
           </DialogTitle>
           <DialogDescription>
-            {new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()}
+            {formatDate(startDate)} - {formatDate(endDate)}
           </DialogDescription>
         </DialogHeader>
 

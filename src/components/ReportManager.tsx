@@ -18,6 +18,7 @@ import {
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { formatDate } from "@/lib/formatters";
 
 export function ReportManager() {
     const [editorOpen, setEditorOpen] = useState(false);
@@ -95,7 +96,7 @@ export function ReportManager() {
                                             </Badge>
                                         </div>
                                         <p className="text-sm text-muted-foreground">
-                                            Report Date: {new Date(report.report_date).toLocaleDateString()}
+                                            Report Date: {formatDate(report.report_date)}
                                         </p>
                                         {report.summary && (
                                             <p className="text-sm mt-1 line-clamp-1">{report.summary}</p>

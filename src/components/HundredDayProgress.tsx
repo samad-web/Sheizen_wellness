@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, TrendingDown, Droplets, Utensils, Award, CheckCircle2, Target } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { formatDate } from "@/lib/formatters";
 
 interface HundredDayProgressProps {
   clientId: string;
@@ -47,7 +48,7 @@ export function HundredDayProgress({ clientId }: HundredDayProgressProps) {
 
       const startDate = new Date(client.created_at);
       setProgramStartDate(startDate);
-      
+
       const today = new Date();
       const daysElapsed = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       const daysRemaining = Math.max(0, 100 - daysElapsed);
@@ -168,7 +169,7 @@ export function HundredDayProgress({ clientId }: HundredDayProgressProps) {
             100-Day Journey Progress
           </CardTitle>
           <CardDescription>
-            Started on {programStartDate?.toLocaleDateString()} • Day {progress.daysElapsed} of 100
+            Started on {formatDate(programStartDate)} • Day {progress.daysElapsed} of 100
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -185,11 +186,10 @@ export function HundredDayProgress({ clientId }: HundredDayProgressProps) {
             {milestones.map((day) => (
               <div key={day} className="flex flex-col items-center">
                 <div
-                  className={`w-3 h-3 rounded-full mb-1 ${
-                    progress.daysElapsed >= day
+                  className={`w-3 h-3 rounded-full mb-1 ${progress.daysElapsed >= day
                       ? "bg-primary"
                       : "bg-muted border-2 border-muted-foreground"
-                  }`}
+                    }`}
                 />
                 <span className="text-xs text-muted-foreground">Day {day}</span>
                 {progress.daysElapsed >= day && (
@@ -324,13 +324,12 @@ export function HundredDayProgress({ clientId }: HundredDayProgressProps) {
               {progress.weeklyAdherence.map((week) => (
                 <div key={week.week} className="text-center">
                   <div
-                    className={`h-12 rounded flex items-center justify-center text-sm font-medium ${
-                      week.percentage >= 80
+                    className={`h-12 rounded flex items-center justify-center text-sm font-medium ${week.percentage >= 80
                         ? "bg-green-500 text-white"
                         : week.percentage >= 50
-                        ? "bg-yellow-500 text-white"
-                        : "bg-red-500 text-white"
-                    }`}
+                          ? "bg-yellow-500 text-white"
+                          : "bg-red-500 text-white"
+                      }`}
                   >
                     {week.percentage}%
                   </div>

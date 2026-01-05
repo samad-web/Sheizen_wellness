@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { formatDate } from "@/lib/formatters";
 
 interface FileUploadSectionProps {
   clientId: string;
@@ -140,7 +141,7 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
               <CardTitle>Your Files</CardTitle>
               <CardDescription>Upload and manage your documents</CardDescription>
             </div>
-            <Button 
+            <Button
               disabled={uploading}
               onClick={() => fileInputRef.current?.click()}
             >
@@ -191,7 +192,7 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
                     <TableCell className="font-medium">{file.file_name}</TableCell>
                     <TableCell>{file.file_type || "—"}</TableCell>
                     <TableCell>{formatFileSize(file.file_size)}</TableCell>
-                    <TableCell>{new Date(file.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>{formatDate(file.created_at)}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
                         variant="outline"

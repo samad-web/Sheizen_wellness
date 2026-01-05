@@ -601,7 +601,10 @@ export default function Community() {
         <>
           <CommunityGuidelinesModal
             open={showGuidelines}
-            onAccept={() => setShowGuidelines(false)}
+            onAccept={() => {
+              setShowGuidelines(false);
+              loadClientData(); // Refresh to confirm persistence
+            }}
             clientId={client.id}
           />
 

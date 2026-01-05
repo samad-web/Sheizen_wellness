@@ -31,7 +31,7 @@ import { MealPhotoUpload } from "@/components/MealPhotoUpload";
 import { FileUploadSection } from "@/components/FileUploadSection";
 import { WeeklyPlanViewer } from "@/components/WeeklyPlanViewer";
 import { ProgressCharts } from "@/components/ProgressCharts";
-import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
+import { formatServiceType, getServiceTypeBadgeColor, formatDate, formatDateTime } from "@/lib/formatters";
 import { MotivationCard } from "@/components/MotivationCard";
 import { WeeklyGoals } from "@/components/WeeklyGoals";
 import { getSignedUrls } from "@/lib/storage";
@@ -1139,7 +1139,7 @@ export default function ClientDashboard() {
                                 <p className="font-semibold capitalize">{log.meal_type.replace("_", " ")}</p>
                                 <div className="flex items-center gap-2">
                                   <p className="text-sm text-muted-foreground whitespace-nowrap">
-                                    {new Date(log.logged_at).toLocaleString()}
+                                    {formatDateTime(log.logged_at)}
                                   </p>
                                   <Button
                                     variant="ghost"
@@ -1218,7 +1218,7 @@ export default function ClientDashboard() {
                                 {isNew && <Badge variant="default" className="text-xs">NEW</Badge>}
                               </h3>
                               <p className="text-sm text-muted-foreground">
-                                Sent {new Date(card.sent_at).toLocaleDateString()}
+                                Sent {formatDate(card.sent_at)}
                               </p>
                             </div>
                           </div>

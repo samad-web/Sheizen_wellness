@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, FileText, Utensils } from "lucide-react";
 import { toast } from "sonner";
 import { GroceryListGenerator } from "@/components/GroceryListGenerator";
+import { formatDate } from "@/lib/formatters";
 
 interface WeeklyPlan {
   id: string;
@@ -168,8 +169,8 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
                   key={plan.id}
                   onClick={() => setSelectedPlanId(plan.id)}
                   className={`px-4 py-2 rounded-lg border transition-colors ${selectedPlanId === plan.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background hover:bg-muted"
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-background hover:bg-muted"
                     }`}
                 >
                   Week {plan.week_number}
@@ -191,7 +192,7 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
                   Week {selectedPlan.week_number} Plan
                 </CardTitle>
                 <CardDescription className="mt-1">
-                  {new Date(selectedPlan.start_date).toLocaleDateString()} - {new Date(selectedPlan.end_date).toLocaleDateString()}
+                  {formatDate(selectedPlan.start_date)} - {formatDate(selectedPlan.end_date)}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-4">

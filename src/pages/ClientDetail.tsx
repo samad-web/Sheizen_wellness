@@ -15,7 +15,7 @@ import { AssessmentUploadDialog } from "@/components/AssessmentUploadDialog";
 import { EditAssessmentDialog } from "@/components/EditAssessmentDialog";
 import { WeeklyPlanEditor } from "@/components/WeeklyPlanEditor";
 import { ProgressCharts } from "@/components/ProgressCharts";
-import { formatServiceType, getServiceTypeBadgeColor } from "@/lib/formatters";
+import { formatServiceType, getServiceTypeBadgeColor, formatDate, formatDateTime } from "@/lib/formatters";
 import { GroceryListGenerator } from "@/components/GroceryListGenerator";
 import { getSignedUrl } from "@/lib/storage";
 import { MealPhotoDisplay } from "@/components/MealPhotoDisplay";
@@ -546,7 +546,7 @@ const ClientDetail = () => {
                 <CardContent>
                   <p className="text-2xl font-bold">
                     {dailyLogs.length > 0
-                      ? new Date(dailyLogs[0].log_date).toLocaleDateString()
+                      ? formatDate(dailyLogs[0].log_date)
                       : "No logs"}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">Last log date</p>
@@ -621,7 +621,7 @@ const ClientDetail = () => {
                                 {(assessment as any).status || 'draft'}
                               </Badge>
                             </TableCell>
-                            <TableCell>{new Date(assessment.created_at).toLocaleDateString()}</TableCell>
+                            <TableCell>{formatDate(assessment.created_at)}</TableCell>
                             <TableCell className="text-right space-x-2">
                               <Button
                                 variant="ghost"
@@ -719,7 +719,7 @@ const ClientDetail = () => {
                         <TableRow key={plan.id}>
                           <TableCell>Week {plan.week_number}</TableCell>
                           <TableCell>
-                            {new Date(plan.start_date).toLocaleDateString()} - {new Date(plan.end_date).toLocaleDateString()}
+                            {formatDate(plan.start_date)} - {formatDate(plan.end_date)}
                           </TableCell>
                           <TableCell>
                             <Badge variant={plan.status === "published" ? "default" : "secondary"}>
@@ -819,7 +819,7 @@ const ClientDetail = () => {
                       <TableBody>
                         {dailyLogs.map((log) => (
                           <TableRow key={log.id}>
-                            <TableCell>{new Date(log.log_date).toLocaleDateString()}</TableCell>
+                            <TableCell>{formatDate(log.log_date)}</TableCell>
                             <TableCell>{log.weight || "—"}</TableCell>
                             <TableCell>{log.water_intake || "—"}</TableCell>
                             <TableCell>{log.activity_minutes || "—"}</TableCell>
@@ -853,7 +853,7 @@ const ClientDetail = () => {
                             {log.meal_name && <p className="text-muted-foreground">{log.meal_name}</p>}
                             {log.kcal && <p className="text-muted-foreground">{log.kcal} kcal</p>}
                             <p className="text-xs text-muted-foreground">
-                              {new Date(log.logged_at).toLocaleString()}
+                              {formatDateTime(log.logged_at)}
                             </p>
                           </div>
                         </div>
@@ -891,7 +891,7 @@ const ClientDetail = () => {
                           <TableCell>{file.file_name}</TableCell>
                           <TableCell>{file.file_type || "—"}</TableCell>
                           <TableCell>{file.file_size ? `${(file.file_size / 1024).toFixed(2)} KB` : "—"}</TableCell>
-                          <TableCell>{new Date(file.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell>{formatDate(file.created_at)}</TableCell>
                           <TableCell>
                             <Button
                               variant="outline"
@@ -941,7 +941,7 @@ const ClientDetail = () => {
                         <TableRow key={report.id}>
                           <TableCell>Week {report.week_number}</TableCell>
                           <TableCell>
-                            {new Date(report.start_date).toLocaleDateString()} - {new Date(report.end_date).toLocaleDateString()}
+                            {formatDate(report.start_date)} - {formatDate(report.end_date)}
                           </TableCell>
                           <TableCell className="max-w-xs truncate">{report.summary || "—"}</TableCell>
                           <TableCell>

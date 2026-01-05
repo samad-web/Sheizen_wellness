@@ -36,5 +36,11 @@ export function getServiceTypeBadgeColor(serviceType: string | null): string {
 export function formatDateTime(date: string | Date | null): string {
   if (!date) return "";
   const d = typeof date === "string" ? new Date(date) : date;
-  return format(d, "dd MMM yyyy • hh:mm a");
+  return format(d, "dd/MM/yyyy • hh:mm a");
+}
+
+export function formatDate(date: string | Date | null): string {
+  if (!date) return "";
+  const d = typeof date === "string" ? new Date(date) : date;
+  return format(d, "dd/MM/yyyy");
 }

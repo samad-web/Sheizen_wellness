@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { FileText, Calendar, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { formatDate } from "@/lib/formatters";
 
 interface ClientReportListProps {
     clientId: string;
@@ -62,7 +63,7 @@ export function ClientReportList({ clientId }: ClientReportListProps) {
                                     Weekly Report
                                     <span className="text-xs font-normal text-muted-foreground flex items-center gap-1">
                                         <Calendar className="w-3 h-3" />
-                                        {new Date(report.report_date).toLocaleDateString()}
+                                        {formatDate(report.report_date)}
                                     </span>
                                 </h3>
                                 {report.summary && (
@@ -80,7 +81,7 @@ export function ClientReportList({ clientId }: ClientReportListProps) {
                     <DialogHeader>
                         <DialogTitle>Weekly Report</DialogTitle>
                         <DialogDescription>
-                            Date: {selectedReport && new Date(selectedReport.report_date).toLocaleDateString()}
+                            Date: {selectedReport && formatDate(selectedReport.report_date)}
                         </DialogDescription>
                     </DialogHeader>
 

@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Loader2, Mail, Phone, User, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDate } from "@/lib/formatters";
 
 interface InterestSubmission {
   id: string;
@@ -216,7 +217,7 @@ export function InterestSubmissionsManager() {
                       <TableCell>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Calendar className="h-3 w-3" />
-                          {new Date(submission.created_at).toLocaleDateString()}
+                          {formatDate(submission.created_at)}
                         </div>
                       </TableCell>
                       <TableCell>

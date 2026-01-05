@@ -17,7 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { Clock, Eye, Send, Loader2, Trash2 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatDateTime } from "@/lib/formatters";
+import { formatDateTime, formatDate } from "@/lib/formatters";
 
 interface PendingCard {
   id: string;
@@ -94,7 +94,7 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
       return;
     }
 
-    const display_name = `${getCardTypeLabel(card.card_type)} - ${new Date().toLocaleDateString()}`;
+    const display_name = `${getCardTypeLabel(card.card_type)} - ${formatDate(new Date())}`;
 
     try {
       const { error } = await supabase.functions.invoke('send-card-to-client', {

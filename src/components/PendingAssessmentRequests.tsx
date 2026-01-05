@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Brain, Moon, CheckCircle } from "lucide-react";
+import { formatDate } from "@/lib/formatters";
 
 interface AssessmentRequest {
   id: string;
@@ -16,16 +17,16 @@ interface PendingAssessmentRequestsProps {
   onStartAssessment: (requestId: string, type: string) => void;
 }
 
-export function PendingAssessmentRequests({ 
-  clientId, 
-  onStartAssessment 
+export function PendingAssessmentRequests({
+  clientId,
+  onStartAssessment
 }: PendingAssessmentRequestsProps) {
   const [requests, setRequests] = useState<AssessmentRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchRequests();
-    
+
     // Real-time subscription
     const channel = supabase
       .channel('assessment-requests')
@@ -52,7 +53,7 @@ export function PendingAssessmentRequests({
         .eq('client_id', clientId)
         .in('status', ['pending', 'in_progress'])
         .order('requested_at', { ascending: false });
-      
+
       if (error) throw error;
       setRequests(data || []);
     } catch (error) {
@@ -96,11 +97,11 @@ export function PendingAssessmentRequests({
                 <div>
                   <p className="font-medium">{getLabel(request.assessment_type)}</p>
                   <p className="text-sm text-muted-foreground">
-                    Requested {new Date(request.requested_at).toLocaleDateString()}
+                    Requested {formatDate(request.requested_at)}
                   </p>
                 </div>
               </div>
-              <Button 
+              <Button
                 size="sm"
                 onClick={() => onStartAssessment(request.id, request.assessment_type)}
               >
