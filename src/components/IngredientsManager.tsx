@@ -257,12 +257,12 @@ export function IngredientsManager() {
     setFormData({
       name: item.name,
       category: item.category || "",
-      serving_size: item.serving_size,
-      serving_unit: item.serving_unit,
-      kcal_per_serving: item.kcal_per_serving,
-      protein: item.protein,
-      carbs: item.carbs,
-      fats: item.fats,
+      serving_size: String(item.serving_size), // Ensure string type
+      serving_unit: String(item.serving_unit), // Ensure string type
+      kcal_per_serving: Number(item.kcal_per_serving) || 0, // Ensure number type
+      protein: item.protein !== null ? Number(item.protein) : null,
+      carbs: item.carbs !== null ? Number(item.carbs) : null,
+      fats: item.fats !== null ? Number(item.fats) : null,
     });
     setEditingItem(item);
   };

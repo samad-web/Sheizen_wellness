@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Leaf, CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { z } from "zod";
 import { CustomLogo } from "@/components/CustomLogo";
 
@@ -87,17 +88,21 @@ export default function InterestForm() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-wellness-light via-background to-wellness-light/30 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg animate-fade-in shadow-xl bg-white/80 backdrop-blur-sm">
+      <div className="min-h-screen bg-gradient-to-br from-wellness-light/20 via-background to-wellness-light/10 dark:from-wellness-dark/20 dark:via-background dark:to-wellness-dark/10 flex items-center justify-center p-4">
+        <Card className="w-full max-w-lg animate-fade-in shadow-2xl border-border/50">
           <CardContent className="pt-12 pb-12 text-center">
-            <div className="w-20 h-20 bg-wellness-green/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-wellness-green/10 dark:bg-wellness-green/20 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle2 className="w-10 h-10 text-wellness-green" />
             </div>
-            <h2 className="text-3xl font-bold mb-4 text-gray-900">Thank You!</h2>
+            <h2 className="text-3xl font-bold mb-4">Thank You!</h2>
             <p className="text-muted-foreground mb-6 text-lg">
               We've received your information and will get in touch with you soon to discuss your wellness journey.
             </p>
-            <Button onClick={() => setSubmitted(false)} variant="outline" className="border-wellness-green text-wellness-green hover:bg-wellness-green/5">
+            <Button
+              onClick={() => setSubmitted(false)}
+              variant="outline"
+              className="border-wellness-green text-wellness-green hover:bg-wellness-green/10 dark:hover:bg-wellness-green/20"
+            >
               Submit Another Response
             </Button>
           </CardContent>
@@ -107,153 +112,168 @@ export default function InterestForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-wellness-light via-background to-wellness-light/30">
-      <div className="text-center mb-8 animate-fade-in pt-12">
+    <div className="min-h-screen bg-gradient-to-br from-wellness-light/20 via-background to-wellness-light/10 dark:from-wellness-dark/20 dark:via-background dark:to-wellness-dark/10">
+      {/* Header Section */}
+      <div className="text-center mb-8 animate-fade-in pt-12 px-4">
         <div className="w-20 h-20 mb-4 mx-auto">
           <CustomLogo className="w-full h-full" />
         </div>
-        <h1 className="text-4xl md:text-5xl font-bold mb-3 text-gray-900">Sheizen Wellness</h1>
+        <h1 className="text-4xl md:text-5xl font-bold mb-3 bg-gradient-to-r from-wellness-green to-wellness-dark bg-clip-text text-transparent dark:from-wellness-green dark:to-wellness-light">
+          Sheizen Wellness
+        </h1>
         <p className="text-xl text-muted-foreground">Start Your Wellness Journey Today</p>
       </div>
 
       {/* Interest Form */}
-      <Card className="animate-fade-in shadow-xl max-w-2xl mx-auto mb-12 bg-white/90 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl text-center">Express Your Interest</CardTitle>
-          <CardDescription className="text-center">
-            Fill out the form below and our team will reach out to discuss a personalized nutrition plan for you
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name */}
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name *</Label>
-              <Input
-                id="name"
-                type="text"
-                placeholder="John Doe"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-                maxLength={100}
-              />
-            </div>
-
-            {/* Age & Gender */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="px-4 pb-12">
+        <Card className="animate-fade-in shadow-2xl max-w-2xl mx-auto border-border/50">
+          <CardHeader className="space-y-2 pb-6">
+            <CardTitle className="text-2xl text-center">Express Your Interest</CardTitle>
+            <CardDescription className="text-center text-base">
+              Fill out the form below and our team will reach out to discuss a personalized nutrition plan for you
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Name */}
               <div className="space-y-2">
-                <Label htmlFor="age">Age *</Label>
+                <Label htmlFor="name">Full Name *</Label>
                 <Input
-                  id="age"
-                  type="number"
-                  placeholder="25"
-                  min="10"
-                  max="120"
-                  value={formData.age}
-                  onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                  id="name"
+                  type="text"
+                  placeholder="John Doe"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
+                  maxLength={100}
+                  className="h-11"
                 />
               </div>
 
+              {/* Age & Gender */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="age">Age *</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    placeholder="25"
+                    min="10"
+                    max="120"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    required
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="gender">Gender *</Label>
+                  <Select
+                    value={formData.gender}
+                    onValueChange={(value) => setFormData({ ...formData, gender: value })}
+                    required
+                  >
+                    <SelectTrigger id="gender" className="h-11">
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Contact Number */}
               <div className="space-y-2">
-                <Label htmlFor="gender">Gender *</Label>
+                <Label htmlFor="phone">Contact Number *</Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  placeholder="+91 9876543210"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  required
+                  maxLength={15}
+                  className="h-11"
+                />
+              </div>
+
+              {/* Email */}
+              <div className="space-y-2">
+                <Label htmlFor="email">Email ID *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                  maxLength={255}
+                  className="h-11"
+                />
+              </div>
+
+              {/* Health Goal */}
+              <div className="space-y-2">
+                <Label htmlFor="health-goal">Health Goal *</Label>
                 <Select
-                  value={formData.gender}
-                  onValueChange={(value) => setFormData({ ...formData, gender: value })}
+                  value={formData.health_goal}
+                  onValueChange={(value) => setFormData({ ...formData, health_goal: value })}
                   required
                 >
-                  <SelectTrigger id="gender">
-                    <SelectValue placeholder="Select gender" />
+                  <SelectTrigger id="health-goal" className="h-11">
+                    <SelectValue placeholder="Select your primary health goal" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="male">Male</SelectItem>
-                    <SelectItem value="female">Female</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="weight_loss">Weight Loss</SelectItem>
+                    <SelectItem value="muscle_gain">Muscle Gain</SelectItem>
+                    <SelectItem value="diabetes">Diabetes Management</SelectItem>
+                    <SelectItem value="pcos">PCOS Management</SelectItem>
+                    <SelectItem value="lifestyle_correction">Lifestyle Correction</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Contact Number */}
-            <div className="space-y-2">
-              <Label htmlFor="phone">Contact Number *</Label>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="+91 9876543210"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                required
-                maxLength={15}
-              />
-            </div>
+              {/* Message */}
+              <div className="space-y-2">
+                <Label htmlFor="message">Message (Optional)</Label>
+                <Textarea
+                  id="message"
+                  placeholder="Tell us more about your goals or any medical conditions..."
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  rows={4}
+                  className="resize-none"
+                />
+              </div>
 
-            {/* Email */}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email ID *</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john@example.com"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-                maxLength={255}
-              />
-            </div>
-
-            {/* Health Goal */}
-            <div className="space-y-2">
-              <Label htmlFor="health-goal">Health Goal *</Label>
-              <Select
-                value={formData.health_goal}
-                onValueChange={(value) => setFormData({ ...formData, health_goal: value })}
-                required
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                className="w-full bg-wellness-green hover:bg-wellness-green/90 text-white"
+                size="lg"
+                disabled={loading}
               >
-                <SelectTrigger id="health-goal">
-                  <SelectValue placeholder="Select your primary health goal" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="weight_loss">Weight Loss</SelectItem>
-                  <SelectItem value="muscle_gain">Muscle Gain</SelectItem>
-                  <SelectItem value="diabetes">Diabetes Management</SelectItem>
-                  <SelectItem value="pcos">PCOS Management</SelectItem>
-                  <SelectItem value="lifestyle_correction">Lifestyle Correction</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Interest Form"
+                )}
+              </Button>
 
-            {/* Message */}
-            <div className="space-y-2">
-              <Label htmlFor="message">Message (Optional)</Label>
-              <textarea
-                id="message"
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                placeholder="Tell us more about your goals or any medical conditions..."
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-              />
-            </div>
-
-            {/* Submit Button */}
-            <Button type="submit" className="w-full" size="lg" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Interest Form"
-              )}
-            </Button>
-
-            <p className="text-xs text-center text-muted-foreground">
-              By submitting this form, you agree to be contacted by our team regarding your wellness journey.
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+              <p className="text-xs text-center text-muted-foreground pt-2">
+                By submitting this form, you agree to be contacted by our team regarding your wellness journey.
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

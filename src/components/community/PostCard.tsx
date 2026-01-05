@@ -49,7 +49,8 @@ export function PostCard({
     }
   };
 
-  const initials = post.author_display_name
+  const displayName = post.author_display_name || "Unknown Member";
+  const initials = displayName
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -81,7 +82,7 @@ export function PostCard({
                   className="font-medium hover:underline cursor-pointer"
                   onClick={() => onAuthorClick(post.author_client_id)}
                 >
-                  {post.author_display_name}
+                  {displayName}
                 </span>
                 {post.pinned && (
                   <Pin className="h-3 w-3 text-primary" />

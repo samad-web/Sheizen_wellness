@@ -487,7 +487,9 @@ const ClientDetail = () => {
                 <Calendar className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm text-muted-foreground">Age</p>
-                  <p className="font-semibold">{client.age || "—"}</p>
+                  <p className="font-semibold text-muted-foreground">
+                    {canViewPersonalInfo ? (client.age || "—") : "***"}
+                  </p>
                 </div>
               </div>
               <div>

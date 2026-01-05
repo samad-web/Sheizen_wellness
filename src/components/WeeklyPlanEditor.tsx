@@ -182,7 +182,7 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
   };
 
   const getTotalKcal = () => {
-    return mealCards.reduce((sum, card) => sum + (card.kcal || 0), 0);
+    return mealCards.reduce((sum, card) => sum + (Number(card.kcal) || 0), 0);
   };
 
   const autofillFromFoodItem = (day: number, mealType: string, foodItemId: string) => {

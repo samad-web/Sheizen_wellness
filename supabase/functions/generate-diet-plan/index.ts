@@ -200,11 +200,15 @@ ${filteredFoods.slice(0, 50).map(f => `- ${f.name}: ${f.kcal_per_serving} kcal p
     const endDate = new Date(startDate);
     endDate.setDate(endDate.getDate() + 6);
 
-    // Calculate total kcal
+    // Calculate total kcal with explicit number conversion to prevent string concatenation
     let totalKcal = 0;
     mealPlan.days.forEach((day: any) => {
-      totalKcal += day.meals.breakfast.kcal + day.meals.lunch.kcal +
-        day.meals.evening_snack.kcal + day.meals.dinner.kcal;
+      const breakfastKcal = Number(day.meals.breakfast.kcal) || 0;
+      const lunchKcal = Number(day.meals.lunch.kcal) || 0;
+      const eveningSnackKcal = Number(day.meals.evening_snack.kcal) || 0;
+      const dinnerKcal = Number(day.meals.dinner.kcal) || 0;
+
+      totalKcal += breakfastKcal + lunchKcal + eveningSnackKcal + dinnerKcal;
     });
 
     // Insert weekly plan
@@ -243,7 +247,7 @@ ${filteredFoods.slice(0, 50).map(f => `- ${f.name}: ${f.kcal_per_serving} kcal p
           description: meal.description || null,
           ingredients: meal.ingredients || null,
           instructions: meal.instructions || null,
-          kcal: meal.kcal,
+          kcal: Number(meal.kcal) || 0,
         });
       }
     }

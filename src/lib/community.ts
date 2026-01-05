@@ -87,13 +87,19 @@ const RATE_LIMITS = {
 export async function checkRateLimit(clientId: string, actionType: 'posts' | 'comments' | 'messages'): Promise<boolean> {
   const today = new Date().toISOString().split('T')[0];
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('community_rate_limits')
     .select('count')
     .eq('client_id', clientId)
     .eq('action_type', actionType)
     .eq('action_date', today)
-    .single();
+    .maybeSingle(); // Use maybeSingle to avoid 406/PGRST116 error if no row exists
+
+  if (error && error.code !== 'PGRST116') {
+    console.error("Rate limit check error:", error);
+    // Be permissive on error to avoid blocking valid users due to system issues
+    return true;
+  }
 
   return !data || data.count < RATE_LIMITS[actionType];
 }
@@ -153,10 +159,6 @@ export async function fetchPosts(options: {
   if (options.groupId) {
     query = query.eq('group_id', options.groupId);
   }
-  // Removed strict filtering for main feed: now includes both general and group posts
-  // else {
-  //   query = query.is('group_id', null);
-  // }
 
   if (options.tag) {
     query = query.contains('tags', [options.tag]);
@@ -173,6 +175,8 @@ export async function fetchPosts(options: {
   const { data: posts, error } = await query;
 
   if (error) throw error;
+
+  console.log(`Community: Fetched ${posts?.length} posts`);
 
   // Fetch user reactions if clientId provided
   let postsWithReactions = posts || [];
@@ -240,7 +244,16 @@ export async function createPost(data: {
 
   await incrementRateLimit(data.clientId, 'posts');
 
-  return post as CommunityPost;
+  // Return with explicitly safe fields to match CommunityPost interface requirements
+  return {
+    ...post,
+    media_urls: post.media_urls || [],
+    attachments: post.attachments || [],
+    tags: post.tags || [],
+    likes_count: post.likes_count || 0,
+    comments_count: post.comments_count || 0,
+    user_reaction: null
+  } as CommunityPost;
 }
 
 // Delete a post
@@ -263,6 +276,7 @@ export async function createComment(data: {
   content: string;
   authorRole: 'admin' | 'client';
 }): Promise<CommunityComment> {
+  console.log("Community: Creating comment...", data);
   const canComment = await checkRateLimit(data.clientId, 'comments');
   if (!canComment) {
     throw new Error('Daily comment limit reached (50 comments per day)');
@@ -281,7 +295,12 @@ export async function createComment(data: {
     .select()
     .single();
 
-  if (error) throw error;
+  if (error) {
+    console.error("Community: Comment insert failed:", error);
+    throw error;
+  }
+
+  console.log("Community: Comment inserted successfully:", comment);
 
   await incrementRateLimit(data.clientId, 'comments');
 
@@ -293,7 +312,8 @@ export async function createComment(data: {
     .single();
 
   if (post && post.author_client_id !== data.clientId) {
-    await supabase.from('community_notifications').insert({
+    console.log("Community: Creating notification for author:", post.author_client_id);
+    const { error: notifError } = await supabase.from('community_notifications').insert({
       client_id: post.author_client_id,
       type: 'comment',
       payload: {
@@ -302,9 +322,17 @@ export async function createComment(data: {
         commenter_name: data.displayName,
       },
     });
+
+    if (notifError) {
+      console.error("Community: Notification insert failed (non-blocking):", notifError);
+    }
   }
 
-  return comment as CommunityComment;
+  return {
+    ...comment,
+    likes_count: comment.likes_count || 0,
+    user_reaction: null
+  } as CommunityComment;
 }
 
 // Toggle reaction
@@ -314,33 +342,58 @@ export async function toggleReaction(
   targetId: string,
   reaction: 'like'
 ): Promise<{ added: boolean }> {
+  console.log(`Community: Toggling reaction ${reaction} on ${targetType} ${targetId}`);
+
   // Check if reaction exists
-  const { data: existing } = await supabase
+  const { data: existing, error: fetchError } = await supabase
     .from('community_reactions')
     .select('id, reaction')
     .eq('client_id', clientId)
     .eq('target_type', targetType)
     .eq('target_id', targetId)
-    .single();
+    .maybeSingle();
+
+  if (fetchError) {
+    console.error("Community: Error checking existing reaction:", fetchError);
+    // Proceeding to safely assume no reaction if error is not critical, or throwing?
+    // Let's throw to be safe
+    throw fetchError;
+  }
 
   if (existing) {
     if (existing.reaction === reaction) {
       // Remove reaction
-      await supabase.from('community_reactions').delete().eq('id', existing.id);
+      console.log("Community: Removing existing reaction...");
+      const { error: deleteError } = await supabase.from('community_reactions').delete().eq('id', existing.id);
+      if (deleteError) {
+        console.error("Community: Failed to delete reaction:", deleteError);
+        throw deleteError;
+      }
       return { added: false };
     } else {
       // Update reaction
-      await supabase.from('community_reactions').update({ reaction }).eq('id', existing.id);
+      console.log("Community: Updating reaction...");
+      const { error: updateError } = await supabase.from('community_reactions').update({ reaction }).eq('id', existing.id);
+      if (updateError) {
+        console.error("Community: Failed to update reaction:", updateError);
+        throw updateError;
+      }
       return { added: true };
     }
   } else {
     // Add reaction
-    await supabase.from('community_reactions').insert({
+    console.log("Community: Adding new reaction...");
+    const { error: insertError } = await supabase.from('community_reactions').insert({
       client_id: clientId,
       target_type: targetType,
       target_id: targetId,
       reaction,
     });
+
+    if (insertError) {
+      console.error("Community: Failed to insert reaction:", insertError);
+      throw insertError;
+    }
 
     return { added: true };
   }

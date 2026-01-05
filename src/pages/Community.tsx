@@ -213,6 +213,7 @@ export default function Community() {
         authorRole: userRole as 'admin' | 'client',
       });
 
+      // Force update state
       setPosts((prev) => [post, ...prev]);
       toast.success("Post created!");
     } catch (error: any) {
