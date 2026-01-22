@@ -45,14 +45,14 @@ interface FoodItem {
 }
 
 const foodItemSchema = z.object({
-  name: z.string().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
-  category: z.string().max(50, "Category must be less than 50 characters").optional(),
-  serving_size: z.string().min(1, "Serving size is required"),
-  serving_unit: z.string().min(1, "Serving unit is required").max(20, "Unit must be less than 20 characters"),
-  kcal_per_serving: z.number().min(0, "Calories must be 0 or greater"),
-  protein: z.number().min(0, "Protein must be 0 or greater").optional().nullable(),
-  carbs: z.number().min(0, "Carbs must be 0 or greater").optional().nullable(),
-  fats: z.number().min(0, "Fats must be 0 or greater").optional().nullable(),
+  name: z.coerce.string().min(1, "Name is required").max(100, "Name must be less than 100 characters"),
+  category: z.coerce.string().max(50, "Category must be less than 50 characters").optional(),
+  serving_size: z.coerce.string().min(1, "Serving size is required"),
+  serving_unit: z.coerce.string().min(1, "Serving unit is required").max(20, "Unit must be less than 20 characters"),
+  kcal_per_serving: z.coerce.number().min(0, "Calories must be 0 or greater"),
+  protein: z.coerce.number().min(0, "Protein must be 0 or greater").optional().nullable(),
+  carbs: z.coerce.number().min(0, "Carbs must be 0 or greater").optional().nullable(),
+  fats: z.coerce.number().min(0, "Fats must be 0 or greater").optional().nullable(),
 });
 
 type FoodItemFormData = z.infer<typeof foodItemSchema>;
@@ -259,8 +259,8 @@ export function FoodItemsManager() {
     setFormData({
       name: item.name,
       category: item.category || "",
-      serving_size: item.serving_size,
-      serving_unit: item.serving_unit,
+      serving_size: String(item.serving_size),
+      serving_unit: String(item.serving_unit),
       kcal_per_serving: item.kcal_per_serving,
       protein: item.protein,
       carbs: item.carbs,

@@ -10,6 +10,7 @@ import { Loader2, Mail, Phone, User, Calendar } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/formatters";
 
+
 interface InterestSubmission {
   id: string;
   name: string;
@@ -53,6 +54,7 @@ export function InterestSubmissionsManager() {
       const { data, error } = await supabase
         .from("interest_forms" as any)
         .select("*")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -81,6 +83,8 @@ export function InterestSubmissionsManager() {
       toast.error("Failed to update status");
     }
   };
+
+
 
   const filteredSubmissions = submissions.filter((sub) => {
     if (filterStatus === "all") return true;
@@ -171,80 +175,87 @@ export function InterestSubmissionsManager() {
               <p>No submissions found</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Age/Gender</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Health Goal</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead>Submitted</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredSubmissions.map((submission) => (
-                    <TableRow key={submission.id}>
-                      <TableCell className="font-medium">{submission.name}</TableCell>
-                      <TableCell>
-                        {submission.age} / {submission.gender}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs">{submission.phone}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            <span className="text-xs">{submission.email}</span>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {healthGoalLabels[submission.health_goal] || submission.health_goal}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]" title={submission.message}>
-                          {submission.message || "-"}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(submission.created_at)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[submission.status]}>
-                          {submission.status.replace("_", " ")}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={submission.status}
-                          onValueChange={(value) => updateStatus(submission.id, value)}
-                        >
-                          <SelectTrigger className="w-[140px] h-8">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="contacted">Contacted</SelectItem>
-                            <SelectItem value="converted">Converted</SelectItem>
-                            <SelectItem value="not_interested">Not Interested</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="inline-block min-w-full align-middle">
+                <div className="overflow-hidden border rounded-lg">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Age/Gender</TableHead>
+                        <TableHead>Contact</TableHead>
+                        <TableHead>Health Goal</TableHead>
+                        <TableHead>Message</TableHead>
+                        <TableHead>Submitted</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSubmissions.map((submission) => (
+                        <TableRow key={submission.id}>
+                          <TableCell className="font-medium">{submission.name}</TableCell>
+                          <TableCell>
+                            {submission.age} / {submission.gender}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex flex-col gap-1 text-sm">
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs">{submission.phone}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Mail className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs">{submission.email}</span>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {healthGoalLabels[submission.health_goal] || submission.health_goal}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-xs text-muted-foreground line-clamp-2 max-w-[200px]" title={submission.message}>
+                              {submission.message || "-"}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Calendar className="h-3 w-3" />
+                              {formatDate(submission.created_at)}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={statusColors[submission.status]}>
+                              {submission.status.replace("_", " ")}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Select
+                                value={submission.status}
+                                onValueChange={(value) => updateStatus(submission.id, value)}
+                              >
+                                <SelectTrigger className="w-[140px] h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending">Pending</SelectItem>
+                                  <SelectItem value="contacted">Contacted</SelectItem>
+                                  <SelectItem value="converted">Converted</SelectItem>
+                                  <SelectItem value="not_interested">Not Interested</SelectItem>
+                                </SelectContent>
+                              </Select>
+
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
             </div>
           )}
         </CardContent>

@@ -23,44 +23,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
-    const fetchUserRole = async (userId: string, retries = 3): Promise<"admin" | "client" | "manager" | null> => {
+    const fetchUserRole = async (userId: string, attempt = 1): Promise<"admin" | "client" | "manager" | null> => {
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY_MS = 1000; // Start with 1 second
+
         try {
+            console.log(`[AuthContext] Fetching user role for ${userId} (attempt ${attempt}/${MAX_RETRIES})`);
 
-
-            // Use RPC to avoid RLS recursion loops and guarantee 200 OK
-            // @ts-ignore
-            const { data, error } = await Promise.race([
-                supabase.rpc('get_user_role', { target_user_id: userId }),
-                new Promise((_, reject) => setTimeout(() => reject(new Error("RPC Timeout")), 5000))
-            ]) as { data: any, error: any };
+            // Query user_roles table directly instead of using RPC (faster, no timeout)
+            const { data, error } = await supabase
+                .from('user_roles')
+                .select('role')
+                .eq('user_id', userId)
+                .single();
 
             if (error) {
-                console.error("Error fetching user role:", error);
-                if (retries > 0) {
+                console.error(`[AuthContext] Error fetching user role (attempt ${attempt}):`, error);
 
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
-                    return fetchUserRole(userId, retries - 1);
+                // If role not found and we haven't exhausted retries, try again
+                if (error.code === 'PGRST116' && attempt < MAX_RETRIES) {
+                    console.log(`[AuthContext] Role not found, retrying in ${RETRY_DELAY_MS * attempt}ms...`);
+                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+                    return fetchUserRole(userId, attempt + 1);
                 }
+
+                // If we've exhausted retries and still no role, try to create one via RPC fallback
+                if (error.code === 'PGRST116' && attempt >= MAX_RETRIES) {
+                    console.warn(`[AuthContext] Role not found after ${MAX_RETRIES} attempts. Attempting to create role via RPC...`);
+                    try {
+                        const { data: rpcData, error: rpcError } = await supabase
+                            .rpc('ensure_user_role', { p_user_id: userId });
+
+                        if (rpcError) {
+                            console.error('[AuthContext] Failed to create role via RPC:', rpcError);
+                            return null;
+                        }
+
+                        console.log('[AuthContext] Successfully created role via RPC:', rpcData);
+                        return (rpcData as "admin" | "client" | "manager") || null;
+                    } catch (rpcErr) {
+                        console.error('[AuthContext] RPC fallback failed:', rpcErr);
+                        return null;
+                    }
+                }
+
                 return null;
             }
 
-            if (!data) {
-                if (retries > 0) {
-                    // console.warn("No role found for user:", userId);
-                    return null;
-                }
-                return null;
-            }
-
-
-            return (data as unknown) as "admin" | "client" | "manager" | null;
+            const role = (data?.role as "admin" | "client" | "manager") || null;
+            console.log(`[AuthContext] Successfully fetched role: ${role}`);
+            return role;
         } catch (error) {
-            console.error("Error or timeout fetching user role:", error);
-            if (retries > 0) {
+            console.error(`[AuthContext] Unexpected error fetching user role (attempt ${attempt}):`, error);
 
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                return fetchUserRole(userId, retries - 1);
+            // Retry on unexpected errors
+            if (attempt < MAX_RETRIES) {
+                console.log(`[AuthContext] Retrying after unexpected error in ${RETRY_DELAY_MS * attempt}ms...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+                return fetchUserRole(userId, attempt + 1);
             }
+
             return null;
         }
     };
@@ -79,22 +101,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Fetch current session on mount so we have initial auth state
         const initSession = async () => {
-            const { data, error } = await supabase.auth.getSession();
-            if (error) {
-                console.error("Error getting session:", error);
-            }
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                if (error) {
+                    console.error("Error getting session:", error);
+                }
 
-            const currentSession = data?.session ?? null;
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
+                const currentSession = data?.session ?? null;
+                setSession(currentSession);
+                setUser(currentSession?.user ?? null);
 
-            if (currentSession?.user) {
-                const role = await fetchUserRole(currentSession.user.id);
-                setUserRole(role);
-            } else {
-                setUserRole(null);
+                if (currentSession?.user) {
+                    try {
+                        const role = await fetchUserRole(currentSession.user.id);
+                        setUserRole(role);
+                        if (role) {
+                            localStorage.setItem("app-user-role", role);
+                        }
+                    } catch (roleError) {
+                        console.error("Error fetching role:", roleError);
+                        setUserRole(null);
+                    }
+                } else {
+                    setUserRole(null);
+                }
+            } catch (err) {
+                console.error("Error in initSession:", err);
+            } finally {
+                // ALWAYS set loading to false, no matter what
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         initSession();

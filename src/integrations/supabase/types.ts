@@ -2037,6 +2037,12 @@ export type Database = {
     }
     Functions: {
       count_admins: { Args: never; Returns: number }
+      ensure_user_role: {
+        Args: {
+          p_user_id: string
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -2068,7 +2074,7 @@ export type Database = {
       | "perfect_week"
       | "early_bird"
       | "first_meal"
-      app_role: "admin" | "client"
+      app_role: "admin" | "client" | "manager"
       assessment_request_status:
       | "pending"
       | "in_progress"
@@ -2244,7 +2250,7 @@ export const Constants = {
         "early_bird",
         "first_meal",
       ],
-      app_role: ["admin", "client"],
+      app_role: ["admin", "client", "manager"],
       assessment_request_status: [
         "pending",
         "in_progress",
