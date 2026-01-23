@@ -1,6 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.84.0';
 
 import { getCorsHeaders } from '../_shared/cors.ts';
+import { sendWebPush } from '../_shared/web-push.ts';
 
 interface MessageRequest {
   client_id: string;
@@ -12,7 +13,7 @@ Deno.serve(async (req) => {
   // Get CORS headers based on origin
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
-  
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -72,6 +73,52 @@ Deno.serve(async (req) => {
     }
 
     console.log('Message sent successfully:', message.id);
+
+    // --- Push Notification Logic ---
+    try {
+      // Fetch subscriptions
+      const { data: subscriptions } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('client_id', client_id);
+
+      if (subscriptions && subscriptions.length > 0) {
+        const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || 'BA11f-wSr9t_hdnn_hrkwKbqjVb2x-VKcG9CMym7IWXz1JwCa2LLdD1eTgGq2bfwOOPKScNlO7P8uyMAlIvWuu4';
+        const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+        const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@sheizen.com';
+
+        if (vapidPrivateKey) {
+          const payload = JSON.stringify({
+            title: 'New Message',
+            body: content.substring(0, 100) + (content.length > 100 ? '...' : ''),
+            url: '/dashboard?tab=messages',
+            timestamp: Date.now()
+          });
+
+          await Promise.all(subscriptions.map(async (sub) => {
+            const subscription = {
+              endpoint: sub.endpoint,
+              keys: { p256dh: sub.p256dh, auth: sub.auth }
+            };
+            try {
+              await sendWebPush(subscription, payload, {
+                subject: vapidSubject,
+                publicKey: vapidPublicKey,
+                privateKey: vapidPrivateKey
+              });
+            } catch (e) {
+              console.error('Push failed for sub', sub.id, e);
+            }
+          }));
+        } else {
+          console.log('Skipping push: VAPID_PRIVATE_KEY not set');
+        }
+      }
+    } catch (pushError) {
+      console.error('Error triggering push notification:', pushError);
+      // Don't fail the request if push fails, just log it
+    }
+    // -------------------------------
 
     return new Response(
       JSON.stringify({ success: true, message }),

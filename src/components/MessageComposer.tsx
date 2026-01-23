@@ -151,6 +151,22 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
       });
       if (data) {
         onMessageSent?.(data);
+
+        // Send push notification if enabling role-based notifications
+        if (senderType === 'client') {
+          console.log('Sending notification to admins...');
+          supabase.functions.invoke('send-push-notification', {
+            body: {
+              target_roles: ['admin', 'manager'],
+              title: 'New Message from Client',
+              body: message.trim() || 'Sent an attachment',
+              url: `/admin/client/${clientId}`, // Deep link to client details
+              client_id: clientId // Optional: context
+            }
+          }).then(({ error }) => {
+            if (error) console.error('Error sending notification:', error);
+          });
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);

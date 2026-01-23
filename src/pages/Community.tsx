@@ -86,8 +86,12 @@ export default function Community() {
       loadGroups();
 
       // Check if user needs to accept guidelines
+      console.log("Checking community guidelines for client:", client.id, "Accepted at:", client.community_terms_accepted_at);
       if (!client.community_terms_accepted_at) {
+        console.log("Guidelines not accepted, showing modal.");
         setShowGuidelines(true);
+      } else {
+        console.log("Guidelines already accepted.");
       }
     }
   }, [client]);
@@ -601,9 +605,19 @@ export default function Community() {
         <>
           <CommunityGuidelinesModal
             open={showGuidelines}
-            onAccept={() => {
+            onAccept={(updatedClient) => {
               setShowGuidelines(false);
-              loadClientData(); // Refresh to confirm persistence
+              if (updatedClient) {
+                console.log("Updating client state from modal response");
+                setClient(updatedClient);
+              } else {
+                console.log("No data returned, applying optimistic update to prevent loop");
+                setClient((prev: any) => ({
+                  ...prev,
+                  community_terms_accepted_at: new Date().toISOString()
+                }));
+                // Optionally reload in background but we trust the optimistic update for UI
+              }
             }}
             clientId={client.id}
           />

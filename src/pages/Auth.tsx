@@ -62,7 +62,10 @@ export default function Auth() {
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const type = hashParams.get('type');
 
+    console.log('[PasswordReset] Checking URL for recovery type:', { type, hash: window.location.hash });
+
     if (type === 'recovery') {
+      console.log('[PasswordReset] Recovery link detected - showing password update form');
       setShowUpdatePasswordForm(true);
     }
   }, []);
@@ -118,14 +121,34 @@ export default function Auth() {
     try {
       resetEmailSchema.parse(data);
 
-      const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
+      console.log('[PasswordReset] Attempting to send password reset email to:', data.email);
+
+      const { data: resetData, error } = await supabase.auth.resetPasswordForEmail(data.email, {
         redirectTo: `${window.location.origin}/auth`,
       });
 
+      console.log('[PasswordReset] Supabase response:', { resetData, error });
+
       if (error) {
-        toast.error(error.message);
+        console.error('[PasswordReset] Error:', error);
+
+        // Check for specific error types
+        if (error.message.includes('rate limit')) {
+          toast.error("Too many password reset attempts. Please try again in a few minutes.");
+        } else if (error.message.includes('email not found') || error.message.includes('User not found')) {
+          toast.error("No account found with this email address.");
+        } else if (error.message.includes('SMTP') || error.message.includes('email provider')) {
+          toast.error("Email service is not configured. Please contact support.");
+          console.error('[PasswordReset] Email provider configuration issue detected');
+        } else {
+          toast.error(`Password reset failed: ${error.message}`);
+        }
       } else {
-        toast.success("Password reset email sent! Check your inbox.");
+        console.log('[PasswordReset] Success - Email should be sent to:', data.email);
+        toast.success("Password reset email sent! Check your inbox (and spam folder).");
+        toast.info("If you don't receive the email within 5 minutes, please contact support.", {
+          duration: 8000,
+        });
         setShowResetDialog(false);
       }
     } catch (error) {
@@ -137,6 +160,9 @@ export default function Auth() {
           }
         });
         setErrors(fieldErrors);
+      } else {
+        console.error('[PasswordReset] Unexpected error:', error);
+        toast.error("An unexpected error occurred. Please try again.");
       }
     } finally {
       setIsResettingPassword(false);
@@ -157,14 +183,27 @@ export default function Auth() {
     try {
       newPasswordSchema.parse(data);
 
-      const { error } = await supabase.auth.updateUser({
+      console.log('[PasswordReset] Updating password for user');
+
+      const { data: userData, error } = await supabase.auth.updateUser({
         password: data.password,
       });
 
+      console.log('[PasswordReset] Password update response:', { userData, error });
+
       if (error) {
-        toast.error(error.message);
+        console.error('[PasswordReset] Password update error:', error);
+
+        if (error.message.includes('session')) {
+          toast.error("Your password reset link has expired. Please request a new one.");
+        } else if (error.message.includes('same password')) {
+          toast.error("New password must be different from your current password.");
+        } else {
+          toast.error(`Password update failed: ${error.message}`);
+        }
       } else {
-        toast.success("Password updated successfully!");
+        console.log('[PasswordReset] Password updated successfully');
+        toast.success("Password updated successfully! You can now sign in with your new password.");
         setShowUpdatePasswordForm(false);
         // Clear the hash from URL
         window.history.replaceState(null, '', '/auth');
@@ -178,6 +217,9 @@ export default function Auth() {
           }
         });
         setErrors(fieldErrors);
+      } else {
+        console.error('[PasswordReset] Unexpected error during password update:', error);
+        toast.error("An unexpected error occurred. Please try again.");
       }
     } finally {
       setIsLoading(false);

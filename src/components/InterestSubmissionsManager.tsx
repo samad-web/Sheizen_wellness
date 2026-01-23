@@ -42,6 +42,7 @@ const statusColors: Record<string, string> = {
 export function InterestSubmissionsManager() {
   const [submissions, setSubmissions] = useState<InterestSubmission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filterHealthGoal, setFilterHealthGoal] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
   useEffect(() => {
@@ -87,8 +88,18 @@ export function InterestSubmissionsManager() {
 
 
   const filteredSubmissions = submissions.filter((sub) => {
-    if (filterStatus === "all") return true;
-    return sub.status === filterStatus;
+    let matchesStatus = true;
+    let matchesHealthGoal = true;
+
+    if (filterStatus !== "all") {
+      matchesStatus = sub.status === filterStatus;
+    }
+
+    if (filterHealthGoal !== "all") {
+      matchesHealthGoal = sub.health_goal === filterHealthGoal;
+    }
+
+    return matchesStatus && matchesHealthGoal;
   });
 
   const stats = {
@@ -120,25 +131,37 @@ export function InterestSubmissionsManager() {
     <div className="space-y-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+        <Card
+          className={`cursor-pointer transition-colors hover:bg-muted/50 ${filterStatus === "all" ? "ring-2 ring-primary" : ""}`}
+          onClick={() => setFilterStatus("all")}
+        >
           <CardContent className="pt-6">
             <div className="text-2xl font-bold">{stats.total}</div>
             <p className="text-xs text-muted-foreground">Total Submissions</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          className={`cursor-pointer transition-colors hover:bg-yellow-50 ${filterStatus === "pending" ? "ring-2 ring-yellow-500 bg-yellow-50" : ""}`}
+          onClick={() => setFilterStatus("pending")}
+        >
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
             <p className="text-xs text-muted-foreground">Pending</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          className={`cursor-pointer transition-colors hover:bg-blue-50 ${filterStatus === "contacted" ? "ring-2 ring-blue-500 bg-blue-50" : ""}`}
+          onClick={() => setFilterStatus("contacted")}
+        >
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-blue-600">{stats.contacted}</div>
             <p className="text-xs text-muted-foreground">Contacted</p>
           </CardContent>
         </Card>
-        <Card>
+        <Card
+          className={`cursor-pointer transition-colors hover:bg-green-50 ${filterStatus === "converted" ? "ring-2 ring-green-500 bg-green-50" : ""}`}
+          onClick={() => setFilterStatus("converted")}
+        >
           <CardContent className="pt-6">
             <div className="text-2xl font-bold text-green-600">{stats.converted}</div>
             <p className="text-xs text-muted-foreground">Converted</p>
@@ -149,23 +172,39 @@ export function InterestSubmissionsManager() {
       {/* Submissions Table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <CardTitle>Interest Form Submissions</CardTitle>
               <CardDescription>Manage leads from the interest form</CardDescription>
             </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="contacted">Contacted</SelectItem>
-                <SelectItem value="converted">Converted</SelectItem>
-                <SelectItem value="not_interested">Not Interested</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex flex-wrap gap-2">
+              <Select value={filterHealthGoal} onValueChange={setFilterHealthGoal}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Health Goals" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Health Goals</SelectItem>
+                  {Object.entries(healthGoalLabels).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="contacted">Contacted</SelectItem>
+                  <SelectItem value="converted">Converted</SelectItem>
+                  <SelectItem value="not_interested">Not Interested</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

@@ -42,20 +42,40 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
   const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPendingCards = async () => {
+    console.log("Fetching pending cards...");
+    try {
+      // DEBUG: First try simple count
+      const count = await supabase.from('pending_review_cards').select('*', { count: 'exact', head: true });
+      console.log("Total pending_review_cards count (all statuses):", count.count);
 
-    const { data, error } = await supabase
-      .from('pending_review_cards')
-      .select('*, clients(name)')
-      .in('status', ['pending', 'edited'])
-      .order('ai_generated_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('pending_review_cards')
+        // .select('*, clients(name)') // Try without join first if suspicious, but let's keep it for now and log error
+        .select(`
+          *,
+          clients (
+            name
+          )
+        `)
+        //.in('status', ['pending', 'edited']) // Comment out status filter to see ALL
+        .order('ai_generated_at', { ascending: false });
 
+      if (error) {
+        console.error('PendingReviewDashboard: Fetch Error:', error);
+        toast({
+          title: "Debug Error",
+          description: `Fetch failed: ${error.message}`,
+          variant: "destructive"
+        });
+        throw error;
+      }
 
-
-    if (error) {
-      console.error('PendingReviewDashboard: Error details:', error);
-      throw error;
+      console.log("Fetched cards raw data:", data);
+      return data || [];
+    } catch (err) {
+      console.error("Critical fetch error:", err);
+      return [];
     }
-    return data || [];
   };
 
   const { data: cards = [], isLoading } = useQuery({

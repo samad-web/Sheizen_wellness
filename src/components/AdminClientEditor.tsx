@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface AdminClientEditorProps {
   clientId?: string | null;
@@ -16,6 +17,7 @@ interface AdminClientEditorProps {
 }
 
 export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: AdminClientEditorProps) {
+  const { userRole } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
@@ -32,6 +34,9 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
   });
 
   const [userId, setUserId] = useState<string | null>(null);
+
+  // Helper: Managers cannot view/edit sensitive contact info
+  const canViewSensitiveInfo = userRole === "admin";
 
   useEffect(() => {
     if (clientId && open) {
@@ -99,26 +104,43 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
 
       if (clientId) {
         // Update existing client
+        // Managers should not update email/phone if they can't see it (though Supabase might ignore it if data is masked)
+        // But to be safe and clean, we pass current masked values?? No, that would overwrite with stars.
+        // We should ONLY update fields that are safe.
+        // If canViewSensitiveInfo is false, we should OMIT email/phone from the update or pass original values if known.
+        // Better: don't include them in the update payload if manager.
+
+        const updatePayload: any = {
+          name: formData.name,
+          age: formData.age ? parseInt(formData.age) : null,
+          gender: formData.gender as any,
+          service_type: formData.service_type as any,
+          program_type: formData.program_type as any,
+          target_kcal: formData.target_kcal ? parseInt(formData.target_kcal) : null,
+          status: formData.status as any,
+          goals: formData.goals || null,
+        };
+
+        if (canViewSensitiveInfo) {
+          updatePayload.email = formData.email;
+          updatePayload.phone = formData.phone;
+        }
+
         const { error } = await supabase
           .from("clients")
-          .update({
-            name: formData.name,
-            email: formData.email,
-            phone: formData.phone,
-            age: formData.age ? parseInt(formData.age) : null,
-            gender: formData.gender as any,
-            service_type: formData.service_type as any,
-            program_type: formData.program_type as any,
-            target_kcal: formData.target_kcal ? parseInt(formData.target_kcal) : null,
-            status: formData.status as any,
-            goals: formData.goals || null,
-          })
+          .update(updatePayload)
           .eq("id", clientId);
 
         if (error) throw error;
         toast.success("Client updated successfully");
       } else {
         // Create new client with user account
+        // Managers probably shouldn't be creating clients if they can't set email/phone?
+        // But if they have the form, they can enter new email/phone. Privacy is for EXISTING clients.
+        // Wait, if they enter it, they know it. So masking on creation form is not needed, but masking on EDIT is.
+        // But "Add Client" is restricted for Managers? No, AdminDashboard usually allows "New Client".
+        // If Manager creates client, they must input email.
+
         if (!formData.password) {
           toast.error("Password is required for new clients");
           return;
@@ -224,10 +246,12 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
               <Input
                 id="email"
                 type="email"
-                value={formData.email}
+                // Mask email if editing existing client AND user cannot view sensitive info
+                value={clientId && !canViewSensitiveInfo ? "***@***.com" : formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
-                disabled={!!clientId}
+                // Disable if editing and restricted (cannot edit email if you can't see it)
+                disabled={!!clientId || (!!clientId && !canViewSensitiveInfo)}
               />
             </div>
           </div>
@@ -252,9 +276,12 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
               <Label htmlFor="phone">Phone *</Label>
               <Input
                 id="phone"
-                value={formData.phone}
+                // Mask phone if editing existing client AND user cannot view sensitive info
+                value={clientId && !canViewSensitiveInfo ? "***-***-****" : formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
+                // Disable if editing and restricted
+                disabled={!!clientId && !canViewSensitiveInfo}
               />
             </div>
 

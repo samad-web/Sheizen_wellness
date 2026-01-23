@@ -67,6 +67,8 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { ClientRecipeList } from "@/components/client/ClientRecipeList";
 import { Textarea } from "@/components/ui/textarea"; // Ensure this is imported or use Input as fallback
 
+import { ClientMeasurementTracker } from "@/components/client/ClientMeasurementTracker"; // Add import
+
 export default function ClientDashboard() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
@@ -74,7 +76,7 @@ export default function ClientDashboard() {
   const [todayLog, setTodayLog] = useState<any>(null);
   const [mealLogs, setMealLogs] = useState<any[]>([]);
   const [todayCalories, setTodayCalories] = useState(0);
-  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "assessments" | "reports" | "messages" | "calendar" | "progress">("today");
+  const [activeTab, setActiveTab] = useState<"today" | "plan" | "logs" | "files" | "achievements" | "assessments" | "reports" | "messages" | "calendar" | "progress" | "measurements">("today");
   const [assessmentCards, setAssessmentCards] = useState<any[]>([]);
   const [assessmentRecords, setAssessmentRecords] = useState<any[]>([]);
   const [newCardNotification, setNewCardNotification] = useState<any>(null);
@@ -803,6 +805,7 @@ export default function ClientDashboard() {
           <div className="tabs-container flex items-center justify-center gap-2 flex-wrap p-1 rounded-lg bg-muted/50 overflow-x-auto">
             <TabsList className="flex flex-wrap h-auto justify-center gap-2 bg-transparent p-0 w-full sm:w-auto">
               <TabsTrigger value="today" className="flex-1 sm:flex-none whitespace-nowrap">Today</TabsTrigger>
+              <TabsTrigger value="measurements" className="flex-1 sm:flex-none whitespace-nowrap">Measurements</TabsTrigger>
               <TabsTrigger value="plan" className="flex-1 sm:flex-none whitespace-nowrap">Plan</TabsTrigger>
               <TabsTrigger value="logs" className="flex-1 sm:flex-none whitespace-nowrap">Meals</TabsTrigger>
               <TabsTrigger value="files" className="flex-1 sm:flex-none whitespace-nowrap">Files</TabsTrigger>
@@ -1073,6 +1076,11 @@ export default function ClientDashboard() {
                 <NotificationSettings clientId={clientData?.id || null} />
               </div>
             </div>
+          </TabsContent>
+
+
+          <TabsContent value="measurements" className="space-y-6">
+            {clientData?.id && <ClientMeasurementTracker clientId={clientData.id} />}
           </TabsContent>
 
           <TabsContent value="plan">

@@ -1,113 +1,155 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { sendWebPush } from "../_shared/web-push.ts";
 
 interface PushNotificationRequest {
-  client_id: string;
+  client_id?: string;
+  target_roles?: string[]; // e.g. ['admin', 'manager']
   title: string;
   body: string;
   url?: string;
 }
 
 serve(async (req) => {
-  // Get CORS headers based on origin
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
 
-  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { client_id, title, body, url } = await req.json() as PushNotificationRequest;
+    const { client_id, target_roles, title, body, url } = await req.json() as PushNotificationRequest;
 
-    if (!client_id || !title || !body) {
+    if ((!client_id && (!target_roles || target_roles.length === 0)) || !title || !body) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: client_id, title, body' }),
+        JSON.stringify({ error: 'Missing required fields: client_id OR target_roles, title, body' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Initialize Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get client's push subscriptions
-    const { data: subscriptions, error: fetchError } = await supabase
-      .from('push_subscriptions')
-      .select('*')
-      .eq('client_id', client_id);
+    // Get VAPID keys
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || 'BA11f-wSr9t_hdnn_hrkwKbqjVb2x-VKcG9CMym7IWXz1JwCa2LLdD1eTgGq2bfwOOPKScNlO7P8uyMAlIvUWu4'; // Fallback to what we generated
+    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
+    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@sheizen.com';
 
-    if (fetchError) {
-      console.error('Error fetching subscriptions:', fetchError);
+    if (!vapidPrivateKey) {
+      console.error('VAPID_PRIVATE_KEY not set');
+      // For now, return a specific error so user knows to set it
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch subscriptions' }),
+        JSON.stringify({ error: 'Server configuration error: VAPID_PRIVATE_KEY missing' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Determine target User IDs
+    const targetUserIds: string[] = [];
+
+    // 1. Add direct client_id if present
+    if (client_id) {
+      targetUserIds.push(client_id);
+    }
+
+    // 2. Add users by role if present
+    if (target_roles && target_roles.length > 0) {
+      console.log(`Fetching users with roles: ${target_roles.join(', ')}`);
+
+      const { data: roleUsers, error: roleError } = await supabase
+        .from('user_roles')
+        .select('user_id')
+        .in('role', target_roles);
+
+      if (roleError) {
+        console.error('Error fetching users by role:', roleError);
+        // Continue but log error
+      } else if (roleUsers) {
+        roleUsers.forEach(u => targetUserIds.push(u.user_id));
+      }
+    }
+
+    // Deduplicate IDs
+    const uniqueUserIds = [...new Set(targetUserIds)];
+
+    if (uniqueUserIds.length === 0) {
+      return new Response(
+        JSON.stringify({ message: 'No target users found', sent: 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Fetch subscriptions for all unique users
+    const { data: subscriptions, error: fetchError } = await supabase
+      .from('push_subscriptions')
+      .select('*')
+      .in('client_id', uniqueUserIds);
+
+    if (fetchError) {
+      console.error('Error fetching subscriptions:', fetchError);
+      throw fetchError;
+    }
+
     if (!subscriptions || subscriptions.length === 0) {
-      console.log('No subscriptions found for client:', client_id);
+      console.log('No subscriptions found for users:', uniqueUserIds);
       return new Response(
         JSON.stringify({ message: 'No subscriptions found', sent: 0 }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get VAPID keys
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY');
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
-
-    if (!vapidPublicKey || !vapidPrivateKey) {
-      console.error('VAPID keys not configured');
-      return new Response(
-        JSON.stringify({ error: 'Push notifications not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Prepare payload
+    // Payload
     const payload = JSON.stringify({
       title,
       body,
       url: url || '/dashboard',
-      id: crypto.randomUUID(),
+      timestamp: Date.now()
     });
 
-    // Send to all subscriptions (using web-push library would be ideal, but for now we'll use fetch)
-    const sendPromises = subscriptions.map(async (sub) => {
+    // Send to all
+    const results = await Promise.all(subscriptions.map(async (sub) => {
+      const subscription = {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth }
+      };
+
       try {
-        // Note: In production, you'd use the web-push library
-        // This is a simplified version for demonstration
-        console.log('Would send push to:', sub.endpoint);
-        return { success: true, endpoint: sub.endpoint };
-      } catch (error) {
-        console.error('Error sending to subscription:', error);
-        return { success: false, endpoint: sub.endpoint, error };
+        const result = await sendWebPush(subscription, payload, {
+          subject: vapidSubject,
+          publicKey: vapidPublicKey,
+          privateKey: vapidPrivateKey
+        });
+
+        if (!result.success && result.statusCode === 410) {
+          // Subscription expired/gone, delete it
+          await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+        }
+
+        return result;
+      } catch (e) {
+        return { success: false, error: e };
       }
-    });
+    }));
 
-    const results = await Promise.all(sendPromises);
     const successCount = results.filter(r => r.success).length;
-
-    console.log(`Sent ${successCount}/${subscriptions.length} notifications`);
 
     return new Response(
       JSON.stringify({
         success: true,
         sent: successCount,
-        total: subscriptions.length
+        total: subscriptions.length,
+        results: results
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in send-push-notification:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -16,7 +16,7 @@ import { toast } from "sonner";
 
 interface CommunityGuidelinesModalProps {
   open: boolean;
-  onAccept: () => void;
+  onAccept: (updatedClient?: any) => void;
   clientId: string;
 }
 
@@ -36,18 +36,23 @@ export function CommunityGuidelinesModal({
 
     setIsSubmitting(true);
     try {
-      const { error } = await supabase
+      console.log("Accepting guidelines for client:", clientId);
+      const { data, error } = await supabase
         .from("clients")
         .update({ community_terms_accepted_at: new Date().toISOString() })
-        .eq("id", clientId);
+        .eq("id", clientId)
+        .select()
+        .maybeSingle();
 
       if (error) {
-        console.error("Error accepting guidelines:", error);
+        console.error("Error accepting guidelines (DB update):", error);
         throw error;
       }
 
+      console.log("Guidelines accepted, updated client:", data);
+
       toast.success("Welcome to the community!");
-      onAccept();
+      onAccept(data);
     } catch (error: any) {
       console.error("Failed to accept guidelines:", error);
       toast.error(error.message || "Failed to accept guidelines. Please try again.");

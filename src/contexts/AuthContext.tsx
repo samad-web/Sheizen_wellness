@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
@@ -24,65 +24,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const navigate = useNavigate();
 
     const fetchUserRole = async (userId: string, attempt = 1): Promise<"admin" | "client" | "manager" | null> => {
-        const MAX_RETRIES = 3;
-        const RETRY_DELAY_MS = 1000; // Start with 1 second
-
         try {
-            console.log(`[AuthContext] Fetching user role for ${userId} (attempt ${attempt}/${MAX_RETRIES})`);
+            console.log(`[AuthContext] Fetching user role via RPC for ${userId} (attempt ${attempt})`);
 
-            // Query user_roles table directly instead of using RPC (faster, no timeout)
-            const { data, error } = await supabase
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', userId)
-                .single();
+            // Create a promise that rejects after 5 seconds to prevent hanging
+            const timeoutPromise = new Promise((_, reject) => {
+                const id = setTimeout(() => {
+                    clearTimeout(id);
+                    reject(new Error("Role fetch timeout"));
+                }, 5000);
+            });
+
+            // RPC Call
+            const rpcPromise = supabase.rpc('ensure_user_role', { p_user_id: userId });
+
+            // Race against timeout
+            const { data, error } = (await Promise.race([
+                rpcPromise.then(res => res),
+                timeoutPromise
+            ])) as any; // Cast to avoid TS issues with race result types
 
             if (error) {
-                console.error(`[AuthContext] Error fetching user role (attempt ${attempt}):`, error);
+                console.error(`[AuthContext] RPC error (attempt ${attempt}):`, error);
 
-                // If role not found and we haven't exhausted retries, try again
-                if (error.code === 'PGRST116' && attempt < MAX_RETRIES) {
-                    console.log(`[AuthContext] Role not found, retrying in ${RETRY_DELAY_MS * attempt}ms...`);
-                    await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+                // Retry once on network error/timeout if attempt 1
+                if (attempt < 2) {
+                    console.log(`[AuthContext] Retrying role fetch...`);
                     return fetchUserRole(userId, attempt + 1);
                 }
 
-                // If we've exhausted retries and still no role, try to create one via RPC fallback
-                if (error.code === 'PGRST116' && attempt >= MAX_RETRIES) {
-                    console.warn(`[AuthContext] Role not found after ${MAX_RETRIES} attempts. Attempting to create role via RPC...`);
-                    try {
-                        const { data: rpcData, error: rpcError } = await supabase
-                            .rpc('ensure_user_role', { p_user_id: userId });
-
-                        if (rpcError) {
-                            console.error('[AuthContext] Failed to create role via RPC:', rpcError);
-                            return null;
-                        }
-
-                        console.log('[AuthContext] Successfully created role via RPC:', rpcData);
-                        return (rpcData as "admin" | "client" | "manager") || null;
-                    } catch (rpcErr) {
-                        console.error('[AuthContext] RPC fallback failed:', rpcErr);
-                        return null;
-                    }
-                }
-
+                toast.error("Failed to verify user permissions. Please try again.");
                 return null;
             }
 
-            const role = (data?.role as "admin" | "client" | "manager") || null;
-            console.log(`[AuthContext] Successfully fetched role: ${role}`);
-            return role;
-        } catch (error) {
-            console.error(`[AuthContext] Unexpected error fetching user role (attempt ${attempt}):`, error);
+            console.log('[AuthContext] Successfully fetched role via RPC:', data);
+            return (data as "admin" | "client" | "manager") || null;
 
-            // Retry on unexpected errors
-            if (attempt < MAX_RETRIES) {
-                console.log(`[AuthContext] Retrying after unexpected error in ${RETRY_DELAY_MS * attempt}ms...`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+        } catch (err) {
+            console.error(`[AuthContext] Critical role fetch error:`, err);
+            // Retry once on unexpected error if attempt 1
+            if (attempt < 2) {
                 return fetchUserRole(userId, attempt + 1);
             }
-
             return null;
         }
     };
@@ -98,8 +81,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const lastFetchedUserId = useRef<string | null>(null);
+
+
+
     useEffect(() => {
-        // Fetch current session on mount so we have initial auth state
+        // Safety timeout: ensure loading is set to false after 10 seconds max
+        const safetyTimeout = setTimeout(() => {
+            setLoading((prev) => {
+                if (prev) {
+                    console.warn("[AuthContext] Force clearing loading state after 10s timeout");
+                    return false;
+                }
+                return prev;
+            });
+        }, 10000);
+
+        // Fetch current session on mount
         const initSession = async () => {
             try {
                 const { data, error } = await supabase.auth.getSession();
@@ -112,24 +110,97 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(currentSession?.user ?? null);
 
                 if (currentSession?.user) {
-                    try {
-                        const role = await fetchUserRole(currentSession.user.id);
-                        setUserRole(role);
-                        if (role) {
-                            localStorage.setItem("app-user-role", role);
+                    // STRATEGY: Hybrid Optimistic Loader
+                    // 1. Check Metadata (Best - Trusted & Fast)
+                    let foundRole = currentSession.user.user_metadata?.role as "admin" | "client" | "manager" | undefined;
+
+                    // 2. Check LocalStorage (Optimistic - Fast, verifies in background)
+                    if (!foundRole) {
+                        const cached = localStorage.getItem("app-user-role") as "admin" | "client" | "manager" | null;
+                        if (cached) foundRole = cached;
+                    }
+
+                    if (foundRole) {
+                        console.log("[AuthContext] Optimistically setting role:", foundRole);
+                        setUserRole(foundRole);
+                        // UNBLOCK UI IMMEDIATELY
+                        setLoading(false);
+                        clearTimeout(safetyTimeout);
+
+                        // 3. Verify in Background (Critical for security if using LocalStorage cache)
+                        // If we used cache or metadata is missing, we must verify
+                        const isMetadataTrusted = !!currentSession.user.user_metadata?.role;
+
+                        if (!isMetadataTrusted) {
+                            console.log("[AuthContext] Verifying role in background...");
+                            fetchUserRole(currentSession.user.id).then(async (verifiedRole) => {
+                                if (verifiedRole) {
+                                    // If verified role differs or was missing, update state
+                                    if (verifiedRole !== foundRole) {
+                                        setUserRole(verifiedRole);
+                                    }
+                                    lastFetchedUserId.current = currentSession.user.id;
+                                    localStorage.setItem("app-user-role", verifiedRole);
+
+                                    // Sync to metadata for next time (making it Trusted)
+                                    if (currentSession.user.user_metadata?.role !== verifiedRole) {
+                                        await supabase.auth.updateUser({
+                                            data: { role: verifiedRole }
+                                        });
+                                    }
+                                } else {
+                                    // Verification Failed! Revoke access if we let them in optimistically
+                                    console.warn("[AuthContext] Background verification failed. Revoking access.");
+                                    setUserRole(null);
+                                    toast.error("Session verification failed. Please login again.");
+                                    // Optional: Force logout or redirect? 
+                                    // For now, removing role might trigger ProtectedRoute to show Access Denied
+                                }
+                            }).catch(err => {
+                                console.error("Background role check error:", err);
+                            });
+                        } else {
+                            lastFetchedUserId.current = currentSession.user.id;
                         }
-                    } catch (roleError) {
-                        console.error("Error fetching role:", roleError);
-                        setUserRole(null);
+                    } else {
+                        // 4. NO ROLE FOUND - MUST FETCH (Blocking)
+                        // This prevents the "hanging" issue where we didn't await the fetch
+                        console.log("[AuthContext] No optimistic role found. Fetching (Blocking)...");
+                        try {
+                            const verifiedRole = await fetchUserRole(currentSession.user.id);
+
+                            if (verifiedRole) {
+                                setUserRole(verifiedRole);
+                                lastFetchedUserId.current = currentSession.user.id;
+                                localStorage.setItem("app-user-role", verifiedRole);
+
+                                // Sync to metadata
+                                if (currentSession.user.user_metadata?.role !== verifiedRole) {
+                                    await supabase.auth.updateUser({
+                                        data: { role: verifiedRole }
+                                    });
+                                }
+                            } else {
+                                console.warn("[AuthContext] Failed to fetch role for user");
+                                setUserRole(null);
+                            }
+                        } catch (err) {
+                            console.error("[AuthContext] Error in blocking fetch:", err);
+                        } finally {
+                            setLoading(false);
+                            clearTimeout(safetyTimeout);
+                        }
                     }
                 } else {
                     setUserRole(null);
+                    lastFetchedUserId.current = null;
+                    setLoading(false);
+                    clearTimeout(safetyTimeout);
                 }
             } catch (err) {
                 console.error("Error in initSession:", err);
-            } finally {
-                // ALWAYS set loading to false, no matter what
                 setLoading(false);
+                clearTimeout(safetyTimeout);
             }
         };
 
@@ -138,64 +209,81 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Set up auth state listener
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-
+                if (event === 'INITIAL_SESSION') return;
 
                 if (session?.user) {
                     setSession(session);
                     setUser(session.user);
 
-                    try {
-                        // Optimizing: if we already have the role for this user, don't clear it immediately on error.
-                        const role = await fetchUserRole(session.user.id);
-                        if (role) {
-                            setUserRole(role);
-                        } else {
-                            // Only set to null if we genuinely failed after retries AND we don't have a stale valid role?
-                            // Actually, if we fail to fetch role, we might have been downgraded or banned.
-                            // But for transient network errors, keeping the old role is safer for UX.
-                            // However, 'fetchUserRole' returns null on error. 
+                    // 1. Check Metadata
+                    const metadataRole = session.user.user_metadata?.role as "admin" | "client" | "manager" | undefined;
 
-                            // If we don't set userRole to null, we keep the previous one.
-                            // But we should verify if the previous user was the SAME user.
-                            // setUser is called above: setUser(session.user).
-                            // If session.user.id matches user?.id from simple state?
-                            // Safest: Only update if non-null. Access Denied if truly null context.
-                            if (!userRole) {
-                                // If we had no role, we remain having no role -> Access Denied
-                                setUserRole(null);
+                    // 2. Decide to Fetch
+                    // If metadata exists, we can use it.
+                    // If user changed, we MUST re-verify.
+                    // If we have no role, we MUST fetch.
+
+                    const userChanged = session.user.id !== lastFetchedUserId.current;
+                    const needsRole = !metadataRole;
+
+                    if (userChanged || needsRole) {
+                        try {
+                            const role = await fetchUserRole(session.user.id);
+                            if (role) {
+                                setUserRole(role);
+                                lastFetchedUserId.current = session.user.id;
+
+                                // SYNC: If metadata is stale/missing, update it
+                                if (session.user.user_metadata?.role !== role) {
+                                    console.log("[AuthContext] Syncing role to metadata:", role);
+                                    await supabase.auth.updateUser({
+                                        data: { role: role }
+                                    });
+                                }
+                            } else {
+                                // Fetch failed (Access Denied)
+                                if (userChanged) setUserRole(null);
                             }
+                        } catch (err) {
+                            console.error("Error fetching user role:", err);
                         }
-                    } catch (err) {
-                        console.error("Error fetching user role:", err);
-                        // Do not clear userRole here to be safe against transient errors
+                    } else if (metadataRole) {
+                        // Securely use metadata
+                        setUserRole(metadataRole);
+                        lastFetchedUserId.current = session.user.id;
                     }
                 } else {
                     setSession(null);
                     setUser(null);
                     setUserRole(null);
-                    // Do NOT clear stored session here. Wait for explicit SIGNED_OUT event.
-                    // clearStoredSession(); 
+                    lastFetchedUserId.current = null;
                 }
 
-                // Explicitly handle signed out event with navigation
                 if (event === "SIGNED_OUT") {
                     clearStoredSession();
                     navigate("/auth");
                 }
 
                 setLoading(false);
+                clearTimeout(safetyTimeout);
             }
         );
 
-        // Session Timeout Logic (15 minutes)
-        const TIMEOUT_DURATION = 15 * 60 * 1000; // 15 minutes in milliseconds
+        return () => {
+            subscription.unsubscribe();
+            clearTimeout(safetyTimeout);
+        };
+    }, []); // Only run on mount
+
+    // Separate effect for Session Timeout Logic (60 minutes) - DEPENDS ON SESSION
+    useEffect(() => {
+        const TIMEOUT_DURATION = 60 * 60 * 1000; // 60 minutes in milliseconds
         let logoutTimer: NodeJS.Timeout;
 
         const resetTimer = () => {
             if (logoutTimer) clearTimeout(logoutTimer);
             if (session?.user) {
                 logoutTimer = setTimeout(() => {
-
                     signOut();
                     toast.info("Session expired due to inactivity. Please sign in again.");
                 }, TIMEOUT_DURATION);
@@ -206,6 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
 
         const handleActivity = () => {
+            // Debounce the restTimer slightly if needed, but usually fine
             resetTimer();
         };
 
@@ -217,13 +306,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         return () => {
-            subscription.unsubscribe();
             if (logoutTimer) clearTimeout(logoutTimer);
             events.forEach(event => {
                 window.removeEventListener(event, handleActivity);
             });
         };
-    }, [session?.user?.id]); // Re-run effect when user changes (login/logout) // Re-run effect when user changes (login/logout)
+    }, [session?.user?.id]); // Re-run when user changes // Re-run effect when user changes (login/logout)
 
     const signIn = async (email: string, password: string) => {
         try {

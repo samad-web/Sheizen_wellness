@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+
 serve(async (req) => {
   // Get CORS headers based on origin
   const origin = req.headers.get('origin');
@@ -17,7 +19,9 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL');
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
+
+    // Check for GEMINI_API_KEY
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
     if (!supabaseUrl || !supabaseKey) {
       console.error('Missing configuration:', {
@@ -64,11 +68,11 @@ serve(async (req) => {
       "summary": "string (brief summary)"
     }`;
 
-    console.log('Calling OpenAI API for sleep assessment...');
+    console.log('Calling Gemini API for sleep assessment...');
     let generatedContent = {};
 
-    if (!openaiApiKey) {
-      console.warn('Missing OPENAI_API_KEY, using mock response');
+    if (!geminiApiKey) {
+      console.warn('Missing GEMINI_API_KEY, using mock response');
       generatedContent = {
         client_details: { name: client_name },
         key_findings: {
@@ -79,42 +83,32 @@ serve(async (req) => {
           energy_levels: form_data.energyLevels,
           disruptions: [form_data.sleepDisruptions]
         },
-        lifestyle: { bedtime_routine_analysis: "Routine needs improvement." },
+        lifestyle: { bedtime_routine_analysis: "Routine needs improvement (Mock)." },
         health_goals: ["Improve sleep quality"],
-        recommendations: ["Maintain consistent schedule", "Reduce screen time"],
-        ai_analysis: "## Mock Analysis\nSystem is in mock mode.",
+        recommendations: ["Maintain consistent schedule"],
+        ai_analysis: "## Mock Analysis\nSystem is in mock mode (GEMINI_API_KEY missing).",
         summary: "Mock summary."
       };
     } else {
-      // Call OpenAI API
-      const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: 'gpt-4o-mini',
-          response_format: { type: "json_object" },
-          messages: [
-            { role: 'system', content: 'You are an expert sleep consultant specializing in sleep hygiene. Always respond in valid JSON.' },
-            { role: 'user', content: prompt }
-          ],
-        }),
+      // Call Gemini API
+      const genAI = new GoogleGenerativeAI(geminiApiKey);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash",
+        generationConfig: { responseMimeType: "application/json" }
       });
 
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        console.error('AI API error:', aiResponse.status, errorText);
-        throw new Error(`AI generation failed: ${errorText}`);
-      }
+      const result = await model.generateContent(prompt);
+      const text = result.response.text();
 
-      const aiData = await aiResponse.json();
       try {
-        generatedContent = JSON.parse(aiData.choices[0].message.content);
+        if (typeof text === 'string') {
+          generatedContent = JSON.parse(text);
+        } else {
+          generatedContent = text;
+        }
       } catch (e) {
         console.error("Failed to parse AI JSON:", e);
-        generatedContent = { ai_analysis: aiData.choices[0].message.content };
+        generatedContent = { ai_analysis: text };
       }
     }
 
@@ -126,7 +120,7 @@ serve(async (req) => {
         assessment_type: 'sleep',
         form_responses: form_data,
         assessment_data: generatedContent,
-        ai_generated: !!openaiApiKey,
+        ai_generated: !!geminiApiKey,
         file_name: `Sleep Assessment - ${client_name} - ${new Date().toLocaleDateString()}`,
         notes: 'AI-generated sleep hygiene assessment'
       })

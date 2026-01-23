@@ -10,13 +10,18 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { z } from "zod";
-import { Leaf, ArrowRight } from "lucide-react";
+import { Leaf, ArrowRight, Ruler } from "lucide-react";
 
 const onboardingSchema = z.object({
   age: z.number().min(10).max(120),
   gender: z.enum(["male", "female", "other"]),
   goals: z.string().min(10).max(1000),
   programType: z.enum(["weight_loss", "weight_gain", "maintenance", "muscle_building", "general_wellness"]),
+  arm: z.number().min(0).max(100).optional(),
+  chest: z.number().min(0).max(100).optional(),
+  waist: z.number().min(0).max(100).optional(),
+  hip: z.number().min(0).max(100).optional(),
+  thigh: z.number().min(0).max(100).optional(),
 });
 
 export default function Onboarding() {
@@ -71,6 +76,11 @@ export default function Onboarding() {
       gender: formData.get("gender") as string,
       goals: formData.get("goals") as string,
       programType: formData.get("programType") as string,
+      arm: formData.get("arm") ? parseFloat(formData.get("arm") as string) : undefined,
+      chest: formData.get("chest") ? parseFloat(formData.get("chest") as string) : undefined,
+      waist: formData.get("waist") ? parseFloat(formData.get("waist") as string) : undefined,
+      hip: formData.get("hip") ? parseFloat(formData.get("hip") as string) : undefined,
+      thigh: formData.get("thigh") ? parseFloat(formData.get("thigh") as string) : undefined,
     };
 
     try {
@@ -84,6 +94,7 @@ export default function Onboarding() {
         status: "active" as any, // Activate client on onboarding complete
       };
 
+      let currentClientId = targetClientId;
       let error;
 
       if (targetClientId) {
@@ -102,7 +113,7 @@ export default function Onboarding() {
           .eq("id", user?.id)
           .single();
 
-        const { error: insertError } = await supabase
+        const { data: newClient, error: insertError } = await supabase
           .from("clients")
           .insert({
             user_id: user?.id,
@@ -110,7 +121,13 @@ export default function Onboarding() {
             email: profileData?.email || user?.email || "",
             phone: profileData?.phone || "",
             ...updatePayload
-          });
+          })
+          .select("id")
+          .single();
+
+        if (newClient) {
+          currentClientId = newClient.id;
+        }
         error = insertError;
       }
 
@@ -119,8 +136,27 @@ export default function Onboarding() {
         return;
       }
 
+      // Insert measurements
+      if (currentClientId && (data.arm || data.chest || data.waist || data.hip || data.thigh)) {
+        const { error: measError } = await supabase
+          .from("client_measurements")
+          .insert({
+            client_id: currentClientId,
+            arm_inches: data.arm,
+            chest_inches: data.chest,
+            waist_inches: data.waist,
+            hip_inches: data.hip,
+            thigh_inches: data.thigh
+          });
+
+        if (measError) {
+          console.error("Error saving measurements:", measError);
+          toast.error("Profile saved, but measurements failed to save.");
+        }
+      }
+
       // Create initial daily log if not exists
-      const clientId = targetClientId; // or fetched from insert
+      const clientId = currentClientId;
       if (clientId) {
         const today = new Date().toISOString().split("T")[0];
         await supabase.from("daily_logs").upsert({
@@ -226,6 +262,35 @@ export default function Onboarding() {
                   </SelectContent>
                 </Select>
                 {errors.programType && <p className="text-sm text-destructive">{errors.programType}</p>}
+              </div>
+
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center gap-2 mb-2">
+                  <Ruler className="w-5 h-5 text-primary" />
+                  <h3 className="font-semibold text-lg">Body Measurements (Inches)</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="arm">Arm</Label>
+                    <Input id="arm" name="arm" type="number" step="0.1" min="0" placeholder="e.g. 12.5" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="chest">Chest</Label>
+                    <Input id="chest" name="chest" type="number" step="0.1" min="0" placeholder="e.g. 36" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="waist">Waist</Label>
+                    <Input id="waist" name="waist" type="number" step="0.1" min="0" placeholder="e.g. 32" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="hip">Hip</Label>
+                    <Input id="hip" name="hip" type="number" step="0.1" min="0" placeholder="e.g. 38" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="thigh">Thigh</Label>
+                    <Input id="thigh" name="thigh" type="number" step="0.1" min="0" placeholder="e.g. 21" />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">

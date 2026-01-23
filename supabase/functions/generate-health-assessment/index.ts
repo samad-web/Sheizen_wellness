@@ -1,6 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getCorsHeaders } from "../_shared/cors.ts";
+import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+
 serve(async (req) => {
   // Get CORS headers based on origin
   const origin = req.headers.get('origin');
@@ -75,41 +77,33 @@ Return a valid JSON object with the following structure (do not include markdown
 }
 `;
 
-    console.log('Calling OpenAI API for assessment generation...');
+    console.log('Calling Gemini API for assessment generation...');
 
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY');
-
-    // Call OpenAI for text generation
-    const aiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        response_format: { type: "json_object" },
-        messages: [
-          { role: 'system', content: 'You are an expert nutritionist creating professional health assessments. Always respond in valid JSON.' },
-          { role: 'user', content: prompt }
-        ],
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error('AI generation failed:', aiResponse.status, errorText);
-      throw new Error(`AI generation failed: ${aiResponse.status}`);
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY is not set in environment variables');
     }
 
-    const aiData = await aiResponse.json();
+    const genAI = new GoogleGenerativeAI(geminiApiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+      generationConfig: { responseMimeType: "application/json" }
+    });
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+
     let generatedContent = {};
     try {
-      generatedContent = JSON.parse(aiData.choices[0].message.content);
+      if (typeof text === 'string') {
+        generatedContent = JSON.parse(text);
+      } else {
+        generatedContent = text;
+      }
     } catch (e) {
       console.error("Failed to parse AI JSON:", e);
       // Fallback or re-throw
-      generatedContent = { ai_analysis: aiData.choices[0].message.content };
+      generatedContent = { ai_analysis: text };
     }
 
     console.log('Assessment generated successfully');
