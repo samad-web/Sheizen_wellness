@@ -6,10 +6,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Mail, Phone, User, Calendar } from "lucide-react";
+import { Loader2, Mail, Phone, User, Calendar, MoreHorizontal, FileText, CheckCircle, XCircle, Clock, MessageCircle, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/formatters";
-
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+} from "@/components/ui/dropdown-menu";
 
 interface InterestSubmission {
   id: string;
@@ -39,11 +60,25 @@ const statusColors: Record<string, string> = {
   not_interested: "bg-gray-100 text-gray-800 border-gray-300",
 };
 
-export function InterestSubmissionsManager() {
+import { ComprehensiveAssessmentForm } from "@/components/ComprehensiveAssessmentForm";
+import { AdminClientEditor } from "@/components/AdminClientEditor";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Client = Tables<"clients">;
+
+export function InterestSubmissionsManager({ clients }: { clients?: Client[] }) {
   const [submissions, setSubmissions] = useState<InterestSubmission[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterHealthGoal, setFilterHealthGoal] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+
+  // Assessment Form State
+  const [assessmentClientId, setAssessmentClientId] = useState<string | undefined>(undefined);
+  const [assessmentOpen, setAssessmentOpen] = useState(false);
+
+  // Client Conversion State
+  const [clientEditorOpen, setClientEditorOpen] = useState(false);
+  const [clientEditorInitialData, setClientEditorInitialData] = useState<any>(undefined);
 
   useEffect(() => {
     fetchSubmissions();
@@ -83,6 +118,48 @@ export function InterestSubmissionsManager() {
       console.error("Error updating status:", error);
       toast.error("Failed to update status");
     }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from("interest_forms" as any)
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      toast.success("Lead deleted successfully");
+      fetchSubmissions();
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      toast.error("Failed to delete lead");
+    }
+  };
+
+  const handleOpenAssessment = (submission: InterestSubmission) => {
+    const matchedClient = clients?.find(c =>
+      c.email === submission.email ||
+      c.phone === submission.phone
+    );
+
+    const leadData = {
+      name: submission.name,
+      email: submission.email,
+      phone: submission.phone,
+      age: submission.age?.toString() || "",
+      gender: submission.gender?.toLowerCase() || "",
+      program_type: healthGoalLabels[submission.health_goal] ? undefined : "others",
+      goals: submission.health_goal || "",
+    };
+    setClientEditorInitialData(leadData);
+
+    if (matchedClient) {
+      setAssessmentClientId(matchedClient.id);
+    } else {
+      setAssessmentClientId(undefined);
+    }
+    setAssessmentOpen(true);
   };
 
 
@@ -178,6 +255,19 @@ export function InterestSubmissionsManager() {
               <CardDescription>Manage leads from the interest form</CardDescription>
             </div>
             <div className="flex flex-wrap gap-2">
+              {clients && (
+                <Button
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => {
+                    setAssessmentClientId(undefined);
+                    setAssessmentOpen(true);
+                  }}
+                >
+                  <FileText className="h-4 w-4" />
+                  Assessment Form
+                </Button>
+              )}
               <Select value={filterHealthGoal} onValueChange={setFilterHealthGoal}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All Health Goals" />
@@ -227,7 +317,7 @@ export function InterestSubmissionsManager() {
                         <TableHead>Message</TableHead>
                         <TableHead>Submitted</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Actions</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -270,23 +360,79 @@ export function InterestSubmissionsManager() {
                               {submission.status.replace("_", " ")}
                             </Badge>
                           </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Select
-                                value={submission.status}
-                                onValueChange={(value) => updateStatus(submission.id, value)}
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* Direct Assessment Action Button */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                onClick={() => handleOpenAssessment(submission)}
+                                title="Create Assessment"
                               >
-                                <SelectTrigger className="w-[140px] h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="pending">Pending</SelectItem>
-                                  <SelectItem value="contacted">Contacted</SelectItem>
-                                  <SelectItem value="converted">Converted</SelectItem>
-                                  <SelectItem value="not_interested">Not Interested</SelectItem>
-                                </SelectContent>
-                              </Select>
+                                <FileText className="h-4 w-4" />
+                              </Button>
 
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" className="h-8 w-8 p-0">
+                                    <span className="sr-only">Open menu</span>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuSub>
+                                    <DropdownMenuSubTrigger>
+                                      <CheckCircle className="mr-2 h-4 w-4" />
+                                      Update Status
+                                    </DropdownMenuSubTrigger>
+                                    <DropdownMenuSubContent>
+                                      <DropdownMenuItem onClick={() => updateStatus(submission.id, "pending")}>
+                                        <Clock className="mr-2 h-4 w-4" /> Pending
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => updateStatus(submission.id, "contacted")}>
+                                        <MessageCircle className="mr-2 h-4 w-4" /> Contacted
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => updateStatus(submission.id, "converted")}>
+                                        <CheckCircle className="mr-2 h-4 w-4" /> Converted
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => updateStatus(submission.id, "not_interested")}>
+                                        <XCircle className="mr-2 h-4 w-4" /> Not Interested
+                                      </DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                  </DropdownMenuSub>
+
+                                  <DropdownMenuSeparator />
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive focus:text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Delete Lead
+                                      </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          This will remove the lead for <strong>{submission.name}</strong> from the list.
+                                          This action can be undone by an administrator in the database.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleDelete(submission.id)}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Delete
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>
@@ -299,6 +445,33 @@ export function InterestSubmissionsManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Assessment Form Global Instance */}
+      {clients && (
+        <ComprehensiveAssessmentForm
+          clients={clients}
+          initialClientId={assessmentClientId}
+          initialData={assessmentClientId ? undefined : clientEditorInitialData}
+          open={assessmentOpen}
+          onOpenChange={setAssessmentOpen}
+        />
+      )}
+
+      {/* Client Editor for Auto-Conversion */}
+      {clientEditorOpen && (
+        <AdminClientEditor
+          open={clientEditorOpen}
+          onOpenChange={setClientEditorOpen}
+          initialData={clientEditorInitialData}
+          onSuccess={(newClientId) => {
+            if (newClientId) {
+              // If client created successfully, immediately open assessment for them
+              setAssessmentClientId(newClientId);
+              setAssessmentOpen(true);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

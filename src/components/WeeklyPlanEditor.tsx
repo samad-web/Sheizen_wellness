@@ -16,8 +16,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Loader2, Save } from "lucide-react";
+import { Plus, Loader2, Save, Download } from "lucide-react";
 import { toast } from "sonner";
+import { WeeklyPlanDownloader } from "@/components/WeeklyPlanDownloader";
 
 interface MealCard {
   day_number: number;
@@ -404,6 +405,20 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
           <Button variant="outline" onClick={() => setOpen(false)} disabled={saving}>
             Cancel
           </Button>
+          {planId && (
+            <WeeklyPlanDownloader
+              planId={planId}
+              weekNumber={1}
+              startDate={new Date().toISOString().split('T')[0]}
+              endDate={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+              triggerButton={
+                <Button variant="outline" disabled={saving}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Download Plan
+                </Button>
+              }
+            />
+          )}
           <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="group">
             {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4 transition-transform group-hover:scale-110" />}
             Save Draft

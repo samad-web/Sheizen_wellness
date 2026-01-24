@@ -26,8 +26,10 @@ import { CalendarView } from "@/components/CalendarView";
 import { HundredDayProgress } from "@/components/HundredDayProgress";
 import { WorkflowTimeline } from "@/components/WorkflowTimeline";
 import { exportDietPlanToExcel } from "@/lib/excelExport";
-import { FileText, Brain, Moon, FileEdit, HeartPulse } from "lucide-react";
+import { FileText, Brain, Moon, FileEdit, HeartPulse, Printer } from "lucide-react";
 import { AdminNotes } from "@/components/admin/AdminNotes";
+import { ComprehensiveAssessmentForm } from "@/components/ComprehensiveAssessmentForm";
+import { ComprehensiveAssessmentReport } from "@/components/ComprehensiveAssessmentReport";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -122,6 +124,10 @@ const ClientDetail = () => {
   const [deletePlanId, setDeletePlanId] = useState<string | null>(null);
   const [isRequestingAssessment, setIsRequestingAssessment] = useState(false);
   const [editAssessmentId, setEditAssessmentId] = useState<string | null>(null);
+  const [customAssessmentOpen, setCustomAssessmentOpen] = useState(false);
+  const [selectedCustomAssessmentId, setSelectedCustomAssessmentId] = useState<string | null>(null);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [selectedReportData, setSelectedReportData] = useState<any>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -642,10 +648,28 @@ const ClientDetail = () => {
                                       navigate(`/admin/assessments/${assessment.id}/edit-stress`);
                                     } else if (assessmentType === 'health') {
                                       navigate(`/admin/assessments/${assessment.id}/edit-health`);
+                                    } else if (assessmentType === 'custom') {
+                                      setSelectedCustomAssessmentId(assessment.id);
+                                      setCustomAssessmentOpen(true);
                                     }
                                   }}
+                                  title="Edit Form"
                                 >
                                   <FileText className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {(assessment as any).assessment_type === 'custom' && (assessment as any).form_responses && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedReportData((assessment as any).form_responses);
+                                    setIsReportOpen(true);
+                                  }}
+                                  className="text-wellness-green border-wellness-green hover:bg-wellness-green hover:text-white"
+                                  title="View Report"
+                                >
+                                  <Printer className="h-4 w-4" />
                                 </Button>
                               )}
                               {assessment.file_url && (
@@ -1120,6 +1144,25 @@ const ClientDetail = () => {
           fetchClientData();
           setEditAssessmentId(null);
         }}
+      />
+
+      <ComprehensiveAssessmentForm
+        clients={[]}
+        initialClientId={id!}
+        assessmentId={selectedCustomAssessmentId}
+        open={customAssessmentOpen}
+        onOpenChange={(open) => {
+          setCustomAssessmentOpen(open);
+          if (!open) setSelectedCustomAssessmentId(null);
+        }}
+        onSuccess={refetchClientData}
+      />
+
+      <ComprehensiveAssessmentReport
+        open={isReportOpen}
+        onOpenChange={setIsReportOpen}
+        data={selectedReportData}
+        clientName={client?.name || ""}
       />
     </div>
   );

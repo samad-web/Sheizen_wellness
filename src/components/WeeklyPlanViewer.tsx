@@ -7,6 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, FileText, Utensils } from "lucide-react";
 import { toast } from "sonner";
 import { GroceryListGenerator } from "@/components/GroceryListGenerator";
+import { WeeklyPlanDownloader } from "@/components/WeeklyPlanDownloader";
 import { formatDate } from "@/lib/formatters";
 
 interface WeeklyPlan {
@@ -201,6 +202,12 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
                   <p className="text-2xl font-bold">{selectedPlan.total_kcal || 0} kcal</p>
                 </div>
                 <GroceryListGenerator
+                  planId={selectedPlan.id}
+                  weekNumber={selectedPlan.week_number}
+                  startDate={selectedPlan.start_date}
+                  endDate={selectedPlan.end_date}
+                />
+                <WeeklyPlanDownloader
                   planId={selectedPlan.id}
                   weekNumber={selectedPlan.week_number}
                   startDate={selectedPlan.start_date}

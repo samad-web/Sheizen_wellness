@@ -28,7 +28,9 @@ const IngredientsManager = lazy(() => import("@/components/IngredientsManager").
 const RecipeBuilder = lazy(() => import("@/components/RecipeBuilder").then(m => ({ default: m.RecipeBuilder })));
 const InterestSubmissionsManager = lazy(() => import("@/components/InterestSubmissionsManager").then(m => ({ default: m.InterestSubmissionsManager })));
 const ReportManager = lazy(() => import("@/components/ReportManager").then(m => ({ default: m.ReportManager })));
+const ComprehensiveAssessmentManager = lazy(() => import("@/components/ComprehensiveAssessmentManager").then(m => ({ default: m.ComprehensiveAssessmentManager })));
 import { BulkMessageButton } from "@/components/BulkMessageButton";
+import { ComprehensiveAssessmentForm } from "@/components/ComprehensiveAssessmentForm";
 
 import { WorkflowStatusWidget } from "@/components/WorkflowStatusWidget";
 import { AdminRequestsWidget } from "@/components/AdminRequestsWidget";
@@ -139,6 +141,50 @@ export default function AdminDashboard() {
       </div>
     );
   }
+
+  const handleAutoConvert = async (values: any) => {
+    try {
+      const { name, email, contact, age_gender } = values.personal;
+
+      // Basic parsing for age/gender if in "Age / Gender" format
+      let age = "";
+      let gender = "";
+      if (age_gender && age_gender.includes('/')) {
+        const parts = age_gender.split('/');
+        age = parts[0].trim();
+        gender = parts[1].trim();
+      } else if (age_gender) {
+        // Fallback for just age or just gender
+        const numericAge = parseInt(age_gender);
+        if (!isNaN(numericAge)) age = age_gender;
+        else gender = age_gender;
+      }
+
+      // Create auth user AND client record via Edge Function
+      const { data, error } = await supabase.functions.invoke('create-user', {
+        body: {
+          email: email,
+          password: "Wellness123!", // Default password for guest assessments
+          userData: {
+            name: name,
+            phone: contact,
+            age: age,
+            gender: gender,
+            status: "pending",
+          },
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      return data?.client?.id || null;
+    } catch (err: any) {
+      console.error("Auto-convert failed:", err);
+      toast.error("Failed to create client account: " + err.message);
+      return null;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-wellness-light via-background to-wellness-light/30">
@@ -270,6 +316,16 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                   <BulkMessageButton clients={clients} onSuccess={refetchDashboard} />
+                  <ComprehensiveAssessmentForm
+                    clients={clients}
+                    trigger={
+                      <Button variant="outline" className="gap-2">
+                        <FileText className="h-4 w-4" />
+                        Comprehensive Nutritional Assessment Form
+                      </Button>
+                    }
+                    onSuccess={refetchDashboard}
+                  />
                   <Button
                     onClick={() => {
                       setEditingClientId(null);
@@ -377,7 +433,7 @@ export default function AdminDashboard() {
 
           <TabsContent value="leads">
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
-              <InterestSubmissionsManager />
+              <InterestSubmissionsManager clients={clients} />
             </Suspense>
           </TabsContent>
 
@@ -401,7 +457,12 @@ export default function AdminDashboard() {
 
           <TabsContent value="reports">
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
-              <ReportManager />
+              <div className="space-y-12">
+                <ComprehensiveAssessmentManager />
+                <div className="pt-8 border-t">
+                  <ReportManager />
+                </div>
+              </div>
             </Suspense>
           </TabsContent>
 

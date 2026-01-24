@@ -25,22 +25,10 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
     }
 
     if (requiredRole && userRole !== requiredRole) {
-        // If user has no role, they might be in a bad state or role fetch failed
+        // If user has no role, they likely haven't completed onboarding
         if (!userRole) {
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-background p-4">
-                    <h1 className="text-2xl font-bold text-destructive mb-2">Access Denied</h1>
-                    <p className="text-muted-foreground mb-4">
-                        Your account does not have a valid role assigned. Please contact support.
-                    </p>
-                    <button
-                        onClick={() => window.location.href = '/auth'}
-                        className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
-                    >
-                        Return to Login
-                    </button>
-                </div>
-            );
+            console.log("[ProtectedRoute] No role found for user, redirecting to onboarding");
+            return <Navigate to="/onboarding" replace />;
         }
 
         // Allow managers to access admin routes

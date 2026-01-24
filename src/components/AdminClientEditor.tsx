@@ -14,9 +14,18 @@ interface AdminClientEditorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: (newClientId?: string | null) => void;
+  initialData?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    age?: string;
+    gender?: string;
+    program_type?: string;
+    goals?: string;
+  };
 }
 
-export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: AdminClientEditorProps) {
+export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, initialData }: AdminClientEditorProps) {
   const { userRole } = useAuth();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -39,12 +48,30 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess }: A
   const canViewSensitiveInfo = userRole === "admin";
 
   useEffect(() => {
+    console.log("AdminClientEditor useEffect trigger. Open:", open, "ClientId:", clientId, "InitialData:", initialData);
     if (clientId && open) {
       fetchClientData();
     } else if (!clientId && open) {
-      resetForm();
+      if (initialData) {
+        setFormData(prev => ({
+          ...prev,
+          name: initialData.name || "",
+          email: initialData.email || "",
+          phone: initialData.phone || "",
+          age: initialData.age || "",
+          gender: initialData.gender || "",
+          program_type: initialData.program_type || "",
+          goals: initialData.goals || "",
+          password: "",
+          service_type: "",
+          target_kcal: "",
+          status: "active",
+        }));
+      } else {
+        resetForm();
+      }
     }
-  }, [clientId, open]);
+  }, [clientId, open, initialData]);
 
   const fetchClientData = async () => {
     if (!clientId) return;

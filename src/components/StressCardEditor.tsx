@@ -53,7 +53,7 @@ export function StressCardEditor({
 
       setCardData(data);
       setFormData(data.generated_content);
-      
+
       // Generate display name if not exists
       const cardWithDisplayName = data as any;
       if (!cardWithDisplayName.display_name && data.clients) {
@@ -62,7 +62,7 @@ export function StressCardEditor({
           .select('name')
           .eq('id', (await supabase.auth.getUser()).data.user?.id)
           .maybeSingle();
-        
+
         const adminName = profileData?.name || 'Admin';
         const generatedName = createDisplayName(
           (data.clients as any).name,
@@ -134,7 +134,7 @@ export function StressCardEditor({
 
       await handleSave();
       const { error } = await supabase.functions.invoke('send-card-to-client', {
-        body: { 
+        body: {
           card_id: cardId,
           display_name: displayName
         }
@@ -166,12 +166,12 @@ export function StressCardEditor({
       const newData = { ...prev };
       const keys = path.split('.');
       let current = newData;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
         if (!current[keys[i]]) current[keys[i]] = {};
         current = current[keys[i]];
       }
-      
+
       current[keys[keys.length - 1]] = value;
       return newData;
     });
@@ -196,7 +196,7 @@ export function StressCardEditor({
   const calculatePSSScore = () => {
     const responses = formData.form_responses || {};
     let total = 0;
-    
+
     total += parseInt(responses.pss_q1_upset_unexpectedly || '0');
     total += parseInt(responses.pss_q2_unable_to_control || '0');
     total += Math.max(0, parseInt(responses.pss_q3_nervous_stressed || '1') - 1);
@@ -207,26 +207,26 @@ export function StressCardEditor({
     total += Math.max(0, parseInt(responses.pss_q8_on_top_of_things || '1') - 1);
     total += Math.max(0, parseInt(responses.pss_q9_angered_outside_control || '1') - 1);
     total += Math.max(0, parseInt(responses.pss_q10_difficulties_piling_up || '1') - 1);
-    
+
     return total;
   };
 
   const interpretPSSScore = (score: number): { level: string; description: string; color: string; emoji: string } => {
-    if (score <= 13) return { 
-      level: "Low Stress", 
-      description: "You're managing stress well and maintaining good coping mechanisms", 
+    if (score <= 13) return {
+      level: "Low Stress",
+      description: "You're managing stress well and maintaining good coping mechanisms",
       color: "text-wellness-green bg-wellness-green/10 border-wellness-green/20",
       emoji: "😊"
     };
-    if (score <= 26) return { 
-      level: "Moderate Stress", 
-      description: "Some stressors are present - let's work on coping strategies", 
+    if (score <= 26) return {
+      level: "Moderate Stress",
+      description: "Some stressors are present - let's work on coping strategies",
       color: "text-accent-foreground bg-accent/10 border-accent/20",
       emoji: "😐"
     };
-    return { 
-      level: "High Stress", 
-      description: "Significant stress levels detected - professional support recommended", 
+    return {
+      level: "High Stress",
+      description: "Significant stress levels detected - professional support recommended",
       color: "text-destructive bg-destructive/10 border-destructive/20",
       emoji: "😰"
     };
@@ -242,7 +242,7 @@ export function StressCardEditor({
               Please wait while we prepare the stress card for review.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-1 flex-col items-center justify-center p-12 gap-4">
             <div className="relative">
               <Brain className="h-16 w-16 text-primary animate-pulse" />
@@ -341,7 +341,7 @@ export function StressCardEditor({
                     const percentage = ((scoreValue - (q.scale === '1-5' ? 1 : 0)) / (maxScore - (q.scale === '1-5' ? 1 : 0))) * 100;
                     const labels = q.scale === '0-4' ? pssLabels0to4 : pssLabels1to5;
                     const label = q.scale === '0-4' ? labels[scoreValue] : labels[scoreValue - 1];
-                    
+
                     return (
                       <div key={q.id} className="p-4 bg-background rounded-lg border border-border/50 transition-all duration-200 hover:border-accent/50 hover:shadow-sm">
                         <div className="flex items-start gap-3 mb-3">
@@ -355,8 +355,8 @@ export function StressCardEditor({
                               {label || 'Not answered'}
                             </Badge>
                           </div>
-                          <Select 
-                            value={scoreValue?.toString() || ''} 
+                          <Select
+                            value={scoreValue?.toString() || ''}
                             onValueChange={(value) => updateField(`form_responses.${q.field}`, parseInt(value))}
                           >
                             <SelectTrigger className="w-full">
@@ -389,8 +389,8 @@ export function StressCardEditor({
                   <h4 className="font-medium text-sm">Professional Analysis & Coping Strategies</h4>
                 </div>
                 <Textarea
-                  value={formData.assessment_text || ''}
-                  onChange={(e) => updateField('assessment_text', e.target.value)}
+                  value={formData.ai_analysis || ''}
+                  onChange={(e) => updateField('ai_analysis', e.target.value)}
                   className="min-h-[240px] transition-all duration-200 focus:ring-2 focus:ring-wellness-green/20 leading-relaxed"
                   placeholder="Provide personalized stress analysis, coping strategies, and recommendations..."
                 />
@@ -406,7 +406,7 @@ export function StressCardEditor({
                 <Sparkles className="h-5 w-5 text-wellness-mint" />
                 <h3 className="font-semibold text-lg">Client Preview</h3>
               </div>
-              
+
               <div className="p-6 bg-gradient-to-br from-card to-muted/20 rounded-2xl shadow-lg space-y-6 border border-border/50">
                 {/* Header */}
                 <div className="text-center pb-6 border-b border-border/50">
@@ -468,10 +468,10 @@ export function StressCardEditor({
                       const score = value !== undefined ? value : 0;
                       const maxScore = q.scale === '0-4' ? 4 : 5;
                       const percentage = (score / maxScore) * 100;
-                      const label = value !== undefined ? 
-                        (q.scale === '0-4' ? pssLabels0to4[value] : pssLabels1to5[value - 1]) 
+                      const label = value !== undefined ?
+                        (q.scale === '0-4' ? pssLabels0to4[value] : pssLabels1to5[value - 1])
                         : 'Not answered';
-                      
+
                       return (
                         <div key={q.id} className="p-4 bg-muted/30 rounded-lg border border-border/50">
                           <div className="flex items-start gap-2 mb-2">
@@ -554,7 +554,7 @@ export function StressCardEditor({
               This name will be shown to the client when downloading the assessment
             </p>
           </div>
-          
+
           <div className="flex items-center justify-between gap-3">
             <div className="text-sm text-muted-foreground flex items-center gap-2">
               {cardData?.status === 'edited' && (
@@ -568,17 +568,17 @@ export function StressCardEditor({
               <Button variant="ghost" onClick={() => onOpenChange(false)} className="transition-all duration-200 hover:bg-muted">
                 Cancel
               </Button>
-              <Button 
-                variant="outline" 
-                onClick={handleSave} 
+              <Button
+                variant="outline"
+                onClick={handleSave}
                 disabled={saving}
                 className="transition-all duration-200 hover:bg-wellness-mint/10 hover:border-wellness-mint hover:text-wellness-mint"
               >
                 {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Save Draft
               </Button>
-              <Button 
-                onClick={handleSend} 
+              <Button
+                onClick={handleSend}
                 disabled={sending || saving}
                 className="transition-all duration-200 bg-gradient-to-r from-wellness-green to-wellness-mint hover:shadow-lg"
               >

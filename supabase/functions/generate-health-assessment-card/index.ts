@@ -6,7 +6,7 @@ serve(async (req) => {
   // Get CORS headers based on origin
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
-  
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -80,17 +80,117 @@ serve(async (req) => {
     const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
     let aiAnalysis = '';
 
+    // Helper function to generate comprehensive fallback assessment
+    const generateFallbackAssessment = () => {
+      // Determine BMI category
+      const bmiValue = parseFloat(bmi);
+      let bmiCategory = '';
+      let bmiRecommendation = '';
+
+      if (bmiValue < 18.5) {
+        bmiCategory = 'Underweight';
+        bmiRecommendation = 'Focus on nutrient-dense foods and gradual weight gain through balanced meals.';
+      } else if (bmiValue >= 18.5 && bmiValue < 25) {
+        bmiCategory = 'Normal Weight';
+        bmiRecommendation = 'Maintain your current weight through balanced nutrition and regular activity.';
+      } else if (bmiValue >= 25 && bmiValue < 30) {
+        bmiCategory = 'Overweight';
+        bmiRecommendation = 'Consider a moderate calorie deficit with increased physical activity for gradual weight loss.';
+      } else {
+        bmiCategory = 'Obese';
+        bmiRecommendation = 'Consult with a healthcare provider for a comprehensive weight management plan.';
+      }
+
+      // Activity assessment
+      const activityMinutes = latestLog?.activity_minutes || 0;
+      let activityLevel = '';
+      let activityAdvice = '';
+
+      if (activityMinutes < 30) {
+        activityLevel = 'Sedentary';
+        activityAdvice = 'Aim to gradually increase to at least 30 minutes of moderate activity daily.';
+      } else if (activityMinutes >= 30 && activityMinutes < 60) {
+        activityLevel = 'Moderately Active';
+        activityAdvice = 'Good progress! Consider increasing to 60 minutes for optimal health benefits.';
+      } else {
+        activityLevel = 'Very Active';
+        activityAdvice = 'Excellent! Maintain this level and ensure adequate recovery and nutrition.';
+      }
+
+      // Hydration assessment
+      const waterIntake = latestLog?.water_intake || 2;
+      const waterAdvice = waterIntake < 2.5
+        ? 'Increase water intake to at least 2.5-3 liters daily for optimal hydration.'
+        : 'Good hydration levels. Continue maintaining adequate water intake.';
+
+      // Sleep assessment
+      const sleepHours = latestAssessment?.form_responses?.sleep_hours || 7;
+      const sleepAdvice = sleepHours < 7
+        ? 'Aim for 7-9 hours of quality sleep for better recovery and metabolism.'
+        : 'Good sleep duration. Focus on maintaining consistent sleep schedules.';
+
+      return `## Comprehensive Health Assessment
+
+### Current Health Status
+**Body Composition Analysis:**
+- **BMI:** ${bmi} (${bmiCategory})
+- **Current Weight:** ${weight} kg
+- **Ideal Weight Range:** ${idealWeight} kg
+- **Assessment:** ${bmiRecommendation}
+
+**Metabolic Profile:**
+- **Basal Metabolic Rate (BMR):** ${bmr} kcal/day
+- **Recommended Daily Calories:** ${Math.round(calorieIntake)} kcal
+- **Recommended Protein Intake:** ${proteinIntake}g/day
+
+### Lifestyle Pattern Analysis
+**Physical Activity:** ${activityLevel}
+- Current: ${activityMinutes} minutes/day
+- Recommendation: ${activityAdvice}
+
+**Hydration Status:**
+- Current Intake: ${waterIntake} liters/day
+- Recommendation: ${waterAdvice}
+
+**Sleep Quality:**
+- Current Duration: ${sleepHours} hours/night
+- Recommendation: ${sleepAdvice}
+
+**Stress Management:**
+- Reported Level: ${latestAssessment?.form_responses?.stress_level || 5}/10
+- Focus on stress-reduction techniques like meditation, yoga, or regular exercise.
+
+### Key Recommendations
+1. **Nutrition Focus:**
+   - Maintain balanced macronutrient distribution
+   - Ensure adequate protein intake (${proteinIntake}g daily)
+   - Include variety of fruits, vegetables, and whole grains
+   - Monitor portion sizes based on calorie target
+
+2. **Lifestyle Modifications:**
+   - ${activityAdvice}
+   - ${waterAdvice}
+   - ${sleepAdvice}
+   - Practice mindful eating and stress management
+
+3. **Health Goals:**
+   - Primary Goal: ${client.goals || 'General wellness and balanced nutrition'}
+   - Target Weight: ${idealWeight} kg
+   - Sustainable approach with gradual progress
+
+### Next Steps
+- Follow personalized diet plan when provided
+- Track daily food intake and activity levels
+- Schedule regular follow-up assessments
+- Monitor progress and adjust plan as needed
+
+---
+*Note: This assessment is generated using your health metrics. For personalized AI-powered insights, please try again later or contact your dietitian for a detailed consultation.*`;
+    };
+
     if (!OPENAI_API_KEY) {
-      console.warn('Missing OpenAI API Key, using mock response');
-      aiAnalysis = `## Health Assessment (Mock)
-Based on your metrics (BMI: ${bmi}), here is a preliminary analysis:
-1. **Activity**: You reported ${latestLog?.activity_minutes || 0} minutes of activity.
-2. **Hydration**: Intake is ${latestLog?.water_intake || 2} liters.
-3. **Recommendations**:
-    - Increase protein intake to reach ${proteinIntake}g.
-    - Mantain hydration levels.
-    
-*Note: This is a placeholder response as the AI service is currently unavailable.*`;
+      console.warn('Missing OpenAI API Key, using comprehensive fallback');
+      aiAnalysis = generateFallbackAssessment();
     } else {
       try {
         const prompt = `You are a professional dietitian creating a comprehensive health assessment card for ${client_name}.
@@ -139,6 +239,12 @@ Format as a detailed professional report suitable for a dietitian review.`;
         if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
           console.error('AI API error:', aiResponse.status, errorText);
+
+          // Check if it's a rate limit error
+          if (aiResponse.status === 429) {
+            console.warn('Rate limit hit, using comprehensive fallback assessment');
+          }
+
           throw new Error(`AI generation failed: ${aiResponse.status}`);
         }
 
@@ -146,12 +252,8 @@ Format as a detailed professional report suitable for a dietitian review.`;
         aiAnalysis = aiData.choices[0].message.content;
 
       } catch (aiError) {
-        console.error('AI Generation failed, falling back to mock:', aiError);
-        aiAnalysis = `## Health Assessment (Fallback)
-We encountered an issue generating your personalized report.
-- BMI: ${bmi}
-- Goal: ${client.goals || 'Wellness'}
-- Maintain a balanced diet and regular exercise.`;
+        console.error('AI Generation failed, using comprehensive fallback:', aiError);
+        aiAnalysis = generateFallbackAssessment();
       }
     }
 

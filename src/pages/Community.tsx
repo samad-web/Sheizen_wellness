@@ -359,6 +359,15 @@ export default function Community() {
               <h1 className="text-xl font-bold">Community</h1>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate(userRole === 'admin' ? '/admin' : '/dashboard')}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Home
+              </Button>
               {client && (
                 <CommunityNotifications
                   clientId={client.id}

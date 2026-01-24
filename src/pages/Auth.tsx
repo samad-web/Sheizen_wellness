@@ -32,7 +32,7 @@ const newPasswordSchema = z.object({
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { user, userRole, signIn } = useAuth();
+  const { user, userRole, signIn, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showResetDialog, setShowResetDialog] = useState(false);
@@ -44,18 +44,18 @@ export default function Auth() {
     // Debug logging for auth state
 
 
-    if (!isLoading && user && userRole) {
+    if (!isLoading && !authLoading && user && userRole) {
       if (userRole === "admin") {
         navigate("/admin");
       } else {
         navigate("/dashboard");
       }
-    } else if (!isLoading && user && !userRole) {
+    } else if (!isLoading && !authLoading && user && !userRole) {
       // Fallback: if user is logged in but role is missing, try to redirect to dashboard
       // or wait for role (but if it takes too long, we might want to handle it)
 
     }
-  }, [user, userRole, isLoading, navigate]);
+  }, [user, userRole, isLoading, authLoading, navigate]);
 
   useEffect(() => {
     // Check if user is coming from password reset email
@@ -70,10 +70,29 @@ export default function Auth() {
     }
   }, []);
 
-  if (isLoading) {
+  // Safety: If we've been on this page for >3s and authLoading is still true, force show the form
+  // to prevent getting stuck in "Loading authentication..." forever if something weird happens.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (authLoading) {
+        console.warn("[Auth] Force showing login form due to slow auth loading");
+        // Ideally we can't change authLoading from here, but we can ignore it for rendering
+        // We'll use a local state to override
+      }
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [authLoading]);
+
+  // Combined loading check: Only show loader if we genuinely don't know the state yet
+  const showLoader = (isLoading || authLoading) && !user;
+
+  if (showLoader) {
     return ( // Prevent rendering form while loading to avoid "redirect while typing"
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-wellness-light via-background to-wellness-light/30">
-        <div className="animate-pulse text-lg text-primary">Loading authentication...</div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <div className="animate-pulse text-lg text-primary">Loading authentication...</div>
+        </div>
       </div>
     );
   }

@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders } from "../_shared/cors.ts";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
 
 serve(async (req) => {
-  // Get CORS headers based on origin
-  const origin = req.headers.get('origin');
-  const corsHeaders = getCorsHeaders(origin);
 
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -72,54 +73,45 @@ serve(async (req) => {
 
     console.log('Request marked as completed (attempted):', request_id);
 
-    // Trigger appropriate AI generation based on type
-    let aiResult = { data: null, error: null };
-    let functionName = '';
+    // Insert assessment card directly into pending_review_cards
+    const cardType = assessment_type === 'health_assessment' ? 'health_assessment' :
+      assessment_type === 'stress_assessment' ? 'stress_card' :
+        'sleep_card';
 
-    switch (assessment_type) {
-      case 'health_assessment':
-        functionName = 'generate-health-assessment';
-        break;
-      case 'stress_assessment':
-        functionName = 'generate-stress-assessment';
-        break;
-      case 'sleep_assessment':
-        functionName = 'generate-sleep-assessment';
-        break;
-      default:
-        console.warn(`Unknown assessment type: ${assessment_type}`);
+    console.log(`Creating ${cardType} card for client ${client_id}...`);
+
+    // Create proper content structure that matches the view components
+    const generatedContent: any = {
+      client_name: client_name,
+      form_responses: form_data,
+      summary: `Assessment submitted by ${client_name}. Awaiting admin review and analysis.`,
+      ai_analysis: `This ${cardType.replace('_', ' ')} has been submitted and is pending professional review.`,
+      recommendations: [
+        "Your assessment has been received",
+        "A detailed analysis will be provided soon",
+        "Please check back for personalized recommendations"
+      ]
+    };
+
+    const { data: insertedCard, error: insertError } = await supabase
+      .from('pending_review_cards')
+      .insert({
+        client_id: client_id,
+        card_type: cardType,
+        generated_content: generatedContent,
+        status: 'pending',
+        workflow_stage: 'client_submitted',
+        ai_generated_at: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('Error inserting assessment card:', insertError);
+      throw new Error(`Failed to create assessment card: ${insertError.message}`);
     }
 
-    if (functionName) {
-      console.log(`Invoking ${functionName}...`);
-      try {
-        // We pass the MAPPED data
-        aiResult = await supabase.functions.invoke(functionName, {
-          body: { client_id, client_name, form_data: mappedFormData }
-        });
-
-        if (aiResult.error) {
-          console.error('Error generating AI card (nested invoke):', aiResult.error);
-          throw new Error(`Assessment saved, but AI generation invocation failed: ${aiResult.error.message || 'Unknown error'}`);
-        } else if (aiResult.data && aiResult.data.success === false) {
-          console.error('Error in AI generation function:', aiResult.data.error);
-          throw new Error(`Assessment saved, but AI generation failed: ${aiResult.data.error}`);
-        } else {
-          console.log('AI card generated successfully');
-        }
-      } catch (invokeError: any) {
-        console.error('Exception invoking nested function:', invokeError);
-        // We want to alert the user that the AI part failed, even if the request was saved
-        return new Response(
-          JSON.stringify({
-            success: false,
-            message: 'Assessment saved, but AI generation failed. Please contact support.',
-            error: invokeError.message || 'AI Generation Error'
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
+    console.log('Assessment card created successfully:', insertedCard.id);
 
     return new Response(
       JSON.stringify({

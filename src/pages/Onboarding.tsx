@@ -27,7 +27,7 @@ const onboardingSchema = z.object({
 export default function Onboarding() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, checkUserRole } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -139,7 +139,7 @@ export default function Onboarding() {
       // Insert measurements
       if (currentClientId && (data.arm || data.chest || data.waist || data.hip || data.thigh)) {
         const { error: measError } = await supabase
-          .from("client_measurements")
+          .from("client_measurements" as any)
           .insert({
             client_id: currentClientId,
             arm_inches: data.arm,
@@ -168,6 +168,11 @@ export default function Onboarding() {
       }
 
       toast.success("Profile setup complete!");
+
+      // Refresh role so dashboard access works
+      if (checkUserRole) {
+        await checkUserRole();
+      }
 
       // If admin, go back to dashboard, else go to user dashboard
       if (urlClientId) {
