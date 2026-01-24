@@ -178,6 +178,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         console.log("[AuthContext] No optimistic role found. Fetching (Blocking)...");
                         const verifiedRole = await fetchUserRole(currentSession.user.id);
                         if (verifiedRole) {
+                            console.log("[AuthContext] Setting verified role:", verifiedRole);
                             setUserRole(verifiedRole);
                             localStorage.setItem("app-user-role", verifiedRole);
                             await supabase.auth.updateUser({ data: { role: verifiedRole } });
@@ -185,6 +186,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             setUserRole(null);
                         }
                         setLoading(false);
+                    }
+
+                    // Background verification: Always verify role against DB if we have a session
+                    // This handles cases where database role changed but metadata is stale.
+                    if (currentSession.user.id) {
+                        fetchUserRole(currentSession.user.id).then(async (verifiedRole) => {
+                            if (verifiedRole && verifiedRole !== foundRole) {
+                                console.log("[AuthContext] Role mismatch detected. Updating to:", verifiedRole);
+                                setUserRole(verifiedRole);
+                                localStorage.setItem("app-user-role", verifiedRole);
+                                await supabase.auth.updateUser({ data: { role: verifiedRole } });
+                            }
+                        }).catch(err => console.error("Background role refresh failed", err));
                     }
                 } catch (roleError) {
                     console.error("[AuthContext] Error determining role:", roleError);
@@ -359,6 +373,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch (error) {
             console.error("Unexpected error during sign out:", error);
         } finally {
+            localStorage.removeItem("app-user-role");
             clearStoredSession();
             setUser(null);
             setSession(null);

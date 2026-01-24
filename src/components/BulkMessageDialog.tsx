@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Search, Users, MessageSquare, Send, Check, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { sendBulkMessage } from "@/lib/messages";
 import { toast } from "@/hooks/use-toast";
 import type { Tables } from "@/integrations/supabase/types";
@@ -35,6 +36,9 @@ export function BulkMessageDialog({ open, onOpenChange, clients, onSuccess }: Bu
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
+  const { userRole } = useAuth();
+
+  const canViewPersonalInfo = userRole === "admin";
 
   useEffect(() => {
     if (open) {
@@ -162,7 +166,7 @@ export function BulkMessageDialog({ open, onOpenChange, clients, onSuccess }: Bu
   const getPreviewMessage = (client: Client) => {
     const template = templates.find(t => t.id === selectedTemplate);
     const baseMessage = customMessage.trim() || template?.template || "";
-    
+
     return baseMessage
       .replace(/\{name\}/g, client.name)
       .replace(/\{program_type\}/g, client.program_type?.replace("_", " ") || "your program")
@@ -227,9 +231,8 @@ export function BulkMessageDialog({ open, onOpenChange, clients, onSuccess }: Bu
                   {filteredClients.map((client) => (
                     <Card
                       key={client.id}
-                      className={`cursor-pointer transition-colors ${
-                        selectedClients.has(client.id) ? "border-primary bg-primary/5" : ""
-                      }`}
+                      className={`cursor-pointer transition-colors ${selectedClients.has(client.id) ? "border-primary bg-primary/5" : ""
+                        }`}
                       onClick={() => toggleClient(client.id)}
                     >
                       <CardContent className="p-4 flex items-center gap-3">
@@ -239,7 +242,7 @@ export function BulkMessageDialog({ open, onOpenChange, clients, onSuccess }: Bu
                         />
                         <div className="flex-1">
                           <div className="font-medium">{client.name}</div>
-                          <div className="text-sm text-muted-foreground">{client.email}</div>
+                          <div className="text-sm text-muted-foreground">{canViewPersonalInfo ? client.email : "***@***.com"}</div>
                         </div>
                         <Badge variant={client.status === "active" ? "default" : "secondary"}>
                           {client.status}
@@ -359,9 +362,8 @@ export function BulkMessageDialog({ open, onOpenChange, clients, onSuccess }: Bu
 
               {result && (
                 <div className="space-y-4 py-8 text-center">
-                  <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${
-                    result.failed === 0 ? "bg-green-100" : "bg-yellow-100"
-                  }`}>
+                  <div className={`w-16 h-16 rounded-full mx-auto flex items-center justify-center ${result.failed === 0 ? "bg-green-100" : "bg-yellow-100"
+                    }`}>
                     {result.failed === 0 ? (
                       <Check className="h-8 w-8 text-green-600" />
                     ) : (

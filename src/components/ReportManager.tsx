@@ -7,6 +7,7 @@ import { Plus, FileText, Edit, Trash2, Eye } from "lucide-react";
 import { ReportEditor } from "./ReportEditor";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import {
     AlertDialog,
     AlertDialogAction,
@@ -23,6 +24,9 @@ import { formatDate } from "@/lib/formatters";
 export function ReportManager() {
     const [editorOpen, setEditorOpen] = useState(false);
     const [selectedReportId, setSelectedReportId] = useState<string | null>(null);
+    const { userRole } = useAuth();
+
+    const canViewPersonalInfo = userRole === "admin";
 
     const { data: reports, refetch, isLoading } = useQuery({
         queryKey: ['weekly-reports'],

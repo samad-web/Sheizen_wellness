@@ -148,7 +148,7 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
           goals: formData.goals || null,
         };
 
-        if (canViewSensitiveInfo) {
+        if (userRole === "admin") {
           updatePayload.email = formData.email;
           updatePayload.phone = formData.phone;
         }
@@ -273,12 +273,12 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
               <Input
                 id="email"
                 type="email"
-                // Mask email if editing existing client AND user cannot view sensitive info
-                value={clientId && !canViewSensitiveInfo ? "***@***.com" : formData.email}
+                // Mask email if editing existing client AND user is not admin
+                value={clientId && userRole !== "admin" ? "***@***.com" : formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
                 // Disable if editing and restricted (cannot edit email if you can't see it)
-                disabled={!!clientId || (!!clientId && !canViewSensitiveInfo)}
+                disabled={!!clientId && userRole !== "admin"}
               />
             </div>
           </div>
@@ -303,12 +303,12 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
               <Label htmlFor="phone">Phone *</Label>
               <Input
                 id="phone"
-                // Mask phone if editing existing client AND user cannot view sensitive info
-                value={clientId && !canViewSensitiveInfo ? "***-***-****" : formData.phone}
+                // Mask phone if editing existing client AND user is not admin
+                value={clientId && userRole !== "admin" ? "**********" : formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 required
                 // Disable if editing and restricted
-                disabled={!!clientId && !canViewSensitiveInfo}
+                disabled={!!clientId && userRole !== "admin"}
               />
             </div>
 
@@ -317,8 +317,9 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
               <Input
                 id="age"
                 type="number"
-                value={formData.age}
+                value={clientId && userRole !== "admin" ? "" : formData.age}
                 onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                disabled={!!clientId && userRole !== "admin"}
               />
             </div>
           </div>
@@ -326,27 +327,37 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="gender">Gender</Label>
-              <Select value={formData.gender} onValueChange={(value) => setFormData({ ...formData, gender: value })}>
+              <Select
+                value={clientId && userRole !== "admin" ? "hidden" : formData.gender}
+                onValueChange={(value) => setFormData({ ...formData, gender: value })}
+                disabled={!!clientId && userRole !== "admin"}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select gender" />
+                  <SelectValue placeholder={clientId && userRole !== "admin" ? "Restricted" : "Select gender"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
+                  <SelectItem value="hidden" className="hidden">Restricted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
               <Label htmlFor="service_type">Service Type</Label>
-              <Select value={formData.service_type} onValueChange={(value) => setFormData({ ...formData, service_type: value })}>
+              <Select
+                value={clientId && userRole !== "admin" ? "hidden" : formData.service_type}
+                onValueChange={(value) => setFormData({ ...formData, service_type: value })}
+                disabled={!!clientId && userRole !== "admin"}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select service type" />
+                  <SelectValue placeholder={clientId && userRole !== "admin" ? "Restricted" : "Select service type"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="consultation">One-Time Nutrition Consultation</SelectItem>
                   <SelectItem value="hundred_days">100-Days Nutrition Program</SelectItem>
+                  <SelectItem value="hidden" className="hidden">Restricted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -355,9 +366,13 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="program_type">Health Goal</Label>
-              <Select value={formData.program_type} onValueChange={(value) => setFormData({ ...formData, program_type: value })}>
+              <Select
+                value={clientId && userRole !== "admin" ? "hidden" : formData.program_type}
+                onValueChange={(value) => setFormData({ ...formData, program_type: value })}
+                disabled={!!clientId && userRole !== "admin"}
+              >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select health goal" />
+                  <SelectValue placeholder={clientId && userRole !== "admin" ? "Restricted" : "Select health goal"} />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="weight_loss">Weight Loss</SelectItem>
@@ -369,6 +384,7 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
                   <SelectItem value="cholesterol">Cholesterol</SelectItem>
                   <SelectItem value="general_wellness">General Wellness</SelectItem>
                   <SelectItem value="others">Others</SelectItem>
+                  <SelectItem value="hidden" className="hidden">Restricted</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -390,8 +406,9 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
               <Input
                 id="target_kcal"
                 type="number"
-                value={formData.target_kcal}
+                value={clientId && userRole !== "admin" ? "" : formData.target_kcal}
                 onChange={(e) => setFormData({ ...formData, target_kcal: e.target.value })}
+                disabled={!!clientId && userRole !== "admin"}
               />
             </div>
           </div>
@@ -414,9 +431,10 @@ export function AdminClientEditor({ clientId, open, onOpenChange, onSuccess, ini
             <Label htmlFor="goals">Goals</Label>
             <Textarea
               id="goals"
-              value={formData.goals}
+              value={clientId && userRole !== "admin" ? "Restricted" : formData.goals}
               onChange={(e) => setFormData({ ...formData, goals: e.target.value })}
               rows={3}
+              disabled={!!clientId && userRole !== "admin"}
             />
           </div>
 

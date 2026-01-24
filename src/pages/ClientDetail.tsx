@@ -444,17 +444,26 @@ const ClientDetail = () => {
           <CardHeader>
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
               <div>
-                <CardTitle className="text-2xl sm:text-3xl">{client.name}</CardTitle>
+                <div className="flex items-center gap-3">
+                  <CardTitle className="text-2xl sm:text-3xl">{client.name}</CardTitle>
+                  <Badge variant="outline" className={
+                    userRole === "admin"
+                      ? "bg-wellness-green/10 text-wellness-green border-wellness-green/20"
+                      : "bg-wellness-amber/10 text-wellness-amber border-wellness-amber/20"
+                  }>
+                    {userRole?.toUpperCase()}
+                  </Badge>
+                </div>
                 <CardDescription className="mt-2 space-y-1">
                   <div className="flex items-center gap-2">
                     <Mail className="h-4 w-4" />
                     <span className="break-all">
-                      {canViewPersonalInfo ? client.email : "***@***.com"}
+                      {userRole === "admin" ? client.email : "***@***.com"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
-                    {canViewPersonalInfo ? client.phone : "***-***-****"}
+                    {userRole === "admin" ? client.phone : "***-***-****"}
                   </div>
                 </CardDescription>
               </div>
@@ -467,8 +476,8 @@ const ClientDetail = () => {
             {client.service_type && (
               <div className="mb-4 pb-4 border-b">
                 <p className="text-sm text-muted-foreground mb-2">Service Type</p>
-                <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm border ${getServiceTypeBadgeColor(client.service_type)}`}>
-                  {formatServiceType(client.service_type)}
+                <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm border ${userRole === "admin" ? getServiceTypeBadgeColor(client.service_type) : "bg-muted text-muted-foreground"}`}>
+                  {userRole === "admin" ? formatServiceType(client.service_type) : "Restricted Access"}
                 </span>
               </div>
             )}
@@ -477,7 +486,7 @@ const ClientDetail = () => {
                 <Target className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm text-muted-foreground">Target Kcal</p>
-                  <p className="font-semibold">{client.target_kcal || "—"}</p>
+                  <p className="font-semibold">{userRole === "admin" ? (client.target_kcal || "—") : "****"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -485,7 +494,7 @@ const ClientDetail = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Last Weight</p>
                   <p className="font-semibold">
-                    {client.last_weight ? `${client.last_weight} kg` : "—"}
+                    {userRole === "admin" ? (client.last_weight ? `${client.last_weight} kg` : "—") : "** kg"}
                   </p>
                 </div>
               </div>
@@ -494,16 +503,16 @@ const ClientDetail = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Age</p>
                   <p className="font-semibold text-muted-foreground">
-                    {canViewPersonalInfo ? (client.age || "—") : "***"}
+                    {userRole === "admin" ? (client.age || "—") : "***"}
                   </p>
                 </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Program</p>
-                <p className="font-semibold capitalize">{client.program_type?.replace("_", " ") || "—"}</p>
+                <p className="font-semibold capitalize">{userRole === "admin" ? (client.program_type?.replace("_", " ") || "—") : "**********"}</p>
               </div>
             </div>
-            {client.goals && canViewPersonalInfo && (
+            {client.goals && userRole === "admin" && (
               <div className="mt-4 pt-4 border-t">
                 <p className="text-sm text-muted-foreground mb-1">Goals</p>
                 <p>{client.goals}</p>

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 import { Loader2, Mail, Phone, User, Calendar, MoreHorizontal, FileText, CheckCircle, XCircle, Clock, MessageCircle, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -71,6 +72,9 @@ export function InterestSubmissionsManager({ clients }: { clients?: Client[] }) 
   const [loading, setLoading] = useState(true);
   const [filterHealthGoal, setFilterHealthGoal] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const { userRole } = useAuth();
+
+  const canViewPersonalInfo = userRole === "admin";
 
   // Assessment Form State
   const [assessmentClientId, setAssessmentClientId] = useState<string | undefined>(undefined);
@@ -331,11 +335,11 @@ export function InterestSubmissionsManager({ clients }: { clients?: Client[] }) 
                             <div className="flex flex-col gap-1 text-sm">
                               <div className="flex items-center gap-1">
                                 <Phone className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs">{submission.phone}</span>
+                                <span className="text-xs">{userRole === "admin" ? submission.phone : "**********"}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <Mail className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs">{submission.email}</span>
+                                <span className="text-xs">{userRole === "admin" ? submission.email : "**********"}</span>
                               </div>
                             </div>
                           </TableCell>
@@ -441,37 +445,42 @@ export function InterestSubmissionsManager({ clients }: { clients?: Client[] }) 
                   </Table>
                 </div>
               </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </div >
+          )
+          }
+        </CardContent >
+      </Card >
 
       {/* Assessment Form Global Instance */}
-      {clients && (
-        <ComprehensiveAssessmentForm
-          clients={clients}
-          initialClientId={assessmentClientId}
-          initialData={assessmentClientId ? undefined : clientEditorInitialData}
-          open={assessmentOpen}
-          onOpenChange={setAssessmentOpen}
-        />
-      )}
+      {
+        clients && (
+          <ComprehensiveAssessmentForm
+            clients={clients}
+            initialClientId={assessmentClientId}
+            initialData={assessmentClientId ? undefined : clientEditorInitialData}
+            open={assessmentOpen}
+            onOpenChange={setAssessmentOpen}
+          />
+        )
+      }
 
       {/* Client Editor for Auto-Conversion */}
-      {clientEditorOpen && (
-        <AdminClientEditor
-          open={clientEditorOpen}
-          onOpenChange={setClientEditorOpen}
-          initialData={clientEditorInitialData}
-          onSuccess={(newClientId) => {
-            if (newClientId) {
-              // If client created successfully, immediately open assessment for them
-              setAssessmentClientId(newClientId);
-              setAssessmentOpen(true);
-            }
-          }}
-        />
-      )}
-    </div>
+      {
+        clientEditorOpen && (
+          <AdminClientEditor
+            open={clientEditorOpen}
+            onOpenChange={setClientEditorOpen}
+            initialData={clientEditorInitialData}
+            onSuccess={(newClientId) => {
+              if (newClientId) {
+                // If client created successfully, immediately open assessment for them
+                setAssessmentClientId(newClientId);
+                setAssessmentOpen(true);
+              }
+            }}
+          />
+        )
+      }
+    </div >
   );
 }

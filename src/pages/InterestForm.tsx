@@ -141,7 +141,7 @@ export default function InterestForm() {
                 <Input
                   id="name"
                   type="text"
-                  placeholder="John Doe"
+                  placeholder="Your Name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   required
@@ -192,7 +192,7 @@ export default function InterestForm() {
                 <Input
                   id="phone"
                   type="tel"
-                  placeholder="+91 9876543210"
+                  placeholder="+91 "
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                   required
@@ -207,7 +207,7 @@ export default function InterestForm() {
                 <Input
                   id="email"
                   type="email"
-                  placeholder="john@example.com"
+                  placeholder="name@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   required

@@ -148,7 +148,7 @@ export default function SetupAdmin() {
                   <FormItem>
                     <FormLabel>Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="John Doe" {...field} />
+                      <Input placeholder="Your Name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -176,7 +176,7 @@ export default function SetupAdmin() {
                   <FormItem>
                     <FormLabel>Phone</FormLabel>
                     <FormControl>
-                      <Input placeholder="+1234567890" {...field} />
+                      <Input placeholder="+91 " {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

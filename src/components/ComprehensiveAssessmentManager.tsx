@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatDate } from "@/lib/formatters";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/contexts/AuthContext";
 import { ComprehensiveAssessmentForm } from "./ComprehensiveAssessmentForm";
 import { ComprehensiveAssessmentReport } from "./ComprehensiveAssessmentReport";
 
@@ -30,6 +31,9 @@ export function ComprehensiveAssessmentManager() {
     const [reportOpen, setReportOpen] = useState(false);
     const [selectedReportData, setSelectedReportData] = useState<any>(null);
     const [selectedClientName, setSelectedClientName] = useState("");
+    const { userRole } = useAuth();
+
+    const canViewPersonalInfo = userRole === "admin";
 
     const { data: assessments, isLoading, refetch } = useQuery({
         queryKey: ['comprehensive-assessments'],
@@ -148,7 +152,7 @@ export function ComprehensiveAssessmentManager() {
                                             <div>
                                                 Created: {formatDate(assessment.created_at)}
                                             </div>
-                                            {assessment.clients?.email && (
+                                            {assessment.clients?.email && userRole === "admin" && (
                                                 <div className="truncate max-w-[200px]">
                                                     {assessment.clients.email}
                                                 </div>

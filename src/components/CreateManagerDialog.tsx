@@ -98,7 +98,7 @@ export function CreateManagerDialog({ open, onOpenChange, onSuccess }: CreateMan
                             id="name"
                             value={formData.name}
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            placeholder="John Doe"
+                            placeholder="Your Name"
                             required
                         />
                     </div>
@@ -121,7 +121,7 @@ export function CreateManagerDialog({ open, onOpenChange, onSuccess }: CreateMan
                             id="phone"
                             value={formData.phone}
                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                            placeholder="+1234567890"
+                            placeholder="+91 "
                             required
                         />
                     </div>

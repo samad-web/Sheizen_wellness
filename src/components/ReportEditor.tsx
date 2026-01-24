@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ReportEditorProps {
     reportId?: string | null;
@@ -25,6 +26,9 @@ export function ReportEditor({ reportId, open, onOpenChange, onSuccess }: Report
         content: "",
         status: "draft",
     });
+    const { userRole } = useAuth();
+
+    const canViewPersonalInfo = userRole === "admin";
 
     // Fetch clients for the dropdown
     const { data: clients } = useQuery({
@@ -156,7 +160,7 @@ export function ReportEditor({ reportId, open, onOpenChange, onSuccess }: Report
                                 <SelectContent>
                                     {clients?.map((client) => (
                                         <SelectItem key={client.id} value={client.id}>
-                                            {client.name}
+                                            {client.name} {canViewPersonalInfo ? `(${client.email})` : ""}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

@@ -24,6 +24,7 @@ const ClientEditHealthForm = lazy(() => import("./components/client/ClientEditHe
 const Community = lazy(() => import("./pages/Community"));
 const SupabaseConnectionTest = lazy(() => import("./components/SupabaseConnectionTest"));
 const DatabaseConnectionTest = lazy(() => import("./components/DatabaseConnectionTest").then(m => ({ default: m.DatabaseConnectionTest })));
+import Footer from "@/components/Footer";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,80 +47,85 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <Suspense fallback={
-              <div className="min-h-screen flex items-center justify-center bg-background">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                  <p className="text-muted-foreground animate-pulse">Loading wellness experience...</p>
-                </div>
-              </div>
-            }>
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/setup-admin" element={<SetupAdmin />} />
-                <Route path="/onboarding" element={
-                  <ProtectedRoute>
-                    <Onboarding />
-                  </ProtectedRoute>
-                } />
-                <Route path="/dashboard" element={
-                  <ProtectedRoute requiredRole="client">
-                    <ClientDashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/client/:id" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <ClientDetail />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/assessments/:id/edit-sleep" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminEditSleepAssessment />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/assessments/:id/edit-stress" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminEditStressAssessment />
-                  </ProtectedRoute>
-                } />
-                <Route path="/admin/assessments/:id/edit-health" element={
-                  <ProtectedRoute requiredRole="admin">
-                    <AdminEditHealthAssessment />
-                  </ProtectedRoute>
-                } />
-                <Route path="/client/assessments/:id/edit-sleep" element={
-                  <ProtectedRoute requiredRole="client">
-                    <ClientEditSleepForm />
-                  </ProtectedRoute>
-                } />
-                <Route path="/client/assessments/:id/edit-stress" element={
-                  <ProtectedRoute requiredRole="client">
-                    <ClientEditStressForm />
-                  </ProtectedRoute>
-                } />
-                <Route path="/client/assessments/:id/edit-health" element={
-                  <ProtectedRoute requiredRole="client">
-                    <ClientEditHealthForm />
-                  </ProtectedRoute>
-                } />
-                <Route path="/interest" element={<InterestForm />} />
-                <Route path="/community" element={
-                  <ProtectedRoute>
-                    <Community />
-                  </ProtectedRoute>
-                } />
-                <Route path="/test-connection" element={<SupabaseConnectionTest />} />
-                <Route path="/test-db" element={<DatabaseConnectionTest />} />
-                {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </Suspense>
+            <div className="flex flex-col min-h-screen">
+              <main className="flex-grow">
+                <Suspense fallback={
+                  <div className="min-h-screen flex items-center justify-center bg-background">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      <p className="text-muted-foreground animate-pulse">Loading wellness experience...</p>
+                    </div>
+                  </div>
+                }>
+                  <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/setup-admin" element={<SetupAdmin />} />
+                    <Route path="/onboarding" element={
+                      <ProtectedRoute>
+                        <Onboarding />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute requiredRole="client">
+                        <ClientDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin" element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminDashboard />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin/client/:id" element={
+                      <ProtectedRoute requiredRole="admin">
+                        <ClientDetail />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin/assessments/:id/edit-sleep" element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminEditSleepAssessment />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin/assessments/:id/edit-stress" element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminEditStressAssessment />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/admin/assessments/:id/edit-health" element={
+                      <ProtectedRoute requiredRole="admin">
+                        <AdminEditHealthAssessment />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/client/assessments/:id/edit-sleep" element={
+                      <ProtectedRoute requiredRole="client">
+                        <ClientEditSleepForm />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/client/assessments/:id/edit-stress" element={
+                      <ProtectedRoute requiredRole="client">
+                        <ClientEditStressForm />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/client/assessments/:id/edit-health" element={
+                      <ProtectedRoute requiredRole="client">
+                        <ClientEditHealthForm />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/interest" element={<InterestForm />} />
+                    <Route path="/community" element={
+                      <ProtectedRoute>
+                        <Community />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/test-connection" element={<SupabaseConnectionTest />} />
+                    <Route path="/test-db" element={<DatabaseConnectionTest />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </Suspense>
+              </main>
+              <Footer />
+            </div>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

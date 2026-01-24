@@ -194,7 +194,16 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-3">
             <CustomLogo className="w-12 h-12" />
             <div>
-              <h1 className="text-3xl font-bold">Welcome {userRole === "manager" ? "Manager" : "Admin"}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-3xl font-bold">Welcome {userRole === "manager" ? "Manager" : "Admin"}</h1>
+                <Badge variant="outline" className={
+                  userRole === "admin"
+                    ? "bg-wellness-green/10 text-wellness-green border-wellness-green/20"
+                    : "bg-wellness-amber/10 text-wellness-amber border-wellness-amber/20"
+                }>
+                  {userRole?.toUpperCase()}
+                </Badge>
+              </div>
               <p className="text-muted-foreground">Manage your clients and programs</p>
             </div>
           </div>
@@ -375,27 +384,27 @@ export default function AdminDashboard() {
                                     </Badge>
                                   </h3>
                                   <p className="text-sm text-muted-foreground truncate">
-                                    {canViewClientDetails ? client.email : "***@***.com"}
+                                    {userRole === "admin" ? client.email : "***@***.com"}
                                   </p>
                                 </div>
                               </div>
                               <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <span>📱</span>
-                                  <span>{canViewClientDetails ? client.phone : "***-***-****"}</span>
+                                  <span>{userRole === "admin" ? client.phone : "**********"}</span>
                                 </div>
                                 <div>
-                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${getServiceTypeBadgeColor(client.service_type)}`}>
-                                    {formatServiceType(client.service_type)}
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${userRole === "admin" ? getServiceTypeBadgeColor(client.service_type) : "bg-muted text-muted-foreground"}`}>
+                                    {userRole === "admin" ? formatServiceType(client.service_type) : "Restricted"}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <span>🎯</span>
-                                  <span className="capitalize">{client.program_type?.replace("_", " ")}</span>
+                                  <span className="capitalize">{userRole === "admin" ? client.program_type?.replace("_", " ") : "*************"}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <span>⚖️</span>
-                                  <span>{client.last_weight ? `${client.last_weight} kg` : "Not set"}</span>
+                                  <span>{userRole === "admin" ? (client.last_weight ? `${client.last_weight} kg` : "Not set") : "** kg"}</span>
                                 </div>
                               </div>
                             </div>
@@ -469,6 +478,15 @@ export default function AdminDashboard() {
 
         </Tabs>
 
+        <CreateManagerDialog
+          open={managerDialogOpen}
+          onOpenChange={setManagerDialogOpen}
+          onSuccess={() => {
+            toast.success("Manager created successfully");
+            refetchDashboard();
+          }}
+        />
+
         <AdminClientEditor
           clientId={editingClientId}
           open={editorOpen}
@@ -527,14 +545,6 @@ export default function AdminDashboard() {
           />
         )}
 
-        {/* Create Manager Dialog */}
-        <CreateManagerDialog
-          open={managerDialogOpen}
-          onOpenChange={setManagerDialogOpen}
-          onSuccess={() => {
-            toast.success("Manager created successfully");
-          }}
-        />
       </div>
     </div>
   );
