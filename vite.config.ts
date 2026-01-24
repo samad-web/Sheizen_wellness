@@ -15,7 +15,26 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom"],
   },
-  optimizeDeps: {
-    include: ["react", "react-dom"],
+  build: {
+    chunkSizeWarningLimit: 2000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-tanstack': ['@tanstack/react-query'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-lucide': ['lucide-react'],
+          'vendor-recharts': ['recharts'],
+          'vendor-xlsx': ['xlsx'],
+          'vendor-ui-core': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-select',
+            '@radix-ui/react-label',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-popover'
+          ],
+        },
+      },
+    },
   },
 }));
