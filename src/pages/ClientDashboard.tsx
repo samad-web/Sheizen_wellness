@@ -24,7 +24,8 @@ import {
   HelpCircle,
   AlertCircle,
   Image as ImageIcon,
-  X
+  X,
+  Eye
 } from "lucide-react";
 import { CustomLogo } from "@/components/CustomLogo";
 import { MealPhotoUpload } from "@/components/MealPhotoUpload";
@@ -102,6 +103,8 @@ export default function ClientDashboard() {
   const [sendingQuery, setSendingQuery] = useState(false);
   const [urgentQueryImage, setUrgentQueryImage] = useState<File | null>(null);
   const [urgentQueryImagePreview, setUrgentQueryImagePreview] = useState<string | null>(null);
+
+  const [selectedReportCard, setSelectedReportCard] = useState<any>(null);
 
   const fetchClientData = async () => {
     if (!user?.id) throw new Error("No user");
@@ -994,7 +997,7 @@ export default function ClientDashboard() {
                     </div>
 
                     {/* Weight Logging */}
-                    <div>
+                    <div className="mb-4">
                       <Label className="mb-2 block">Log Weight</Label>
                       <div className="flex gap-2">
                         <Input
@@ -1023,6 +1026,19 @@ export default function ClientDashboard() {
                           Log
                         </Button>
                       </div>
+                    </div>
+
+                    {/* Meal Logging */}
+                    <div className="pt-4 border-t">
+                      {clientData?.id && (
+                        <MealPhotoUpload
+                          clientId={clientData.id}
+                          onSuccess={() => {
+                            refetchClientData();
+                            checkAchievements(clientData.id, "meal_log");
+                          }}
+                        />
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1205,7 +1221,10 @@ export default function ClientDashboard() {
 
                     return (
                       <div key={card.id} className="space-y-4">
-                        <div className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors">
+                        <div
+                          className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                          onClick={() => setSelectedReportCard(card)}
+                        >
                           <div className="flex items-center gap-3">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${card.card_type === 'health_assessment' ? 'bg-primary/10' :
                               card.card_type === 'stress_card' ? 'bg-purple-500/10' :
@@ -1230,33 +1249,15 @@ export default function ClientDashboard() {
                               </p>
                             </div>
                           </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedReportCard(card)}
+                          >
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Report
+                          </Button>
                         </div>
-
-                        {/* Render the appropriate card view */}
-                        {card.card_type === 'health_assessment' && (
-                          <HealthAssessmentCardView
-                            data={card.generated_content}
-                            assessmentId={assessmentRecords.find(a => a.assessment_type === 'health' && a.client_id === clientData?.id)?.id}
-                          />
-                        )}
-                        {card.card_type === 'stress_card' && (
-                          <StressCardView
-                            data={card.generated_content}
-                            assessmentId={assessmentRecords.find(a => a.assessment_type === 'stress' && a.client_id === clientData?.id)?.id}
-                          />
-                        )}
-                        {card.card_type === 'sleep_card' && (
-                          <SleepCardView
-                            data={card.generated_content}
-                            assessmentId={assessmentRecords.find(a => a.assessment_type === 'sleep' && a.client_id === clientData?.id)?.id}
-                          />
-                        )}
-                        {card.card_type === 'action_plan' && (
-                          <ActionPlanCardView data={card.generated_content} />
-                        )}
-                        {card.card_type === 'diet_plan' && (
-                          <DietPlanCardView data={card.generated_content} />
-                        )}
                       </div>
                     );
                   })}
@@ -1264,6 +1265,49 @@ export default function ClientDashboard() {
               )}
             </div>
           </TabsContent>
+
+          <Dialog open={!!selectedReportCard} onOpenChange={(open) => !open && setSelectedReportCard(null)}>
+            <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 border-none bg-transparent shadow-none">
+              {selectedReportCard && (
+                <div className="animate-in fade-in zoom-in duration-200">
+                  {selectedReportCard.card_type === 'health_assessment' && (
+                    <HealthAssessmentCardView
+                      data={selectedReportCard.generated_content}
+                      assessmentId={assessmentRecords.find(a => a.assessment_type === 'health' && a.client_id === clientData?.id)?.id}
+                    />
+                  )}
+                  {selectedReportCard.card_type === 'stress_card' && (
+                    <StressCardView
+                      data={selectedReportCard.generated_content}
+                      assessmentId={assessmentRecords.find(a => a.assessment_type === 'stress' && a.client_id === clientData?.id)?.id}
+                    />
+                  )}
+                  {selectedReportCard.card_type === 'sleep_card' && (
+                    <SleepCardView
+                      data={selectedReportCard.generated_content}
+                      assessmentId={assessmentRecords.find(a => a.assessment_type === 'sleep' && a.client_id === clientData?.id)?.id}
+                    />
+                  )}
+                  {selectedReportCard.card_type === 'action_plan' && (
+                    <ActionPlanCardView data={selectedReportCard.generated_content} />
+                  )}
+                  {selectedReportCard.card_type === 'diet_plan' && (
+                    <DietPlanCardView data={selectedReportCard.generated_content} />
+                  )}
+                  <div className="absolute top-4 right-4 z-50">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedReportCard(null)}
+                      className="rounded-full bg-white/20 hover:bg-white/40 text-white border border-white/30 backdrop-blur-sm"
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
 
           <TabsContent value="reports">
             <Card>
