@@ -69,10 +69,10 @@ export default function Community() {
 
   useEffect(() => {
     if (user) {
-      if (userRole !== 'admin') {
+      if (userRole !== 'admin' && userRole !== 'manager') {
         loadClientData();
       } else {
-        // Admins should also have a client profile for posting
+        // Admins and Managers should also have a client profile for posting
         loadClientData();
         loadPosts();
         loadGroups();
@@ -98,7 +98,7 @@ export default function Community() {
 
   // Reload posts when tag or group changes
   useEffect(() => {
-    if (client || userRole === 'admin') {
+    if (client || userRole === 'admin' || userRole === 'manager') {
       loadPosts();
     }
   }, [selectedGroup, selectedTag]);
@@ -119,16 +119,16 @@ export default function Community() {
       if (data) {
 
         setClient(data);
-      } else if (userRole === 'admin' && user) {
-        // Auto-create profile for admin if missing
+      } else if ((userRole === 'admin' || userRole === 'manager') && user) {
+        // Auto-create profile for admin/manager if missing
 
         const { data: newAdmin, error: createError } = await supabase
           .from("clients")
           .upsert({
             user_id: user.id,
             email: user.email || "admin@example.com",
-            name: "Admin",
-            display_name: "Admin",
+            name: userRole === 'admin' ? "Admin" : "Manager",
+            display_name: userRole === 'admin' ? "Admin" : "Manager",
             phone: "0000000000",
             program_type: 'general_wellness',
             service_type: 'hundred_days',
@@ -143,7 +143,7 @@ export default function Community() {
         } else if (newAdmin) {
 
           setClient(newAdmin);
-          toast.success("Admin profile initialized");
+          toast.success(`${userRole === 'admin' ? 'Admin' : 'Manager'} profile initialized`);
         } else {
           // Final fallback - try one more direct select to handle RLS race conditions
           const { data: retryData } = await supabase
@@ -207,14 +207,14 @@ export default function Community() {
       const post = await createPost({
         clientId: client.id,
         displayName: client.display_name || client.name,
-        serviceType: userRole === 'admin' ? 'admin' : (client.service_type || client.program_type),
+        serviceType: (userRole === 'admin' || userRole === 'manager') ? userRole : (client.service_type || client.program_type),
         content: data.content,
         title: data.title,
         tags: data.tags,
         mediaUrls: data.mediaUrls,
         attachments: data.attachments,
         groupId: selectedGroup?.id,
-        authorRole: userRole as 'admin' | 'client',
+        authorRole: userRole as 'admin' | 'client' | 'manager',
       });
 
       // Force update state
@@ -252,7 +252,7 @@ export default function Community() {
       clientId: client.id,
       displayName: client.display_name || client.name,
       serviceType: client.service_type,
-      authorRole: userRole as 'admin' | 'client',
+      authorRole: userRole as 'admin' | 'client' | 'manager',
       content,
     });
 
@@ -430,7 +430,7 @@ export default function Community() {
                   <PostComposer
                     clientId={client.id}
                     displayName={client.display_name || client.name}
-                    serviceType={userRole === 'admin' ? 'admin' : (client.service_type || client.program_type)}
+                    serviceType={(userRole === 'admin' || userRole === 'manager') ? userRole : (client.service_type || client.program_type)}
                     onPost={handleCreatePost}
                   />
                 )}
@@ -453,7 +453,7 @@ export default function Community() {
                         key={post.id}
                         post={post}
                         currentClientId={client?.id}
-                        isAdmin={userRole === 'admin'}
+                        isAdmin={userRole === 'admin' || userRole === 'manager'}
                         onLike={handleLikePost}
                         onComment={(postId) => {
                           const post = posts.find((p) => p.id === postId);
@@ -471,7 +471,7 @@ export default function Community() {
               <TabsContent value="groups" className="mt-4">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-lg font-semibold">Community Groups</h2>
-                  {userRole === 'admin' && (
+                  {(userRole === 'admin' || userRole === 'manager') && (
                     <Button onClick={() => setShowCreateGroup(true)} size="sm">
                       <Plus className="mr-2 h-4 w-4" /> Create Group
                     </Button>
@@ -518,7 +518,7 @@ export default function Community() {
                         <PostComposer
                           clientId={client.id}
                           displayName={client.display_name || client.name}
-                          serviceType={userRole === 'admin' ? 'admin' : (client.service_type || client.program_type)}
+                          serviceType={(userRole === 'admin' || userRole === 'manager') ? userRole : (client.service_type || client.program_type)}
                           onPost={handleCreatePost}
                           groupId={selectedGroup.id}
                         />
@@ -540,7 +540,7 @@ export default function Community() {
                             key={post.id}
                             post={post}
                             currentClientId={client?.id}
-                            isAdmin={userRole === 'admin'}
+                            isAdmin={userRole === 'admin' || userRole === 'manager'}
                             onLike={handleLikePost}
                             onComment={(postId) => {
                               const post = posts.find((p) => p.id === postId);
@@ -562,7 +562,7 @@ export default function Community() {
                         group={group}
                         onJoin={handleJoinGroup}
                         onLeave={handleLeaveGroup}
-                        isAdmin={userRole === 'admin'}
+                        isAdmin={userRole === 'admin' || userRole === 'manager'}
                         onDelete={handleDeleteGroup}
                         onClick={(groupId) => {
                           const group = groups.find(g => g.id === groupId);
@@ -638,7 +638,7 @@ export default function Community() {
             clientId={client.id}
             displayName={client?.display_name || client?.name}
             serviceType={client?.service_type}
-            userRole={userRole as 'admin' | 'client'}
+            userRole={userRole as 'admin' | 'client' | 'manager'}
             onComment={handleComment}
             onLikeComment={() => { }}
             onAuthorClick={setSelectedProfileId}

@@ -27,7 +27,7 @@ export interface CommunityPost {
   visibility: 'public' | 'archived';
   created_at: string;
   updated_at: string;
-  author_role: 'admin' | 'client' | null;
+  author_role: 'admin' | 'client' | 'manager' | null;
   user_reaction?: 'like' | null;
 }
 
@@ -40,7 +40,7 @@ export interface CommunityComment {
   content: string;
   likes_count: number;
   created_at: string;
-  author_role: 'admin' | 'client' | null;
+  author_role: 'admin' | 'client' | 'manager' | null;
   user_reaction?: 'like' | null;
 }
 

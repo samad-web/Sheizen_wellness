@@ -25,7 +25,7 @@ interface PostDetailModalProps {
   clientId?: string;
   displayName?: string;
   serviceType?: string | null;
-  userRole?: 'admin' | 'client';
+  userRole?: 'admin' | 'client' | 'manager';
   onComment: (postId: string, content: string) => Promise<void>;
   onLikeComment: (commentId: string) => void;
   onAuthorClick: (clientId: string) => void;
@@ -147,12 +147,12 @@ export function PostDetailModal({
                   variant="outline"
                   className={cn(
                     "text-[10px] px-1.5 py-0",
-                    post.author_role === 'admin'
+                    post.author_role === 'admin' || post.author_role === 'manager'
                       ? "bg-purple-100 text-purple-800 border-purple-200"
                       : "bg-blue-100 text-blue-800 border-blue-200"
                   )}
                 >
-                  {post.author_role === 'admin' ? "Admin" : "Client"}
+                  {post.author_role === 'admin' ? "Admin" : (post.author_role === 'manager' ? "Manager" : "Client")}
                 </Badge>
                 <span>•</span>
                 <span>{formatDateTime(post.created_at)}</span>
@@ -241,12 +241,12 @@ export function PostDetailModal({
                               variant="outline"
                               className={cn(
                                 "text-[9px] px-1 py-0",
-                                comment.author_role === 'admin'
+                                comment.author_role === 'admin' || comment.author_role === 'manager'
                                   ? "bg-purple-100 text-purple-800 border-purple-200"
                                   : "bg-blue-100 text-blue-800 border-blue-200"
                               )}
                             >
-                              {comment.author_role === 'admin' ? "Admin" : "Client"}
+                              {comment.author_role === 'admin' ? "Admin" : (comment.author_role === 'manager' ? "Manager" : "Client")}
                             </Badge>
                           </div>
                           <p className="text-sm">{comment.content}</p>

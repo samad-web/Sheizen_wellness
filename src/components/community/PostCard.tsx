@@ -93,12 +93,12 @@ export function PostCard({
                   variant="outline"
                   className={cn(
                     "text-[10px] px-1.5 py-0",
-                    post.author_role === 'admin'
+                    post.author_role === 'admin' || post.author_role === 'manager'
                       ? "bg-purple-100 text-purple-800 border-purple-200"
                       : "bg-blue-100 text-blue-800 border-blue-200"
                   )}
                 >
-                  {post.author_role === 'admin' ? "Admin" : "Client"}
+                  {post.author_role === 'admin' ? "Admin" : (post.author_role === 'manager' ? "Manager" : "Client")}
                 </Badge>
                 <span>•</span>
                 <span>{formatDateTime(post.created_at)}</span>
