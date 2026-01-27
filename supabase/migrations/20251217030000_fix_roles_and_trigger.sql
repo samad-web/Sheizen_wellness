@@ -12,7 +12,7 @@ BEGIN
   initial_role := COALESCE(NEW.raw_user_meta_data->>'role', 'client');
 
   -- Ensure role is valid (simple validation)
-  IF initial_role NOT IN ('admin', 'client') THEN
+  IF initial_role NOT IN ('admin', 'client', 'manager') THEN
     initial_role := 'client';
   END IF;
 

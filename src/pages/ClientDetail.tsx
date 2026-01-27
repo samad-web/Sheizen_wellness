@@ -446,12 +446,8 @@ const ClientDetail = () => {
               <div>
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-2xl sm:text-3xl">{client.name}</CardTitle>
-                  <Badge variant="outline" className={
-                    userRole === "admin"
-                      ? "bg-wellness-green/10 text-wellness-green border-wellness-green/20"
-                      : "bg-wellness-amber/10 text-wellness-amber border-wellness-amber/20"
-                  }>
-                    {userRole?.toUpperCase()}
+                  <Badge variant="outline" className={`${userRole === 'admin' ? 'bg-wellness-green/10 text-wellness-green border-wellness-green/20' : 'bg-wellness-mint/10 text-wellness-mint border-wellness-mint/20'}`}>
+                    {userRole?.toUpperCase() || "USER"}
                   </Badge>
                 </div>
                 <CardDescription className="mt-2 space-y-1">
@@ -463,7 +459,7 @@ const ClientDetail = () => {
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-4 w-4" />
-                    {userRole === "admin" ? client.phone : "***-***-****"}
+                    {userRole === "admin" ? client.phone : "**********"}
                   </div>
                 </CardDescription>
               </div>
@@ -477,7 +473,7 @@ const ClientDetail = () => {
               <div className="mb-4 pb-4 border-b">
                 <p className="text-sm text-muted-foreground mb-2">Service Type</p>
                 <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm border ${userRole === "admin" ? getServiceTypeBadgeColor(client.service_type) : "bg-muted text-muted-foreground"}`}>
-                  {userRole === "admin" ? formatServiceType(client.service_type) : "Restricted Access"}
+                  {userRole === "admin" ? formatServiceType(client.service_type) : "Restricted"}
                 </span>
               </div>
             )}

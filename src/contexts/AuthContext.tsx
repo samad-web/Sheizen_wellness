@@ -165,15 +165,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                         setLoading(false);
 
                         const isMetadataTrusted = !!currentSession.user.user_metadata?.role;
-                        if (!isMetadataTrusted) {
-                            fetchUserRole(currentSession.user.id).then(async (verifiedRole) => {
-                                if (verifiedRole && verifiedRole !== foundRole) {
-                                    setUserRole(verifiedRole);
-                                    localStorage.setItem("app-user-role", verifiedRole);
-                                    await supabase.auth.updateUser({ data: { role: verifiedRole } });
-                                }
-                            }).catch(err => console.error("Background check error", err));
-                        }
+
+                        // ALWAYS verify against DB, regardless of trust
+                        fetchUserRole(currentSession.user.id).then(async (verifiedRole) => {
+                            if (verifiedRole && verifiedRole !== foundRole) {
+                                console.log("[AuthContext] Paranoid check found mismatch. DB says:", verifiedRole, "Metadata says:", foundRole);
+                                setUserRole(verifiedRole);
+                                localStorage.setItem("app-user-role", verifiedRole);
+                                // FORCE update metadata to match DB truth
+                                await supabase.auth.updateUser({ data: { role: verifiedRole } });
+                            } else {
+                                console.log("[AuthContext] Role verified against DB:", verifiedRole);
+                            }
+                        }).catch(err => console.error("Background paranoid check error", err));
                     } else {
                         console.log("[AuthContext] No optimistic role found. Fetching (Blocking)...");
                         const verifiedRole = await fetchUserRole(currentSession.user.id);
@@ -227,10 +231,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     if (userChanged || needsRole) {
                         try {
                             const role = await fetchUserRole(session.user.id);
+                            console.log("[AuthContext] AuthStateChange: DB Role is", role);
                             if (role) {
                                 setUserRole(role);
                                 lastFetchedUserId.current = session.user.id;
                                 if (session.user.user_metadata?.role !== role) {
+                                    console.log("[AuthContext] Syncing metadata with DB role:", role);
                                     await supabase.auth.updateUser({ data: { role: role } });
                                 }
                             } else if (userChanged) {
@@ -240,8 +246,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                             console.error("Error fetching user role:", err);
                         }
                     } else if (metadataRole) {
+                        // Even if metadata exists, trigger a background refresh to be safe
                         setUserRole(metadataRole);
                         lastFetchedUserId.current = session.user.id;
+                        fetchUserRole(session.user.id).then(verifiedRole => {
+                            if (verifiedRole && verifiedRole !== metadataRole) {
+                                console.warn("[AuthContext] Metadata vs DB Mismatch! Fixing...", { metadataRole, verifiedRole });
+                                setUserRole(verifiedRole);
+                                supabase.auth.updateUser({ data: { role: verifiedRole } });
+                            }
+                        });
                     }
                 } else {
                     setSession(null);

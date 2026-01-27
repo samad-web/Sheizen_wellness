@@ -73,9 +73,11 @@ export default function SetupAdmin() {
         body: {
           email: values.email,
           password: values.password,
+          role: 'admin',
           userData: {
             name: values.name,
             phone: values.phone,
+            role: 'admin',
           },
         },
       });

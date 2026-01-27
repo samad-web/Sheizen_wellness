@@ -54,7 +54,7 @@ serve(async (req) => {
                 email,
                 password,
                 email_confirm: true, // Auto-confirm email
-                user_metadata: userData,
+                user_metadata: { ...userData, role: assignedRole },
             });
 
         if (createUserError) {

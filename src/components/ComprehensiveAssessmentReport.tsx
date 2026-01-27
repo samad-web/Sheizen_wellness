@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Printer, Download, X, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ComprehensiveAssessmentReportProps {
     open: boolean;
@@ -18,6 +19,9 @@ export function ComprehensiveAssessmentReport({
     data,
     clientName,
 }: ComprehensiveAssessmentReportProps) {
+    const { userRole } = useAuth();
+    const isAdmin = userRole === "admin";
+
     if (!data) return null;
 
     const handlePrint = () => {
@@ -105,9 +109,9 @@ export function ComprehensiveAssessmentReport({
                         {/* Personal Info */}
                         <Section title="1. Personal Information">
                             <InfoRow label="Client Name" value={data.personal?.name} />
-                            <InfoRow label="Email Address" value={data.personal?.email} />
-                            <InfoRow label="Contact Number" value={data.personal?.contact} />
-                            <InfoRow label="Age / Gender" value={data.personal?.age_gender} />
+                            <InfoRow label="Email Address" value={isAdmin ? data.personal?.email : "***@***.com"} />
+                            <InfoRow label="Contact Number" value={isAdmin ? data.personal?.contact : "**********"} />
+                            <InfoRow label="Age / Gender" value={isAdmin ? data.personal?.age_gender : "*** / ***"} />
                             <InfoRow label="Occupation" value={data.personal?.occupation} />
                             <InfoRow label="Marital Status" value={data.personal?.marital_status} />
                             <InfoRow label="Lifestyle" value={data.personal?.lifestyle} />

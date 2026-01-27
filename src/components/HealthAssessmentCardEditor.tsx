@@ -11,6 +11,7 @@ import { createDisplayName, validateDisplayName } from "@/lib/assessmentUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface HealthAssessmentCardEditorProps {
   cardId: string;
@@ -31,6 +32,8 @@ export function HealthAssessmentCardEditor({
   const [cardData, setCardData] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
   const [displayName, setDisplayName] = useState('');
+  const { userRole } = useAuth();
+  const isAdmin = userRole === "admin";
 
   useEffect(() => {
     if (open && cardId) {
@@ -51,7 +54,7 @@ export function HealthAssessmentCardEditor({
 
       setCardData(data);
       setFormData(data.generated_content);
-      
+
       // Generate display name if not exists
       const cardWithDisplayName = data as any;
       if (!cardWithDisplayName.display_name && data.clients) {
@@ -60,7 +63,7 @@ export function HealthAssessmentCardEditor({
           .select('name')
           .eq('id', (await supabase.auth.getUser()).data.user?.id)
           .maybeSingle();
-        
+
         const adminName = profileData?.name || 'Admin';
         const generatedName = createDisplayName(
           (data.clients as any).name,
@@ -135,7 +138,7 @@ export function HealthAssessmentCardEditor({
 
       // Then send the card
       const { error } = await supabase.functions.invoke('send-card-to-client', {
-        body: { 
+        body: {
           card_id: cardId,
           display_name: displayName
         }
@@ -167,12 +170,12 @@ export function HealthAssessmentCardEditor({
       const newData = { ...prev };
       const keys = path.split('.');
       let current = newData;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
         if (!current[keys[i]]) current[keys[i]] = {};
         current = current[keys[i]];
       }
-      
+
       current[keys[keys.length - 1]] = value;
       return newData;
     });
@@ -188,7 +191,7 @@ export function HealthAssessmentCardEditor({
               We're preparing the health assessment card for your review.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-1 items-center justify-center py-12">
             <Activity className="h-8 w-8 animate-spin text-wellness-green" />
           </div>
@@ -215,167 +218,169 @@ export function HealthAssessmentCardEditor({
 
         <div className="flex-1 overflow-y-auto max-h-[90vh] md:max-h-[80vh] px-6 scrollbar-thin">
           <div className="grid grid-cols-2 gap-6 pb-6">
-          {/* Edit Form */}
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Client Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label>Name</Label>
-                  <Input
-                    value={formData.client_details?.name || ''}
-                    onChange={(e) => updateField('client_details.name', e.target.value)}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+            {/* Edit Form */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Client Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div>
-                    <Label>Age</Label>
+                    <Label>Name</Label>
                     <Input
-                      type="number"
-                      value={formData.client_details?.age || ''}
-                      onChange={(e) => updateField('client_details.age', parseInt(e.target.value))}
+                      value={formData.client_details?.name || ''}
+                      onChange={(e) => updateField('client_details.name', e.target.value)}
                     />
                   </div>
-                  <div>
-                    <Label>Gender</Label>
-                    <Input
-                      value={formData.client_details?.gender || ''}
-                      onChange={(e) => updateField('client_details.gender', e.target.value)}
-                    />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Key Findings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label>Height (cm)</Label>
-                    <Input
-                      type="number"
-                      value={formData.key_findings?.height || ''}
-                      onChange={(e) => updateField('key_findings.height', parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Weight (kg)</Label>
-                    <Input
-                      type="number"
-                      value={formData.key_findings?.weight || ''}
-                      onChange={(e) => updateField('key_findings.weight', parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>BMI</Label>
-                    <Input
-                      type="number"
-                      value={formData.key_findings?.bmi || ''}
-                      onChange={(e) => updateField('key_findings.bmi', parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>BMR (kcal)</Label>
-                    <Input
-                      type="number"
-                      value={formData.key_findings?.bmr || ''}
-                      onChange={(e) => updateField('key_findings.bmr', parseInt(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Ideal Weight (kg)</Label>
-                    <Input
-                      type="number"
-                      value={formData.key_findings?.ideal_weight || ''}
-                      onChange={(e) => updateField('key_findings.ideal_weight', parseFloat(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Calorie Intake (kcal)</Label>
-                    <Input
-                      type="number"
-                      value={formData.key_findings?.calorie_intake || ''}
-                      onChange={(e) => updateField('key_findings.calorie_intake', parseInt(e.target.value))}
-                    />
-                  </div>
-                  <div>
-                    <Label>Protein Intake (g)</Label>
-                    <Input
-                      type="number"
-                      value={formData.key_findings?.protein_intake || ''}
-                      onChange={(e) => updateField('key_findings.protein_intake', parseFloat(e.target.value))}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label>Medical Condition</Label>
-                  <Textarea
-                    value={formData.key_findings?.medical_condition || ''}
-                    onChange={(e) => updateField('key_findings.medical_condition', e.target.value)}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">AI Analysis</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Textarea
-                  rows={8}
-                  value={formData.ai_analysis || ''}
-                  onChange={(e) => updateField('ai_analysis', e.target.value)}
-                  placeholder="Edit AI-generated analysis..."
-                />
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Preview */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Preview</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-muted rounded-lg">
-                  <h3 className="font-semibold text-lg mb-2">
-                    {formData.client_details?.name}'s Health Assessment
-                  </h3>
-                  <div className="text-sm text-muted-foreground mb-4">
-                    Age: {formData.client_details?.age} | Gender: {formData.client_details?.gender}
-                  </div>
-                  
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <h4 className="font-medium mb-2">Key Findings</h4>
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>Height: {formData.key_findings?.height} cm</div>
-                        <div>Weight: {formData.key_findings?.weight} kg</div>
-                        <div>BMI: {formData.key_findings?.bmi}</div>
-                        <div>BMR: {formData.key_findings?.bmr} kcal</div>
-                        <div>Ideal Weight: {formData.key_findings?.ideal_weight} kg</div>
-                        <div>Target Calories: {formData.key_findings?.calorie_intake} kcal</div>
-                        <div>Protein: {formData.key_findings?.protein_intake} g/day</div>
+                      <Label>Age</Label>
+                      <Input
+                        type="number"
+                        value={isAdmin ? (formData.client_details?.age || '') : ''}
+                        onChange={(e) => updateField('client_details.age', parseInt(e.target.value))}
+                        disabled={!isAdmin}
+                      />
+                    </div>
+                    <div>
+                      <Label>Gender</Label>
+                      <Input
+                        value={isAdmin ? (formData.client_details?.gender || '') : 'Restricted'}
+                        onChange={(e) => updateField('client_details.gender', e.target.value)}
+                        disabled={!isAdmin}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Key Findings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Height (cm)</Label>
+                      <Input
+                        type="number"
+                        value={formData.key_findings?.height || ''}
+                        onChange={(e) => updateField('key_findings.height', parseFloat(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>Weight (kg)</Label>
+                      <Input
+                        type="number"
+                        value={formData.key_findings?.weight || ''}
+                        onChange={(e) => updateField('key_findings.weight', parseFloat(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>BMI</Label>
+                      <Input
+                        type="number"
+                        value={formData.key_findings?.bmi || ''}
+                        onChange={(e) => updateField('key_findings.bmi', parseFloat(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>BMR (kcal)</Label>
+                      <Input
+                        type="number"
+                        value={formData.key_findings?.bmr || ''}
+                        onChange={(e) => updateField('key_findings.bmr', parseInt(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>Ideal Weight (kg)</Label>
+                      <Input
+                        type="number"
+                        value={formData.key_findings?.ideal_weight || ''}
+                        onChange={(e) => updateField('key_findings.ideal_weight', parseFloat(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>Calorie Intake (kcal)</Label>
+                      <Input
+                        type="number"
+                        value={formData.key_findings?.calorie_intake || ''}
+                        onChange={(e) => updateField('key_findings.calorie_intake', parseInt(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <Label>Protein Intake (g)</Label>
+                      <Input
+                        type="number"
+                        value={formData.key_findings?.protein_intake || ''}
+                        onChange={(e) => updateField('key_findings.protein_intake', parseFloat(e.target.value))}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Medical Condition</Label>
+                    <Textarea
+                      value={formData.key_findings?.medical_condition || ''}
+                      onChange={(e) => updateField('key_findings.medical_condition', e.target.value)}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">AI Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    rows={8}
+                    value={formData.ai_analysis || ''}
+                    onChange={(e) => updateField('ai_analysis', e.target.value)}
+                    placeholder="Edit AI-generated analysis..."
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Preview */}
+            <div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Preview</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <h3 className="font-semibold text-lg mb-2">
+                      {formData.client_details?.name}'s Health Assessment
+                    </h3>
+                    <div className="text-sm text-muted-foreground mb-4">
+                      Age: {isAdmin ? formData.client_details?.age : '***'} | Gender: {isAdmin ? formData.client_details?.gender : '***'}
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <h4 className="font-medium mb-2">Key Findings</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>Height: {formData.key_findings?.height} cm</div>
+                          <div>Weight: {formData.key_findings?.weight} kg</div>
+                          <div>BMI: {formData.key_findings?.bmi}</div>
+                          <div>BMR: {formData.key_findings?.bmr} kcal</div>
+                          <div>Ideal Weight: {formData.key_findings?.ideal_weight} kg</div>
+                          <div>Target Calories: {formData.key_findings?.calorie_intake} kcal</div>
+                          <div>Protein: {formData.key_findings?.protein_intake} g/day</div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="font-medium mb-2">Analysis</h4>
+                        <p className="text-sm whitespace-pre-wrap">{formData.ai_analysis}</p>
                       </div>
                     </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">Analysis</h4>
-                      <p className="text-sm whitespace-pre-wrap">{formData.ai_analysis}</p>
-                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
         </div>
 
         <div className="space-y-3 px-6 py-4 border-t bg-muted/30">
@@ -396,7 +401,7 @@ export function HealthAssessmentCardEditor({
               This name will be shown to the client when downloading the assessment
             </p>
           </div>
-          
+
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Cancel

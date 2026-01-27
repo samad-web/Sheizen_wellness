@@ -29,6 +29,7 @@ const RecipeBuilder = lazy(() => import("@/components/RecipeBuilder").then(m => 
 const InterestSubmissionsManager = lazy(() => import("@/components/InterestSubmissionsManager").then(m => ({ default: m.InterestSubmissionsManager })));
 const ReportManager = lazy(() => import("@/components/ReportManager").then(m => ({ default: m.ReportManager })));
 const ComprehensiveAssessmentManager = lazy(() => import("@/components/ComprehensiveAssessmentManager").then(m => ({ default: m.ComprehensiveAssessmentManager })));
+const ManagersManager = lazy(() => import("@/components/ManagersManager").then(m => ({ default: m.ManagersManager })));
 import { BulkMessageButton } from "@/components/BulkMessageButton";
 import { ComprehensiveAssessmentForm } from "@/components/ComprehensiveAssessmentForm";
 
@@ -189,22 +190,24 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-wellness-light via-background to-wellness-light/30">
       <div className="container mx-auto p-4 md:p-8 max-w-7xl">
+
+
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div className="flex items-center gap-3">
             <CustomLogo className="w-12 h-12" />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-bold">Welcome {userRole === "manager" ? "Manager" : "Admin"}</h1>
-                <Badge variant="outline" className={
-                  userRole === "admin"
-                    ? "bg-wellness-green/10 text-wellness-green border-wellness-green/20"
-                    : "bg-wellness-amber/10 text-wellness-amber border-wellness-amber/20"
-                }>
-                  {userRole?.toUpperCase()}
+                <h1 className="text-3xl font-bold">Welcome {userRole === 'admin' ? 'Admin' : (userRole === 'manager' ? 'Manager' : 'User')}</h1>
+                <Badge variant="outline" className={`${userRole === 'admin' ? 'bg-wellness-green/10 text-wellness-green border-wellness-green/20' : 'bg-wellness-mint/10 text-wellness-mint border-wellness-mint/20'}`}>
+                  {userRole?.toUpperCase() || "USER"}
                 </Badge>
               </div>
-              <p className="text-muted-foreground">Manage your clients and programs</p>
+              <p className="text-muted-foreground">
+                Manage your clients and programs (Role: <span className="font-mono text-xs font-bold text-primary">{userRole || "Unknown"}</span>)
+                <br />
+                <span className="text-[10px] opacity-70">User: {user?.email} | ID: {user?.id?.substring(0, 8)}...</span>
+              </p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -314,6 +317,9 @@ export default function AdminDashboard() {
             <TabsTrigger value="ingredients" className="h-full">Ingredients</TabsTrigger>
             <TabsTrigger value="food" className="h-full">Food Items</TabsTrigger>
             <TabsTrigger value="recipes" className="h-full">Recipes</TabsTrigger>
+            {userRole === "admin" && (
+              <TabsTrigger value="managers" className="h-full">Managers</TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="clients">
@@ -384,14 +390,14 @@ export default function AdminDashboard() {
                                     </Badge>
                                   </h3>
                                   <p className="text-sm text-muted-foreground truncate">
-                                    {userRole === "admin" ? client.email : "***@***.com"}
+                                    {userRole === "admin" ? client.email : (userRole === "manager" ? "***@***.com" : "Restricted")}
                                   </p>
                                 </div>
                               </div>
                               <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <span>📱</span>
-                                  <span>{userRole === "admin" ? client.phone : "**********"}</span>
+                                  <span>{userRole === "admin" ? client.phone : (userRole === "manager" ? "**********" : "Restricted")}</span>
                                 </div>
                                 <div>
                                   <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${userRole === "admin" ? getServiceTypeBadgeColor(client.service_type) : "bg-muted text-muted-foreground"}`}>
@@ -474,6 +480,14 @@ export default function AdminDashboard() {
               </div>
             </Suspense>
           </TabsContent>
+
+          {userRole === "admin" && (
+            <TabsContent value="managers">
+              <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
+                <ManagersManager />
+              </Suspense>
+            </TabsContent>
+          )}
 
 
         </Tabs>

@@ -52,10 +52,10 @@ export function CreateManagerDialog({ open, onOpenChange, onSuccess }: CreateMan
                 body: {
                     email: formData.email,
                     password: formData.password,
-                    role: 'manager', // Specify manager role
+                    role: 'manager', // CRITICAL: Always specify manager role here
                     userData: {
-                        name: formData.name,
-                        phone: formData.phone,
+                        ...formData,
+                        role: 'manager', // Redundant role in metadata
                     },
                 },
             });
@@ -67,6 +67,24 @@ export function CreateManagerDialog({ open, onOpenChange, onSuccess }: CreateMan
             if (funcData?.error) {
                 console.error("Edge Function Data Error:", funcData.error);
                 throw new Error(funcData.error);
+            }
+
+            // EXTRA SECURITY: Explicitly set/update the role in the user_roles table from the frontend
+            // This ensures that even if the Edge Function is outdated on the server, the correct role is applied.
+            if (funcData?.user?.id) {
+                console.log("Applying frontend role fallback for user:", funcData.user.id);
+                const { error: roleTableError } = await supabase
+                    .from('user_roles')
+                    .upsert({
+                        user_id: funcData.user.id,
+                        role: 'manager'
+                    }, { onConflict: 'user_id' });
+
+                if (roleTableError) {
+                    console.error("Frontend role fallback error:", roleTableError);
+                    // We don't throw here to avoid confusing the user if the account was created but role table update failed
+                    // (though it shouldn't fail if the executor is an admin)
+                }
             }
 
             toast.success("Manager account created successfully!");

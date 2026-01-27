@@ -39,6 +39,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FileText, Loader2, ArrowLeft, ArrowRight, CheckCircle, Check } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Client = Tables<"clients">;
 
@@ -178,6 +179,8 @@ export function ComprehensiveAssessmentForm({
     const [popoverOpen, setPopoverOpen] = useState(false);
     const [draftAssessmentId, setDraftAssessmentId] = useState<string | null>(propAssessmentId || null);
     const [isLoading, setIsLoading] = useState(false);
+    const { userRole } = useAuth();
+    const isAdmin = userRole === "admin";
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -573,10 +576,22 @@ export function ComprehensiveAssessmentForm({
                                                     )}
                                                 />
                                                 <FormField control={form.control} name="personal.date_of_assessment" render={({ field }) => (<FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="personal.contact" render={({ field }) => (<FormItem><FormLabel>Contact</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="personal.email" render={({ field }) => (<FormItem><FormLabel>Email *</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="personal.contact" render={({ field }) => (<FormItem><FormLabel>Contact</FormLabel><FormControl><Input {...field} value={isAdmin ? field.value : "**********"} disabled={!isAdmin} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="personal.email" render={({ field }) => (<FormItem><FormLabel>Email *</FormLabel><FormControl><Input type="email" {...field} value={isAdmin ? field.value : "***@***.com"} disabled={!isAdmin} /></FormControl><FormMessage /></FormItem>)} />
                                                 {["age_gender", "occupation", "marital_status", "address", "purpose_of_visit", "referrals"].map((key) => (
-                                                    <FormField key={key} control={form.control} name={`personal.${key}` as any} render={({ field }) => (<FormItem><FormLabel className="capitalize">{key.replace(/_/g, " ")}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField key={key} control={form.control} name={`personal.${key}` as any} render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="capitalize">{key.replace(/_/g, " ")}</FormLabel>
+                                                            <FormControl>
+                                                                <Input
+                                                                    {...field}
+                                                                    value={isAdmin || key !== "age_gender" ? field.value : "*** / ***"}
+                                                                    disabled={!isAdmin && key === "age_gender"}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )} />
                                                 ))}
                                                 <FormField control={form.control} name="personal.lifestyle" render={({ field }) => (<FormItem><FormLabel>Lifestyle</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Sedentary">Sedentary</SelectItem><SelectItem value="Moderate">Moderate</SelectItem><SelectItem value="Heavy">Heavy work</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
                                             </CardContent>
