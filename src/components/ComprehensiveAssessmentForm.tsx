@@ -471,14 +471,14 @@ export function ComprehensiveAssessmentForm({
                         </div>
                     </div>
                 )}
-                <DialogHeader className="px-6 pt-4 pb-12 border-b relative">
+                <DialogHeader className="px-6 pt-4 pb-4 border-b relative">
                     <DialogTitle>Comprehensive Nutritional Assessment</DialogTitle>
                     <div className="flex flex-col gap-3 mt-4">
                         <div className="flex justify-between items-center w-full px-2">
                             {STEPS.map((step, idx) => (
                                 <div
                                     key={step.id}
-                                    className="flex flex-col items-center gap-2 flex-1 relative group cursor-pointer"
+                                    className="flex flex-col items-center gap-1.5 flex-1 relative group cursor-pointer"
                                     onClick={() => goToStep(idx)}
                                 >
                                     <div className={cn(
@@ -492,14 +492,14 @@ export function ComprehensiveAssessmentForm({
                                         {completedSteps.includes(idx) ? <Check className="w-4 h-4" /> : idx + 1}
                                     </div>
                                     <span className={cn(
-                                        "text-[10px] font-medium text-center absolute -bottom-5 w-20 transition-colors",
+                                        "text-[10px] font-medium text-center transition-colors px-1",
                                         idx === currentStep ? "text-wellness-green font-bold" : "text-muted-foreground group-hover:text-foreground"
                                     )}>
                                         {step.title}
                                     </span>
                                     {idx < STEPS.length - 1 && (
                                         <div className={cn(
-                                            "absolute left-[60%] right-[-40%] top-4 h-[2px] -z-10",
+                                            "absolute left-[50%] right-[-50%] top-4 h-[2px] -z-10",
                                             completedSteps.includes(idx) ? "bg-wellness-green" : "bg-muted"
                                         )} />
                                     )}
@@ -675,9 +675,32 @@ export function ComprehensiveAssessmentForm({
                                                 <FormField control={form.control} name="dietary.recall_24hr" render={({ field }) => (<FormItem><FormLabel>24-Hour Diet Recall</FormLabel><FormControl><Textarea {...field} className="h-32" /></FormControl><FormMessage /></FormItem>)} />
                                                 <div>
                                                     <FormLabel className="mb-2 block font-semibold">Food Frequency</FormLabel>
-                                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                                                         {["Rice", "Millets", "Idli/Dosa", "Non-veg", "Pulses", "Milk", "Fruits", "Vegetables", "Fried Food", "Sweets"].map(item => (
-                                                            <FormField key={item} control={form.control} name={`ffq.${item}` as any} render={({ field }) => (<FormItem className="flex flex-col border p-2 rounded justify-center"><FormLabel className="mb-1 text-xs text-center">{item}</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger className="h-8 text-xs"><SelectValue placeholder="-" /></SelectTrigger></FormControl><SelectContent><SelectItem value="Daily">Daily</SelectItem><SelectItem value="Weekly">Weekly</SelectItem><SelectItem value="Rare">Rare</SelectItem><SelectItem value="Never">Never</SelectItem></SelectContent></Select><FormMessage /></FormItem>)} />
+                                                            <FormField
+                                                                key={item}
+                                                                control={form.control}
+                                                                name={`ffq.${item}` as any}
+                                                                render={({ field }) => (
+                                                                    <FormItem className="flex flex-col border p-2 rounded-md bg-accent/5 hover:bg-accent/10 transition-colors">
+                                                                        <FormLabel className="mb-2 text-[10px] font-bold uppercase text-center text-muted-foreground whitespace-nowrap overflow-hidden text-ellipsis">{item}</FormLabel>
+                                                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                                            <FormControl>
+                                                                                <SelectTrigger className="h-8 text-xs bg-background">
+                                                                                    <SelectValue placeholder="-" />
+                                                                                </SelectTrigger>
+                                                                            </FormControl>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="Daily">Daily</SelectItem>
+                                                                                <SelectItem value="Weekly">Weekly</SelectItem>
+                                                                                <SelectItem value="Rare">Rare</SelectItem>
+                                                                                <SelectItem value="Never">Never</SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
                                                         ))}
                                                     </div>
                                                 </div>
