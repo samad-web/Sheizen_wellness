@@ -40,6 +40,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { PendingReviewDashboard } from "@/components/PendingReviewDashboard";
+import { HealthAssessmentCardEditor } from "@/components/HealthAssessmentCardEditor";
+import { StressCardEditor } from "@/components/StressCardEditor";
+import { SleepCardEditor } from "@/components/SleepCardEditor";
 
 interface Client {
   id: string;
@@ -128,6 +132,9 @@ const ClientDetail = () => {
   const [selectedCustomAssessmentId, setSelectedCustomAssessmentId] = useState<string | null>(null);
   const [isReportOpen, setIsReportOpen] = useState(false);
   const [selectedReportData, setSelectedReportData] = useState<any>(null);
+  const [deleteFileId, setDeleteFileId] = useState<string | null>(null);
+  const [reviewCardId, setReviewCardId] = useState<string | null>(null);
+  const [reviewCardType, setReviewCardType] = useState<string | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -211,11 +218,28 @@ const ClientDetail = () => {
       .select('assessment_type')
       .eq('client_id', id);
 
-    // Count assessment requests by type for this client
+    // Fetch pending review cards for counts
+    const { data: pendingReviewCardsData } = await supabase
+      .from('pending_review_cards')
+      .select('card_type')
+      .eq('client_id', id)
+      .in('status', ['pending', 'edited']);
+
+    // Count assessment requests by type (unifying naming)
     const assessmentRequests = (assessmentRequestsData || []);
-    const healthRequestCount = assessmentRequests.filter(a => a.assessment_type === 'health_assessment').length;
-    const stressRequestCount = assessmentRequests.filter(a => a.assessment_type === 'stress').length;
-    const sleepRequestCount = assessmentRequests.filter(a => a.assessment_type === 'sleep').length;
+    const pendingCards = (pendingReviewCardsData || []);
+
+    const healthRequestCount = assessmentRequests.filter(a =>
+      a.assessment_type === 'health_assessment' || a.assessment_type === 'health'
+    ).length + pendingCards.filter(c => c.card_type === 'health_assessment').length;
+
+    const stressRequestCount = assessmentRequests.filter(a =>
+      a.assessment_type === 'stress_assessment' || a.assessment_type === 'stress'
+    ).length + pendingCards.filter(c => c.card_type === 'stress_card').length;
+
+    const sleepRequestCount = assessmentRequests.filter(a =>
+      a.assessment_type === 'sleep_assessment' || a.assessment_type === 'sleep'
+    ).length + pendingCards.filter(c => c.card_type === 'sleep_card').length;
 
     return {
       client: clientData,
@@ -308,6 +332,28 @@ const ClientDetail = () => {
     };
   }, [id]);
 
+  // Real-time pending cards subscription
+  useEffect(() => {
+    if (!id) return;
+
+    const channel = supabase
+      .channel('admin-client-pending-cards-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'pending_review_cards',
+        filter: `client_id=eq.${id}`
+      }, () => {
+        console.log("Real-time update: client pending cards changed, refetching...");
+        refetchClientData();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id]);
+
   const getStatusColor = (status: string | null) => {
     switch (status) {
       case "active":
@@ -362,6 +408,45 @@ const ClientDetail = () => {
       toast.error(error.message || "Failed to delete plan");
     } finally {
       setDeletePlanId(null);
+    }
+  };
+
+  const handleDeleteFile = async (fileId: string, fileUrl: string, bucket: string = "client-files") => {
+    try {
+      // 1. Remove from storage
+      // Extract path if full URL is given, or use as is
+      let filePath = fileUrl;
+      if (fileUrl.startsWith("http")) {
+        const urlObj = new URL(fileUrl);
+        const pathParts = urlObj.pathname.split(`/${bucket}/`);
+        if (pathParts.length > 1) {
+          filePath = pathParts[1];
+        }
+      }
+
+      const { error: storageError } = await supabase.storage
+        .from(bucket)
+        .remove([filePath]);
+
+      if (storageError) {
+        console.error("Storage remove error:", storageError);
+        // Proceed to DB delete anyway
+      }
+
+      // 2. Remove from database
+      const { error: dbError } = await supabase
+        .from("files")
+        .delete()
+        .eq("id", fileId);
+
+      if (dbError) throw dbError;
+
+      toast.success("File deleted successfully!");
+      refetchClientData();
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete file");
+    } finally {
+      setDeleteFileId(null);
     }
   };
 
@@ -446,8 +531,8 @@ const ClientDetail = () => {
               <div>
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-2xl sm:text-3xl">{client.name}</CardTitle>
-                  <Badge variant="outline" className={`${userRole === 'admin' ? 'bg-wellness-green/10 text-wellness-green border-wellness-green/20' : 'bg-wellness-mint/10 text-wellness-mint border-wellness-mint/20'}`}>
-                    {userRole?.toUpperCase() || "USER"}
+                  <Badge variant="outline" className="bg-wellness-blue/10 text-wellness-blue border-wellness-blue/20">
+                    CLIENT
                   </Badge>
                 </div>
                 <CardDescription className="mt-2 space-y-1">
@@ -472,8 +557,8 @@ const ClientDetail = () => {
             {client.service_type && (
               <div className="mb-4 pb-4 border-b">
                 <p className="text-sm text-muted-foreground mb-2">Service Type</p>
-                <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm border ${userRole === "admin" ? getServiceTypeBadgeColor(client.service_type) : "bg-muted text-muted-foreground"}`}>
-                  {userRole === "admin" ? formatServiceType(client.service_type) : "Restricted"}
+                <span className={`inline-flex items-center px-3 py-1 rounded-md text-sm border ${(userRole === "admin" || userRole === "manager") ? getServiceTypeBadgeColor(client.service_type) : "bg-muted text-muted-foreground"}`}>
+                  {(userRole === "admin" || userRole === "manager") ? formatServiceType(client.service_type) : "Restricted"}
                 </span>
               </div>
             )}
@@ -482,7 +567,7 @@ const ClientDetail = () => {
                 <Target className="h-5 w-5 text-muted-foreground" />
                 <div>
                   <p className="text-sm text-muted-foreground">Target Kcal</p>
-                  <p className="font-semibold">{userRole === "admin" ? (client.target_kcal || "—") : "****"}</p>
+                  <p className="font-semibold">{(userRole === "admin" || userRole === "manager") ? (client.target_kcal || "—") : "****"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -490,7 +575,7 @@ const ClientDetail = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Last Weight</p>
                   <p className="font-semibold">
-                    {userRole === "admin" ? (client.last_weight ? `${client.last_weight} kg` : "—") : "** kg"}
+                    {(userRole === "admin" || userRole === "manager") ? (client.last_weight ? `${client.last_weight} kg` : "—") : "** kg"}
                   </p>
                 </div>
               </div>
@@ -499,16 +584,16 @@ const ClientDetail = () => {
                 <div>
                   <p className="text-sm text-muted-foreground">Age</p>
                   <p className="font-semibold text-muted-foreground">
-                    {userRole === "admin" ? (client.age || "—") : "***"}
+                    {(userRole === "admin" || userRole === "manager") ? (client.age || "—") : "***"}
                   </p>
                 </div>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Program</p>
-                <p className="font-semibold capitalize">{userRole === "admin" ? (client.program_type?.replace("_", " ") || "—") : "**********"}</p>
+                <p className="font-semibold capitalize">{(userRole === "admin" || userRole === "manager") ? (client.program_type?.replace("_", " ") || "—") : "**********"}</p>
               </div>
             </div>
-            {client.goals && userRole === "admin" && (
+            {client.goals && (userRole === "admin" || userRole === "manager") && (
               <div className="mt-4 pt-4 border-t">
                 <p className="text-sm text-muted-foreground mb-1">Goals</p>
                 <p>{client.goals}</p>
@@ -921,7 +1006,7 @@ const ClientDetail = () => {
                           <TableCell>{file.file_type || "—"}</TableCell>
                           <TableCell>{file.file_size ? `${(file.file_size / 1024).toFixed(2)} KB` : "—"}</TableCell>
                           <TableCell>{formatDate(file.created_at)}</TableCell>
-                          <TableCell>
+                          <TableCell className="text-right space-x-2">
                             <Button
                               variant="outline"
                               size="sm"
@@ -934,7 +1019,14 @@ const ClientDetail = () => {
                                 }
                               }}
                             >
-                              View
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => setDeleteFileId(file.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
                         </TableRow>
@@ -1024,6 +1116,19 @@ const ClientDetail = () => {
 
           <TabsContent value="workflow">
             {id && <WorkflowTimeline clientId={id} />}
+
+            {id && (
+              <div className="mt-6">
+                <PendingReviewDashboard
+                  clientId={id}
+                  onReviewCard={(cardId, cardType) => {
+                    setReviewCardId(cardId);
+                    setReviewCardType(cardType);
+                  }}
+                  onSuccess={refetchClientData}
+                />
+              </div>
+            )}
 
             <Card className="mt-6">
               <CardHeader>
@@ -1141,6 +1246,28 @@ const ClientDetail = () => {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={!!deleteFileId} onOpenChange={() => setDeleteFileId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete File</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this file? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const file = files.find(f => f.id === deleteFileId);
+                if (file) handleDeleteFile(file.id, file.file_url);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <EditAssessmentDialog
         assessmentId={editAssessmentId}
         open={editAssessmentId !== null}
@@ -1169,6 +1296,48 @@ const ClientDetail = () => {
         data={selectedReportData}
         clientName={client?.name || ""}
       />
+
+      {reviewCardId && reviewCardType === 'health_assessment' && (
+        <HealthAssessmentCardEditor
+          cardId={reviewCardId}
+          open={!!reviewCardId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setReviewCardId(null);
+              setReviewCardType(null);
+            }
+          }}
+          onSave={refetchClientData}
+        />
+      )}
+
+      {reviewCardId && reviewCardType === 'stress_card' && (
+        <StressCardEditor
+          cardId={reviewCardId}
+          open={!!reviewCardId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setReviewCardId(null);
+              setReviewCardType(null);
+            }
+          }}
+          onSave={refetchClientData}
+        />
+      )}
+
+      {reviewCardId && reviewCardType === 'sleep_card' && (
+        <SleepCardEditor
+          cardId={reviewCardId}
+          open={!!reviewCardId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setReviewCardId(null);
+              setReviewCardType(null);
+            }
+          }}
+          onSave={refetchClientData}
+        />
+      )}
     </div>
   );
 };

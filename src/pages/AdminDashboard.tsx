@@ -30,6 +30,7 @@ const InterestSubmissionsManager = lazy(() => import("@/components/InterestSubmi
 const ReportManager = lazy(() => import("@/components/ReportManager").then(m => ({ default: m.ReportManager })));
 const ComprehensiveAssessmentManager = lazy(() => import("@/components/ComprehensiveAssessmentManager").then(m => ({ default: m.ComprehensiveAssessmentManager })));
 const ManagersManager = lazy(() => import("@/components/ManagersManager").then(m => ({ default: m.ManagersManager })));
+const MessageTemplatesManager = lazy(() => import("@/components/MessageTemplatesManager").then(m => ({ default: m.MessageTemplatesManager })));
 import { BulkMessageButton } from "@/components/BulkMessageButton";
 import { ComprehensiveAssessmentForm } from "@/components/ComprehensiveAssessmentForm";
 
@@ -61,7 +62,7 @@ export default function AdminDashboard() {
     // Optimize: Run admin roles and today's logs queries in parallel
     const today = new Date().toISOString().split("T")[0];
 
-    const [adminAndManagerRoles, todayLogsResult] = await Promise.all([
+    const [adminAndManagerRoles, todayLogsResult, pendingCardsResult, adminRequestsResult] = await Promise.all([
       supabase
         .from("user_roles")
         .select("user_id")
@@ -69,7 +70,15 @@ export default function AdminDashboard() {
       supabase
         .from("daily_logs")
         .select("*", { count: "exact", head: true })
-        .eq("log_date", today)
+        .eq("log_date", today),
+      supabase
+        .from("pending_review_cards")
+        .select("id")
+        .in("status", ["pending", "edited"]),
+      supabase
+        .from("admin_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending")
     ]);
 
     const adminAndManagerUserIds = adminAndManagerRoles.data?.map((r) => r.user_id) || [];
@@ -91,14 +100,23 @@ export default function AdminDashboard() {
 
     // Calculate stats
     const activeClients = clientsData?.filter((c) => c.status === "active").length || 0;
-    const pendingClients = clientsData?.filter((c) => c.status === "pending").length || 0;
+    const pendingClientRecords = clientsData?.filter((c) => c.status === "pending").length || 0;
+    const pendingReviewCards = pendingCardsResult.data?.length || 0;
+    const pendingAdminRequests = adminRequestsResult.count || 0;
+    const totalPending = pendingClientRecords + pendingReviewCards + pendingAdminRequests;
+
+    console.log("Dashboard Stats Calculation:", {
+      pendingClientRecords,
+      pendingReviewCards,
+      totalPending
+    });
 
     return {
       clients: clientsData || [],
       stats: {
         totalClients: clientsData?.length || 0,
         activeClients,
-        pendingClients,
+        pendingClients: totalPending,
         todayLogs: todayLogsResult.count || 0,
       }
     };
@@ -110,6 +128,26 @@ export default function AdminDashboard() {
     enabled: !!user && (userRole === "admin" || userRole === "manager"),
   });
 
+  // Real-time subscription for pending review cards to keep stats in sync
+  useEffect(() => {
+
+    const channel = supabase
+      .channel('admin-dashboard-pending-sync')
+      .on('postgres_changes',
+        { event: '*', schema: 'public', table: 'pending_review_cards' },
+        () => {
+          console.log("Real-time update: pending_review_cards changed, refetching dashboard stats");
+          queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+          queryClient.invalidateQueries({ queryKey: ['workflow-stats'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const clients = data?.clients || [];
   const stats = data?.stats || {
     totalClients: 0,
@@ -120,6 +158,8 @@ export default function AdminDashboard() {
 
   const refetchDashboard = () => {
     queryClient.invalidateQueries({ queryKey: ['admin-dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['workflow-stats'] });
+    queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] });
   };
 
   const getStatusColor = useCallback((status: string) => {
@@ -235,6 +275,7 @@ export default function AdminDashboard() {
           </div>
         </div>
 
+
         {/* Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <Card className="relative overflow-hidden group card-hover border-l-4 border-l-wellness-green animate-fade-in">
@@ -294,29 +335,35 @@ export default function AdminDashboard() {
           </Card>
         </div>
 
+
         <div className="mb-8 space-y-6">
+          <div className="flex items-center gap-2 mb-2">
+            <h2 className="text-xl font-bold">Action Center</h2>
+            <Badge variant="secondary" className="bg-wellness-amber/10 text-wellness-amber border-wellness-amber/20">
+              {stats.pendingClients} Total Actions
+            </Badge>
+          </div>
           <AdminRequestsWidget />
           <WorkflowStatusWidget />
-        </div>
-
-        <div className="mb-8">
           <PendingReviewDashboard
             onReviewCard={(cardId, cardType) => {
               setReviewCardId(cardId);
               setReviewCardType(cardType);
             }}
+            onSuccess={refetchDashboard}
           />
         </div>
 
         {/* Main Content */}
         <Tabs defaultValue="clients" className="space-y-6">
-          <TabsList className="grid w-full h-auto grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 bg-muted/50 p-2">
+          <TabsList className="grid w-full h-auto grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8 gap-2 bg-muted/50 p-2">
             <TabsTrigger value="clients" className="h-full">Clients</TabsTrigger>
             <TabsTrigger value="leads" className="h-full">Leads</TabsTrigger>
             <TabsTrigger value="reports" className="h-full">Reports</TabsTrigger>
             <TabsTrigger value="ingredients" className="h-full">Ingredients</TabsTrigger>
             <TabsTrigger value="food" className="h-full">Food Items</TabsTrigger>
             <TabsTrigger value="recipes" className="h-full">Recipes</TabsTrigger>
+            <TabsTrigger value="templates" className="h-full">Templates</TabsTrigger>
             {userRole === "admin" && (
               <TabsTrigger value="managers" className="h-full">Managers</TabsTrigger>
             )}
@@ -400,17 +447,17 @@ export default function AdminDashboard() {
                                   <span>{userRole === "admin" ? client.phone : (userRole === "manager" ? "**********" : "Restricted")}</span>
                                 </div>
                                 <div>
-                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${userRole === "admin" ? getServiceTypeBadgeColor(client.service_type) : "bg-muted text-muted-foreground"}`}>
-                                    {userRole === "admin" ? formatServiceType(client.service_type) : "Restricted"}
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium border ${(userRole === "admin" || userRole === "manager") ? getServiceTypeBadgeColor(client.service_type) : "bg-muted text-muted-foreground"}`}>
+                                    {(userRole === "admin" || userRole === "manager") ? formatServiceType(client.service_type) : "Restricted"}
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <span>🎯</span>
-                                  <span className="capitalize">{userRole === "admin" ? client.program_type?.replace("_", " ") : "*************"}</span>
+                                  <span className="capitalize">{(userRole === "admin" || userRole === "manager") ? client.program_type?.replace("_", " ") : "*************"}</span>
                                 </div>
                                 <div className="flex items-center gap-2 text-muted-foreground">
                                   <span>⚖️</span>
-                                  <span>{userRole === "admin" ? (client.last_weight ? `${client.last_weight} kg` : "Not set") : "** kg"}</span>
+                                  <span>{(userRole === "admin" || userRole === "manager") ? (client.last_weight ? `${client.last_weight} kg` : "Not set") : "** kg"}</span>
                                 </div>
                               </div>
                             </div>
@@ -449,6 +496,12 @@ export default function AdminDashboard() {
           <TabsContent value="leads">
             <Suspense fallback={<div className="flex items-center justify-center py-12"><div className="animate-pulse text-lg">Loading...</div></div>}>
               <InterestSubmissionsManager clients={clients} />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="templates">
+            <Suspense fallback={<div className="text-center py-12">Loading templates...</div>}>
+              <MessageTemplatesManager />
             </Suspense>
           </TabsContent>
 
@@ -527,7 +580,7 @@ export default function AdminDashboard() {
                 setReviewCardType(null);
               }
             }}
-            onSave={() => queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] })}
+            onSave={refetchDashboard}
           />
         )}
 
@@ -541,7 +594,7 @@ export default function AdminDashboard() {
                 setReviewCardType(null);
               }
             }}
-            onSave={() => queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] })}
+            onSave={refetchDashboard}
           />
         )}
 
@@ -555,7 +608,7 @@ export default function AdminDashboard() {
                 setReviewCardType(null);
               }
             }}
-            onSave={() => queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] })}
+            onSave={refetchDashboard}
           />
         )}
 

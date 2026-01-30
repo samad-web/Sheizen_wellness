@@ -36,17 +36,25 @@ interface WeeklyPlanViewerProps {
 }
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
+  cleansing_water: "Cleansing Water",
+  early_morning: "Early Morning",
   breakfast: "Breakfast",
+  mid_breakfast: "Mid Breakfast",
   lunch: "Lunch",
-  evening_snack: "Evening Snack",
+  evening_snack_1: "Evening Snack 1",
+  evening_snack_2: "Evening Snack 2",
   dinner: "Dinner",
 };
 
 const MEAL_TYPE_ICONS: Record<string, string> = {
-  breakfast: "🌅",
-  lunch: "☀️",
-  evening_snack: "🌤️",
-  dinner: "🌙",
+  cleansing_water: "💧",
+  early_morning: "🌅",
+  breakfast: "🥣",
+  mid_breakfast: "🍎",
+  lunch: "🍲",
+  evening_snack_1: "🍿",
+  evening_snack_2: "🥜",
+  dinner: "🥗",
 };
 
 export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
@@ -111,7 +119,7 @@ export function WeeklyPlanViewer({ clientId }: WeeklyPlanViewerProps) {
   const getMealCardsForDay = (day: number) => {
     const dayCards = mealCards.filter(card => card.day_number === day);
     // Sort by meal type order
-    const mealOrder = ["breakfast", "lunch", "evening_snack", "dinner"];
+    const mealOrder = ["cleansing_water", "early_morning", "breakfast", "mid_breakfast", "lunch", "evening_snack_1", "evening_snack_2", "dinner"];
     return dayCards.sort((a, b) =>
       mealOrder.indexOf(a.meal_type) - mealOrder.indexOf(b.meal_type)
     );

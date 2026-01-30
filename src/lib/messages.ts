@@ -153,6 +153,7 @@ export const sendBulkMessage = async (
           is_read: false,
           batch_id: batchId,
           is_bulk: true,
+          created_at: new Date().toISOString(),
         };
       }).filter(Boolean);
 

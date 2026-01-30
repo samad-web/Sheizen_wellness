@@ -53,7 +53,7 @@ export function SleepCardEditor({
 
       setCardData(data);
       setFormData(data.generated_content);
-      
+
       // Generate display name if not exists
       const cardWithDisplayName = data as any;
       if (!cardWithDisplayName.display_name && data.clients) {
@@ -62,7 +62,7 @@ export function SleepCardEditor({
           .select('name')
           .eq('id', (await supabase.auth.getUser()).data.user?.id)
           .maybeSingle();
-        
+
         const adminName = profileData?.name || 'Admin';
         const generatedName = createDisplayName(
           (data.clients as any).name,
@@ -151,12 +151,12 @@ export function SleepCardEditor({
       const newData = { ...prev };
       const keys = path.split('.');
       let current = newData;
-      
+
       for (let i = 0; i < keys.length - 1; i++) {
         if (!current[keys[i]]) current[keys[i]] = {};
         current = current[keys[i]];
       }
-      
+
       current[keys[keys.length - 1]] = value;
       return newData;
     });
@@ -226,7 +226,7 @@ export function SleepCardEditor({
               Please wait while we prepare the sleep card for review.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="flex flex-1 flex-col items-center justify-center p-12 gap-4">
             <div className="relative">
               <Moon className="h-16 w-16 text-primary animate-pulse" />
@@ -251,7 +251,7 @@ export function SleepCardEditor({
               <DialogTitle className="text-2xl flex items-center gap-2">
                 Sleep Quality Assessment
                 <Badge variant="outline" className="ml-2 border-wellness-mint text-wellness-mint">
-                  {cardData?.status === 'edited' ? 'Edited' : 'AI Generated'}
+                  {cardData?.status === 'edited' ? 'Reviewed' : 'AI Generated'}
                 </Badge>
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground mt-1">
@@ -362,8 +362,8 @@ export function SleepCardEditor({
                     <Label htmlFor="overall_quality" className="text-xs text-muted-foreground">
                       Overall Sleep Quality Rating
                     </Label>
-                    <Select 
-                      value={formData.form_responses?.overall_sleep_quality_rating || ''} 
+                    <Select
+                      value={formData.form_responses?.overall_sleep_quality_rating || ''}
                       onValueChange={(value) => updateField('form_responses.overall_sleep_quality_rating', value)}
                     >
                       <SelectTrigger className={`transition-all duration-200 ${getQualityColor(formData.form_responses?.overall_sleep_quality_rating || '')}`}>
@@ -391,8 +391,8 @@ export function SleepCardEditor({
                     <Label htmlFor="sleep_trouble" className="text-xs text-muted-foreground">
                       🌙 How Often Do You Experience Sleep Difficulties?
                     </Label>
-                    <Select 
-                      value={formData.form_responses?.sleep_trouble_frequency || ''} 
+                    <Select
+                      value={formData.form_responses?.sleep_trouble_frequency || ''}
                       onValueChange={(value) => updateField('form_responses.sleep_trouble_frequency', value)}
                     >
                       <SelectTrigger>
@@ -410,8 +410,8 @@ export function SleepCardEditor({
                     <Label htmlFor="sleep_medicine" className="text-xs text-muted-foreground">
                       💊 Sleep Medication Usage Frequency
                     </Label>
-                    <Select 
-                      value={formData.form_responses?.sleep_medicine_frequency || ''} 
+                    <Select
+                      value={formData.form_responses?.sleep_medicine_frequency || ''}
                       onValueChange={(value) => updateField('form_responses.sleep_medicine_frequency', value)}
                     >
                       <SelectTrigger>
@@ -439,8 +439,8 @@ export function SleepCardEditor({
                     <Label htmlFor="daytime_sleepiness" className="text-xs text-muted-foreground">
                       ☀️ Daytime Sleepiness Level
                     </Label>
-                    <Select 
-                      value={formData.form_responses?.daytime_sleepiness_frequency || ''} 
+                    <Select
+                      value={formData.form_responses?.daytime_sleepiness_frequency || ''}
                       onValueChange={(value) => updateField('form_responses.daytime_sleepiness_frequency', value)}
                     >
                       <SelectTrigger>
@@ -458,8 +458,8 @@ export function SleepCardEditor({
                     <Label htmlFor="enthusiasm" className="text-xs text-muted-foreground">
                       ⚡ Energy & Motivation Level
                     </Label>
-                    <Select 
-                      value={formData.form_responses?.enthusiasm_problem_level || ''} 
+                    <Select
+                      value={formData.form_responses?.enthusiasm_problem_level || ''}
                       onValueChange={(value) => updateField('form_responses.enthusiasm_problem_level', value)}
                     >
                       <SelectTrigger>
@@ -482,7 +482,7 @@ export function SleepCardEditor({
                   <AlertCircle className="h-4 w-4 text-destructive" />
                   <h4 className="font-medium text-sm">Observed Sleep Symptoms</h4>
                 </div>
-                
+
                 {/* Current Symptoms Display */}
                 {formData.form_responses?.sleep_symptoms_observed && Array.isArray(formData.form_responses.sleep_symptoms_observed) && formData.form_responses.sleep_symptoms_observed.length > 0 && (
                   <div className="flex flex-wrap gap-2">
@@ -493,7 +493,7 @@ export function SleepCardEditor({
                     ))}
                   </div>
                 )}
-                
+
                 {/* Editable Symptoms */}
                 <div className="space-y-2 pt-2 border-t border-destructive/10">
                   <Label className="text-xs text-muted-foreground">Edit Symptoms (check/uncheck)</Label>
@@ -510,7 +510,7 @@ export function SleepCardEditor({
                     ].map((symptom) => {
                       const symptoms = formData.form_responses?.sleep_symptoms_observed || [];
                       const isChecked = symptoms.includes(symptom);
-                      
+
                       return (
                         <div key={symptom} className="flex items-center space-x-2">
                           <Checkbox
@@ -524,8 +524,8 @@ export function SleepCardEditor({
                               updateField('form_responses.sleep_symptoms_observed', newSymptoms);
                             }}
                           />
-                          <Label 
-                            htmlFor={`symptom-${symptom}`} 
+                          <Label
+                            htmlFor={`symptom-${symptom}`}
                             className="text-xs cursor-pointer font-normal"
                           >
                             {symptom}
@@ -563,7 +563,7 @@ export function SleepCardEditor({
                 <Sparkles className="h-5 w-5 text-wellness-mint" />
                 <h3 className="font-semibold text-lg">Client Preview</h3>
               </div>
-              
+
               <div className="p-6 bg-gradient-to-br from-card to-muted/20 rounded-2xl shadow-lg space-y-6 border border-border/50">
                 {/* Header */}
                 <div className="text-center pb-6 border-b border-border/50">
@@ -621,7 +621,7 @@ export function SleepCardEditor({
                       {sleepQualityLabels[formData.form_responses?.overall_sleep_quality_rating || ''] || 'Not assessed'}
                     </div>
                   </div>
-                  
+
                   <div className="grid gap-2 text-sm">
                     <div className="flex justify-between p-3 bg-muted/30 rounded-lg">
                       <span className="text-muted-foreground">Sleep Difficulties</span>
@@ -691,37 +691,57 @@ export function SleepCardEditor({
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-border/50 bg-muted/30">
-          <div className="text-sm text-muted-foreground flex items-center gap-2">
-            {cardData?.status === 'edited' && (
-              <Badge variant="outline" className="border-wellness-amber text-wellness-amber">
-                <Save className="h-3 w-3 mr-1" />
-                Draft Saved
-              </Badge>
-            )}
+        {/* Action Buttons with Display Name */}
+        <div className="space-y-3 px-6 py-4 border-t border-border/50 bg-muted/30">
+          <div className="space-y-2">
+            <Label htmlFor="display-name-sleep" className="text-sm font-medium flex items-center gap-2">
+              <FileText className="h-4 w-4 text-wellness-green" />
+              Display File Name
+            </Label>
+            <Input
+              id="display-name-sleep"
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
+              placeholder="filename.pdf"
+              className="transition-all duration-200 focus:ring-2 focus:ring-wellness-green/20"
+              maxLength={200}
+            />
+            <p className="text-xs text-muted-foreground">
+              This name will be shown to the client when downloading the assessment
+            </p>
           </div>
-          <div className="flex gap-3">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} className="transition-all duration-200 hover:bg-muted">
-              Cancel
-            </Button>
-            <Button 
-              variant="outline" 
-              onClick={handleSave} 
-              disabled={saving}
-              className="transition-all duration-200 hover:bg-wellness-mint/10 hover:border-wellness-mint hover:text-wellness-mint"
-            >
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Draft
-            </Button>
-            <Button 
-              onClick={handleSend} 
-              disabled={sending || saving}
-              className="transition-all duration-200 bg-gradient-to-r from-wellness-green to-wellness-mint hover:shadow-lg"
-            >
-              {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-              Review & Send to Client
-            </Button>
+
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm text-muted-foreground flex items-center gap-2">
+              {cardData?.status === 'edited' && (
+                <Badge variant="outline" className="border-wellness-amber text-wellness-amber">
+                  <Save className="h-3 w-3 mr-1" />
+                  Draft Saved
+                </Badge>
+              )}
+            </div>
+            <div className="flex gap-3">
+              <Button variant="ghost" onClick={() => onOpenChange(false)} className="transition-all duration-200 hover:bg-muted">
+                Cancel
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleSave}
+                disabled={saving}
+                className="transition-all duration-200 hover:bg-wellness-mint/10 hover:border-wellness-mint hover:text-wellness-mint"
+              >
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Draft
+              </Button>
+              <Button
+                onClick={handleSend}
+                disabled={sending || saving}
+                className="transition-all duration-200 bg-gradient-to-r from-wellness-green to-wellness-mint hover:shadow-lg"
+              >
+                {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Review & Send to Client
+              </Button>
+            </div>
           </div>
         </div>
       </DialogContent>

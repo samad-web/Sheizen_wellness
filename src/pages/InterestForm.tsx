@@ -147,6 +147,7 @@ export default function InterestForm() {
                   required
                   maxLength={100}
                   className="h-11"
+                  onlyAlphabets
                 />
               </div>
 
@@ -164,6 +165,7 @@ export default function InterestForm() {
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                     required
                     className="h-11"
+                    onlyNumbers
                   />
                 </div>
 
@@ -198,6 +200,7 @@ export default function InterestForm() {
                   required
                   maxLength={15}
                   className="h-11"
+                  onlyNumbers
                 />
               </div>
 

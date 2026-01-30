@@ -16,7 +16,9 @@ import { Loader2, Calendar } from "lucide-react";
 const eventSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   eventType: z.string().min(1, "Event type is required"),
-  time: z.string().optional(),
+  hour: z.string().optional(),
+  minute: z.string().optional(),
+  ampm: z.enum(["AM", "PM"]).optional(),
   duration: z.coerce.number().min(5).max(480).optional(),
   description: z.string().max(500, "Description must be less than 500 characters").optional(),
 });
@@ -40,7 +42,9 @@ export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEven
     defaultValues: {
       title: "",
       eventType: "",
-      time: "",
+      hour: "12",
+      minute: "00",
+      ampm: "AM",
       duration: undefined,
       description: "",
     },
@@ -50,7 +54,12 @@ export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEven
     setIsSubmitting(true);
     try {
       const metadata: any = {};
-      if (data.time) metadata.time = data.time;
+
+      // Construct time string if fields are present
+      if (data.hour && data.minute && data.ampm) {
+        metadata.time = `${data.hour}:${data.minute} ${data.ampm}`;
+      }
+
       if (data.duration) metadata.duration = data.duration;
       metadata.meeting_type = data.eventType;
 
@@ -77,7 +86,15 @@ export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEven
       if (error) throw error;
 
       toast.success("Meeting scheduled successfully!");
-      form.reset();
+      form.reset({
+        title: "",
+        eventType: "",
+        hour: "12",
+        minute: "00",
+        ampm: "AM",
+        duration: undefined,
+        description: "",
+      });
       onOpenChange(false);
       onEventCreated?.();
       onEventsChanged?.();
@@ -151,19 +168,69 @@ export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEven
             />
 
             <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="time"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Time</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Time</FormLabel>
+                <div className="flex items-center gap-2">
+                  <FormField
+                    control={form.control}
+                    name="hour"
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="w-[70px]">
+                            <SelectValue placeholder="HH" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((num) => (
+                            <SelectItem key={num} value={num.toString()}>
+                              {num}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <span className="text-muted-foreground">:</span>
+                  <FormField
+                    control={form.control}
+                    name="minute"
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="w-[70px]">
+                            <SelectValue placeholder="MM" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {["00", "05", "10", "15", "20", "25", "30", "35", "40", "45", "50", "55"].map((min) => (
+                            <SelectItem key={min} value={min}>
+                              {min}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="ampm"
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="w-[70px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="AM">AM</SelectItem>
+                          <SelectItem value="PM">PM</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </FormItem>
 
               <FormField
                 control={form.control}
@@ -187,11 +254,11 @@ export function EventScheduleDialog({ open, onOpenChange, date, clientId, onEven
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Additional details about this meeting..." 
+                    <Textarea
+                      placeholder="Additional details about this meeting..."
                       className="resize-none"
                       rows={3}
-                      {...field} 
+                      {...field}
                     />
                   </FormControl>
                   <FormMessage />

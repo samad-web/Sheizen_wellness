@@ -72,7 +72,7 @@ import { ClientMeasurementTracker } from "@/components/client/ClientMeasurementT
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, userRole, signOut } = useAuth();
   const queryClient = useQueryClient();
   const [todayLog, setTodayLog] = useState<any>(null);
   const [mealLogs, setMealLogs] = useState<any[]>([]);
@@ -109,31 +109,6 @@ export default function ClientDashboard() {
   const fetchClientData = async () => {
     if (!user?.id) throw new Error("No user");
 
-    try {
-      const { data: client, error: clientError } = await supabase
-        .from("clients")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle(); // Use maybeSingle to prevent PGRST116 throwing immediately
-
-      if (clientError) {
-        console.error("ClientDashboard: Error fetching client profile", clientError);
-        throw clientError;
-      }
-
-      if (!client) {
-
-        navigate("/onboarding");
-        return null; // Return null to signal no data, but handled
-      }
-    } catch (err) {
-      console.error("ClientDashboard: Unexpected error in fetch", err);
-      throw err;
-    }
-
-    // Re-assign client for rest of function (using the one from scope if I could, but I need to restructure)
-    // Redoing the fetch cleanly below:
-
     // Fetch client data
     const { data: client, error: clientError } = await supabase
       .from("clients")
@@ -147,27 +122,36 @@ export default function ClientDashboard() {
     }
 
     if (!client) {
-
-      navigate("/onboarding");
-      throw new Error("Redirecting to onboarding"); // Stop execution
+      // Return null, the component's useEffect will handle redirection if needed
+      return null;
     }
 
     if (!client?.id) {
       throw new Error("Client record missing ID");
     }
 
-    // Fetch user achievements
+    // Fetch user achievements (Earned & Progress are combined in the new schema)
+    // We use user.id directly since user_achievements is linked to auth.users
     const { data: earned } = await supabase
       .from("user_achievements")
       .select("*")
-      .eq("client_id", client.id)
-      .order("earned_at", { ascending: false });
+      .eq("user_id", user.id)
+      .eq("is_unlocked", true)
+      .order("unlocked_at", { ascending: false }) as any;
 
     // Fetch achievement progress
+    // In the new schema, any record in user_achievements tracks progress
     const { data: progress } = await supabase
-      .from("achievement_progress")
+      .from("user_achievements")
       .select("*")
-      .eq("client_id", client.id);
+      .eq("user_id", user.id) as any;
+
+    // Fetch client files
+    const { data: files } = await supabase
+      .from("files")
+      .select("*")
+      .eq("client_id", client.id)
+      .order("created_at", { ascending: false });
 
     // Fetch today's log
     const todayDate = new Date().toISOString().split("T")[0];
@@ -194,11 +178,15 @@ export default function ClientDashboard() {
 
     return {
       client,
-      earned: earned || [],
+      earned: (earned || []).map(e => ({
+        ...e,
+        earned_at: e.unlocked_at // Map new column to old prop name
+      })),
       progress: progress || [],
       log,
       meals: meals || [],
       todayCalories: totalCalories,
+      files: files || []
     };
   };
 
@@ -209,6 +197,7 @@ export default function ClientDashboard() {
   });
 
   const clientData = data?.client || null;
+
   const { isSupported: pushSupported, isSubscribed, isLoading: pushLoading, permissionStatus, subscribe, unsubscribe } = usePushNotifications(clientData?.id || null);
 
   // Auth check handled by ProtectedRoute
@@ -223,8 +212,24 @@ export default function ClientDashboard() {
       if (data.log?.activity_type) {
         setActivityType(data.log.activity_type);
       }
+    } else if (!isLoading && !data && user?.id) {
+      // If data is null and we are not loading, it means no client record was found
+      // Check effective role (context or metadata)
+      const effectiveRole = userRole || (user.user_metadata?.role as "admin" | "client" | "manager" | null);
+      const isStaff = effectiveRole === "admin" || effectiveRole === "manager";
+
+      if (isStaff) {
+        console.log("[ClientDashboard] Staff member detected via effective role, redirecting to admin");
+        navigate("/admin");
+      } else if (effectiveRole === "client") {
+        console.log("[ClientDashboard] No client record found for client, redirecting to onboarding");
+        navigate("/onboarding");
+      } else {
+        // If still no role, wait for AuthContext to definitively resolve it
+        console.log("[ClientDashboard] Role still undetermined, waiting...");
+      }
     }
-  }, [data]);
+  }, [data, isLoading, userRole, user, navigate]);
 
   // Real-time messages subscription
   useEffect(() => {
@@ -566,7 +571,11 @@ export default function ClientDashboard() {
   };
 
   const handleUrgentQuerySubmit = async () => {
-    if (!clientData?.id) return;
+    if (!clientData?.id) {
+      toast.error("You must be registered as a client to send urgent queries.");
+      return;
+    }
+
     if (!urgentQueryText.trim()) {
       toast.error("Please enter your question");
       return;
@@ -587,7 +596,7 @@ export default function ClientDashboard() {
         imagePath = fileName;
       }
 
-      const { error } = await supabase
+      const { data: insertData, error } = await supabase
         .from('admin_requests')
         .insert({
           client_id: clientData.id,
@@ -598,9 +607,15 @@ export default function ClientDashboard() {
           },
           status: 'pending',
           admin_notes: null
-        });
+        })
+        .select();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error inserting urgent query:", error);
+        throw error;
+      }
+
+      console.log("Urgent query inserted successfully:", insertData);
 
       toast.success("Urgent query sent to admin");
       setShowUrgentQuery(false);
@@ -902,6 +917,7 @@ export default function ClientDashboard() {
                           value={waterInput}
                           onChange={(e) => setWaterInput(e.target.value)}
                           className="flex-1"
+                          onlyNumbers
                         />
                         <Button
                           variant="default"
@@ -977,6 +993,7 @@ export default function ClientDashboard() {
                           value={activityInput}
                           onChange={(e) => setActivityInput(e.target.value)}
                           className="flex-1"
+                          onlyNumbers
                         />
                         <Button
                           variant="default"
@@ -1009,6 +1026,7 @@ export default function ClientDashboard() {
                           value={weightInput}
                           onChange={(e) => setWeightInput(e.target.value)}
                           className="flex-1"
+                          onlyNumbers
                         />
                         <Button
                           onClick={() => {
@@ -1274,6 +1292,7 @@ export default function ClientDashboard() {
                     <HealthAssessmentCardView
                       data={selectedReportCard.generated_content}
                       assessmentId={assessmentRecords.find(a => a.assessment_type === 'health' && a.client_id === clientData?.id)?.id}
+                      attachedFiles={data?.files || []}
                     />
                   )}
                   {selectedReportCard.card_type === 'stress_card' && (
@@ -1286,6 +1305,7 @@ export default function ClientDashboard() {
                     <SleepCardView
                       data={selectedReportCard.generated_content}
                       assessmentId={assessmentRecords.find(a => a.assessment_type === 'sleep' && a.client_id === clientData?.id)?.id}
+                      attachedFiles={data?.files || []}
                     />
                   )}
                   {selectedReportCard.card_type === 'action_plan' && (

@@ -25,9 +25,10 @@ interface WeeklyPlanDownloaderProps {
 }
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
+    cleansing_water: "Cleansing Water",
     early_morning: "Early Morning",
     breakfast: "Breakfast",
-    mid_morning: "Mid Morning",
+    mid_breakfast: "Mid Breakfast",
     lunch: "Lunch",
     evening_snack_1: "Evening Snack 1",
     evening_snack_2: "Evening Snack 2",

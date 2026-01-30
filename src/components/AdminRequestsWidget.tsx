@@ -72,15 +72,23 @@ export function AdminRequestsWidget() {
             .eq("status", "pending")
             .order("created_at", { ascending: false });
 
-        if (error) throw error;
 
-        // Transform data to match interface (handling the array/object nature of join)
-        const formattedData = data?.map(item => ({
-            ...item,
-            client: Array.isArray(item.client) ? item.client[0] : item.client
-        })) as AdminRequest[];
+        // Transform data and sort: Urgent queries first, then by date
+        const formattedData = (data?.map(item => {
+            const client = Array.isArray(item.client) ? item.client[0] : item.client;
+            return {
+                ...item,
+                client: client || { name: "Unknown Client", email: "N/A" }
+            };
+        }) as AdminRequest[]) || [];
 
-        return formattedData || [];
+        const sortedData = [...formattedData].sort((a, b) => {
+            if (a.request_type === 'urgent_query' && b.request_type !== 'urgent_query') return -1;
+            if (a.request_type !== 'urgent_query' && b.request_type === 'urgent_query') return 1;
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        return sortedData;
     };
 
     const { data: requests = [], isLoading } = useQuery({
@@ -122,10 +130,10 @@ export function AdminRequestsWidget() {
         }
     };
 
-    if (isLoading || requests.length === 0) return null;
+    const hasUrgent = requests.some(r => r.request_type === 'urgent_query');
 
     return (
-        <Card className="border-l-4 border-l-amber-500 animate-fade-in shadow-md">
+        <Card className={`${hasUrgent ? 'border-l-4 border-l-red-600 shadow-lg ring-1 ring-red-200 animate-pulse' : 'border-l-4 border-l-amber-500 shadow-md'} animate-fade-in`}>
             <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -133,11 +141,24 @@ export function AdminRequestsWidget() {
                             <Bell className="h-5 w-5 text-amber-600 animate-pulse" />
                         </div>
                         <div>
-                            <CardTitle>Client Requests</CardTitle>
+                            <div className="flex items-center gap-2">
+                                <CardTitle>Client Requests</CardTitle>
+                                {hasUrgent && (
+                                    <Badge variant="destructive" className="animate-bounce">
+                                        URGENT ACTION REQUIRED
+                                    </Badge>
+                                )}
+                            </div>
                             <CardDescription>{requests.length} pending request{requests.length !== 1 ? 's' : ''}</CardDescription>
                         </div>
                     </div>
                 </div>
+                {hasUrgent && (
+                    <div className="mt-4 p-2 bg-red-50 border border-red-200 rounded text-red-700 text-xs font-bold flex items-center gap-2 animate-pulse">
+                        <AlertCircle className="h-4 w-4" />
+                        Clients are waiting for urgent food query approvals!
+                    </div>
+                )}
             </CardHeader>
             <CardContent>
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">

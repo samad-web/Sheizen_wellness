@@ -60,6 +60,8 @@ DECLARE
   _user_id uuid;
   _total_activity integer;
   _water_streak integer;
+  _total_water integer;
+  _weight_streak integer;
   _activity_streak integer;
 BEGIN
   -- Find the user_id from the client_id
@@ -67,22 +69,37 @@ BEGIN
   IF _user_id IS NULL THEN RETURN NEW; END IF;
 
   -- 1. Activity Total
-  -- Sum all activity minutes for this client
   SELECT COALESCE(SUM(activity_minutes), 0) INTO _total_activity
   FROM public.daily_logs
   WHERE client_id = NEW.client_id;
   
   PERFORM public.check_user_achievements(_user_id, 'activity', _total_activity);
 
-  -- 2. Water Streak (Consecutive days hitting target, say 2000ml?)
-  -- Simplified: Let's just say "logged days with > 0 water" for now or use a fixed target if we knew it.
-  -- Let's assume hitting "target" means > 2000ml for generic rule, or > target_water if column exists (it doesn't on client table, only target_kcal).
-  -- Let's use > 1500ml as a reasonable "goal" for now explicitly.
-  -- Complex SQL for streaks is heavy. For MVP, let's just count "total days with > 1500ml" or something simple?
-  -- User asked for "Consistency streaks".
-  -- Let's calculate current streak of consecutive days with any log.
+  -- 2. Water Total & Streak
+  SELECT COALESCE(SUM(water_intake), 0) INTO _total_water
+  FROM public.daily_logs
+  WHERE client_id = NEW.client_id;
   
-  -- Calculate Activity Streak (Consecutive days with activity > 0)
+  PERFORM public.check_user_achievements(_user_id, 'water', _total_water);
+
+  -- Water Streak (Consecutive days with water_intake >= 2000)
+  WITH streaks AS (
+      SELECT log_date,
+             log_date - (ROW_NUMBER() OVER (ORDER BY log_date))::integer AS grp
+      FROM public.daily_logs
+      WHERE client_id = NEW.client_id AND water_intake >= 2000
+  )
+  SELECT COUNT(*) INTO _water_streak
+  FROM streaks
+  WHERE grp = (SELECT grp FROM streaks WHERE log_date = CURRENT_DATE OR log_date = CURRENT_DATE - 1 LIMIT 1);
+  
+  -- We don't have a 'water_streak' category in enum, but we can reuse 'streak' or add it.
+  -- The enum in 20251219000400 is ('streak', 'meal', 'water', 'activity', 'assessment').
+  -- So hydration streak goes into 'water' or 'streak'? 
+  -- Existing 'water_7_days' has category 'water'. So we pass it as 'water'.
+  PERFORM public.check_user_achievements(_user_id, 'water', COALESCE(_water_streak, 0));
+
+  -- 3. Activity Streak
   WITH streaks AS (
       SELECT log_date,
              log_date - (ROW_NUMBER() OVER (ORDER BY log_date))::integer AS grp
@@ -92,9 +109,23 @@ BEGIN
   SELECT COUNT(*) INTO _activity_streak
   FROM streaks
   WHERE grp = (SELECT grp FROM streaks WHERE log_date = CURRENT_DATE OR log_date = CURRENT_DATE - 1 LIMIT 1);
-  -- If today/yesterday not logged, streak might be 0 or broken.
   
   PERFORM public.check_user_achievements(_user_id, 'streak', COALESCE(_activity_streak, 0));
+
+  -- 4. Weight Consistency (Days logged)
+  WITH streaks AS (
+      SELECT log_date,
+             log_date - (ROW_NUMBER() OVER (ORDER BY log_date))::integer AS grp
+      FROM public.daily_logs
+      WHERE client_id = NEW.client_id AND weight IS NOT NULL
+  )
+  SELECT COUNT(*) INTO _weight_streak
+  FROM streaks
+  WHERE grp = (SELECT grp FROM streaks WHERE log_date = CURRENT_DATE OR log_date = CURRENT_DATE - 1 LIMIT 1);
+  
+  -- Weight milestones usually go in 'assessment' or new category. 
+  -- But 'streak' is fine for consistency.
+  PERFORM public.check_user_achievements(_user_id, 'streak', COALESCE(_weight_streak, 0));
 
   RETURN NEW;
 END;

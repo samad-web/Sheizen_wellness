@@ -47,11 +47,17 @@ export function BulkMessageDialog({ open, onOpenChange, clients, onSuccess }: Bu
   }, [open]);
 
   const fetchTemplates = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("message_templates")
       .select("*")
       .eq("is_active", true)
       .order("name");
+
+    if (error) {
+      console.error("Error fetching templates:", error);
+      return;
+    }
+
     if (data) setTemplates(data);
   };
 

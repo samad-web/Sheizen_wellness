@@ -17,9 +17,13 @@ interface MealPhotoUploadProps {
 }
 
 const MEAL_TYPES = [
+  { value: "cleansing_water", label: "Cleansing Water" },
+  { value: "early_morning", label: "Early Morning" },
   { value: "breakfast", label: "Breakfast" },
+  { value: "mid_breakfast", label: "Mid Breakfast" },
   { value: "lunch", label: "Lunch" },
-  { value: "evening_snack", label: "Evening Snack" },
+  { value: "evening_snack_1", label: "Evening Snack 1" },
+  { value: "evening_snack_2", label: "Evening Snack 2" },
   { value: "dinner", label: "Dinner" },
 ];
 
@@ -160,9 +164,13 @@ export function MealPhotoUpload({ clientId, onSuccess }: MealPhotoUploadProps) {
 
       // Send automated message
       const mealTypeLabels = {
+        cleansing_water: 'Cleansing Water',
+        early_morning: 'Early Morning',
         breakfast: 'Breakfast',
+        mid_breakfast: 'Mid Breakfast',
         lunch: 'Lunch',
-        evening_snack: 'Evening Snack',
+        evening_snack_1: 'Evening Snack 1',
+        evening_snack_2: 'Evening Snack 2',
         dinner: 'Dinner'
       };
 

@@ -24,28 +24,47 @@ export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) 
         return <Navigate to="/auth" state={{ from: location }} replace />;
     }
 
-    if (requiredRole && userRole !== requiredRole) {
-        // If user has no role, they likely haven't completed onboarding
-        if (!userRole) {
-            console.log("[ProtectedRoute] No role found for user, redirecting to onboarding");
-            return <Navigate to="/onboarding" replace />;
+    // Backup role check: If context userRole is missing, use metadata as a safety fallback
+    const effectiveRole = userRole || (user.user_metadata?.role as "admin" | "client" | "manager" | null);
+
+    if (requiredRole && effectiveRole !== requiredRole) {
+        // If user has no role at all, they likely haven't completed onboarding
+        if (!effectiveRole) {
+            // CRITICAL: If we have a user but no role yet, DON'T redirect immediately.
+            // This might be a race condition during reload where metadata is still syncing.
+            // Instead, show the loader one more time or wait for AuthContext to finish.
+            console.log("[ProtectedRoute] No effective role found for user. Waiting or redirecting...");
+
+            // If we've already waited (i.e., not loading anymore), then redirect.
+            // But we add a small safety buffer here.
+            return (
+                <div className="min-h-screen flex items-center justify-center bg-background">
+                    <div className="flex flex-col items-center gap-4">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        <p className="text-muted-foreground animate-pulse">Verifying permissions...</p>
+                    </div>
+                </div>
+            );
         }
 
         // Allow managers to access admin routes
-        if (requiredRole === "admin" && userRole === "manager") {
+        if (requiredRole === "admin" && effectiveRole === "manager") {
             // Manager can access admin dashboard
             return <>{children}</>;
         }
 
         // Redirect to correct dashboard if role doesn't match
-        if (userRole === "admin" || userRole === "manager") {
+        if (effectiveRole === "admin" || effectiveRole === "manager") {
             return <Navigate to="/admin" replace />;
         } else {
-            // If we are already on dashboard, don't redirect (loop protection)
-            // But here userRole is 'client' (implied by previous logic? No, userRole is NOT requiredRole)
-            // If requiredRole is 'admin' and user is 'client', send to dashboard.
             return <Navigate to="/dashboard" replace />;
         }
+    }
+
+    // Special case: If we are on onboarding but have a role, send to dashboard
+    if (location.pathname === "/onboarding" && effectiveRole) {
+        const dashboard = (effectiveRole === "admin" || effectiveRole === "manager") ? "/admin" : "/dashboard";
+        return <Navigate to={dashboard} replace />;
     }
 
     return <>{children}</>;

@@ -222,14 +222,14 @@ export default function AdminEditHealthAssessment() {
                   <FormField control={form.control} name="client_name" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Name</FormLabel>
-                      <FormControl><Input {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input {...field} disabled={isViewMode} onlyAlphabets /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="age" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Age</FormLabel>
-                      <FormControl><Input type="number" {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input type="number" {...field} disabled={isViewMode} onlyNumbers /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -243,21 +243,21 @@ export default function AdminEditHealthAssessment() {
                   <FormField control={form.control} name="height_cm" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Height (cm)</FormLabel>
-                      <FormControl><Input type="number" {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input type="number" {...field} disabled={isViewMode} onlyNumbers /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="weight_kg" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Weight (kg)</FormLabel>
-                      <FormControl><Input type="number" {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input type="number" {...field} disabled={isViewMode} onlyNumbers /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="stress_level_1_to_10" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Stress Level (1-10)</FormLabel>
-                      <FormControl><Input type="number" min="0" max="10" {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input type="number" min="0" max="10" {...field} disabled={isViewMode} onlyNumbers /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -282,14 +282,14 @@ export default function AdminEditHealthAssessment() {
                   <FormField control={form.control} name="sleep_hours_per_night" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Sleep Hours Per Night</FormLabel>
-                      <FormControl><Input {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input {...field} disabled={isViewMode} onlyNumbers /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
                   <FormField control={form.control} name="water_intake_liters_per_day" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Water Intake (liters/day)</FormLabel>
-                      <FormControl><Input {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input {...field} disabled={isViewMode} onlyNumbers /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

@@ -271,7 +271,7 @@ export function StressCardEditor({
               <DialogTitle className="text-2xl flex items-center gap-2">
                 Stress Assessment (PSS-10)
                 <Badge variant="outline" className="ml-2 border-wellness-mint text-wellness-mint">
-                  {cardData?.status === 'edited' ? 'Edited' : 'AI Generated'}
+                  {cardData?.status === 'edited' ? 'Reviewed' : 'AI Generated'}
                 </Badge>
               </DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground mt-1">

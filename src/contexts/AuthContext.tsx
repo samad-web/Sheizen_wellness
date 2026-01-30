@@ -24,42 +24,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const lastFetchedUserId = useRef<string | null>(null);
+    const isInitializing = useRef(false);
 
     const fetchUserRole = async (userId: string, attempt = 1): Promise<"admin" | "client" | "manager" | null> => {
         try {
-            console.log(`[AuthContext] Fetching user role via RPC for ${userId} (attempt ${attempt})`);
-
-            // Create a promise that rejects after 3 seconds to prevent hanging
-            const timeoutPromise = new Promise((_, reject) => {
-                const id = setTimeout(() => {
-                    clearTimeout(id);
-                    reject(new Error("Role fetch timeout"));
-                }, 3000);
-            });
-
             // RPC Call
             const rpcPromise = supabase.rpc('ensure_user_role', { p_user_id: userId });
 
-            // Race against timeout
+            // Race against timeout (Increased to 5s)
             const { data, error } = (await Promise.race([
                 rpcPromise.then(res => res),
-                timeoutPromise
+                new Promise((_, reject) => setTimeout(() => reject(new Error("Role fetch timeout")), 5000))
             ])) as any;
 
             if (error) {
                 console.error(`[AuthContext] RPC error (attempt ${attempt}):`, error);
 
-                // Fallback: Check 'clients' table directly WITH TIMEOUT
+                // Fallback: Check 'user_roles' and 'clients' table directly WITH TIMEOUT
                 try {
-                    const fallbackQuery = supabase
+                    console.log("[AuthContext] Fallback: Checking user_roles table...");
+                    const roleQuery = supabase
+                        .from('user_roles')
+                        .select('role')
+                        .eq('user_id', userId)
+                        .maybeSingle();
+
+                    const { data: roleData } = (await Promise.race([
+                        roleQuery,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error("Role fallback timeout")), 3000))
+                    ])) as any;
+
+                    if (roleData?.role) {
+                        console.log("[AuthContext] Fallback: User found in user_roles table. Role:", roleData.role);
+                        return roleData.role as "admin" | "client" | "manager";
+                    }
+
+                    console.log("[AuthContext] Fallback: User not in user_roles, checking clients table...");
+                    const clientQuery = supabase
                         .from('clients')
                         .select('id')
                         .eq('user_id', userId)
                         .maybeSingle();
 
                     const { data: clientData } = (await Promise.race([
-                        fallbackQuery,
-                        new Promise((_, reject) => setTimeout(() => reject(new Error("Fallback timeout")), 2000))
+                        clientQuery,
+                        new Promise((_, reject) => setTimeout(() => reject(new Error("Client fallback timeout")), 3000))
                     ])) as any;
 
                     if (clientData) {
@@ -70,12 +79,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     console.error("Fallback check failed:", fallbackErr);
                 }
 
-                if (attempt < 2) {
-                    console.log(`[AuthContext] Retrying role fetch...`);
+                if (attempt < 3) {
+                    console.log(`[AuthContext] Retrying role fetch (attempt ${attempt + 1})...`);
+                    await new Promise(r => setTimeout(r, 1000)); // Wait 1s before retry
                     return fetchUserRole(userId, attempt + 1);
                 }
 
-                toast.error("Failed to verify user permissions. Please try again.");
                 return null;
             }
 
@@ -84,27 +93,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         } catch (err) {
             console.error(`[AuthContext] Critical role fetch error:`, err);
-            try {
-                const fallbackQuery = supabase
-                    .from('clients')
-                    .select('id')
-                    .eq('user_id', userId)
-                    .maybeSingle();
-
-                const { data: clientData } = (await Promise.race([
-                    fallbackQuery,
-                    new Promise((_, reject) => setTimeout(() => reject(new Error("Fallback timeout")), 2000))
-                ])) as any;
-
-                if (clientData) {
-                    console.log("[AuthContext] Fallback: User found in clients table. Assigning 'client' role.");
-                    return 'client';
-                }
-            } catch (fallbackErr) {
-                console.error("Fallback check failed:", fallbackErr);
-            }
-
-            if (attempt < 2) {
+            if (attempt < 3) {
+                await new Promise(r => setTimeout(r, 1000));
                 return fetchUserRole(userId, attempt + 1);
             }
             return null;
@@ -133,12 +123,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }, 10000);
 
         const initSession = async () => {
+            if (isInitializing.current) return;
+            isInitializing.current = true;
+            console.log("[AuthContext] Initializing session...");
+
             try {
                 const { data, error } = await supabase.auth.getSession();
 
                 if (error) {
                     console.error("[AuthContext] Error getting session:", error);
                     setLoading(false);
+                    isInitializing.current = false;
                     return;
                 }
 
@@ -147,115 +142,103 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setUser(currentSession?.user ?? null);
 
                 if (!currentSession?.user) {
+                    console.log("[AuthContext] No session found during init.");
                     setLoading(false);
+                    isInitializing.current = false;
                     return;
                 }
 
+                const userId = currentSession.user.id;
+                lastFetchedUserId.current = userId;
+
                 try {
+                    // 1. Optimistic Role Check
                     let foundRole = currentSession.user.user_metadata?.role as "admin" | "client" | "manager" | undefined;
 
                     if (!foundRole) {
                         const cached = localStorage.getItem("app-user-role") as "admin" | "client" | "manager" | null;
-                        if (cached) foundRole = cached;
+                        if (cached) {
+                            console.log("[AuthContext] Found cached role:", cached);
+                            foundRole = cached;
+                        }
                     }
 
                     if (foundRole) {
                         console.log("[AuthContext] Optimistically setting role:", foundRole);
                         setUserRole(foundRole);
+
+                        // Clear loading early if we have a trusted role, but still verify in background
                         setLoading(false);
 
-                        const isMetadataTrusted = !!currentSession.user.user_metadata?.role;
-
-                        // ALWAYS verify against DB, regardless of trust
-                        fetchUserRole(currentSession.user.id).then(async (verifiedRole) => {
+                        // Background Verification
+                        fetchUserRole(userId).then(async (verifiedRole) => {
                             if (verifiedRole && verifiedRole !== foundRole) {
-                                console.log("[AuthContext] Paranoid check found mismatch. DB says:", verifiedRole, "Metadata says:", foundRole);
+                                console.warn("[AuthContext] Verification mismatch. DB:", verifiedRole, "Optimistic:", foundRole);
                                 setUserRole(verifiedRole);
                                 localStorage.setItem("app-user-role", verifiedRole);
-                                // FORCE update metadata to match DB truth
                                 await supabase.auth.updateUser({ data: { role: verifiedRole } });
-                            } else {
-                                console.log("[AuthContext] Role verified against DB:", verifiedRole);
                             }
-                        }).catch(err => console.error("Background paranoid check error", err));
+                        }).catch(err => console.error("[AuthContext] Background verification failed:", err));
                     } else {
-                        console.log("[AuthContext] No optimistic role found. Fetching (Blocking)...");
-                        const verifiedRole = await fetchUserRole(currentSession.user.id);
+                        // 2. Strict Role Fetching (No optimistic role available)
+                        console.log("[AuthContext] No optimistic role. Fetching strictly...");
+                        const verifiedRole = await fetchUserRole(userId);
+                        setUserRole(verifiedRole);
                         if (verifiedRole) {
-                            console.log("[AuthContext] Setting verified role:", verifiedRole);
-                            setUserRole(verifiedRole);
                             localStorage.setItem("app-user-role", verifiedRole);
                             await supabase.auth.updateUser({ data: { role: verifiedRole } });
-                        } else {
-                            setUserRole(null);
                         }
                         setLoading(false);
                     }
-
-                    // Background verification: Always verify role against DB if we have a session
-                    // This handles cases where database role changed but metadata is stale.
-                    if (currentSession.user.id) {
-                        fetchUserRole(currentSession.user.id).then(async (verifiedRole) => {
-                            if (verifiedRole && verifiedRole !== foundRole) {
-                                console.log("[AuthContext] Role mismatch detected. Updating to:", verifiedRole);
-                                setUserRole(verifiedRole);
-                                localStorage.setItem("app-user-role", verifiedRole);
-                                await supabase.auth.updateUser({ data: { role: verifiedRole } });
-                            }
-                        }).catch(err => console.error("Background role refresh failed", err));
-                    }
                 } catch (roleError) {
-                    console.error("[AuthContext] Error determining role:", roleError);
+                    console.error("[AuthContext] Error determining role during init:", roleError);
                     setLoading(false);
                 }
             } catch (err) {
                 console.error("[AuthContext] Critical error in initSession:", err);
                 setLoading(false);
+            } finally {
+                isInitializing.current = false;
             }
         };
 
-        initSession();
+        if (!isInitializing.current) {
+            initSession();
+        }
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
                 if (event === 'INITIAL_SESSION') return;
 
                 if (session?.user) {
+                    const userId = session.user.id;
+                    const isNewUser = userId !== lastFetchedUserId.current;
+
                     setSession(session);
                     setUser(session.user);
 
-                    const metadataRole = session.user.user_metadata?.role as "admin" | "client" | "manager" | undefined;
-                    const userChanged = session.user.id !== lastFetchedUserId.current;
-                    const needsRole = !metadataRole;
+                    if (isNewUser || event === "SIGNED_IN") {
+                        console.log("[AuthContext] User changed or signed in. Verifying role...");
+                        const metadataRole = session.user.user_metadata?.role as "admin" | "client" | "manager" | undefined;
 
-                    if (userChanged || needsRole) {
-                        try {
-                            const role = await fetchUserRole(session.user.id);
-                            console.log("[AuthContext] AuthStateChange: DB Role is", role);
-                            if (role) {
-                                setUserRole(role);
-                                lastFetchedUserId.current = session.user.id;
-                                if (session.user.user_metadata?.role !== role) {
-                                    console.log("[AuthContext] Syncing metadata with DB role:", role);
-                                    await supabase.auth.updateUser({ data: { role: role } });
-                                }
-                            } else if (userChanged) {
-                                setUserRole(null);
-                            }
-                        } catch (err) {
-                            console.error("Error fetching user role:", err);
+                        // Use metadata optimistically if available
+                        if (metadataRole) {
+                            console.log("[AuthContext] Using metadata role:", metadataRole);
+                            setUserRole(metadataRole);
                         }
-                    } else if (metadataRole) {
-                        // Even if metadata exists, trigger a background refresh to be safe
-                        setUserRole(metadataRole);
-                        lastFetchedUserId.current = session.user.id;
-                        fetchUserRole(session.user.id).then(verifiedRole => {
-                            if (verifiedRole && verifiedRole !== metadataRole) {
-                                console.warn("[AuthContext] Metadata vs DB Mismatch! Fixing...", { metadataRole, verifiedRole });
-                                setUserRole(verifiedRole);
-                                supabase.auth.updateUser({ data: { role: verifiedRole } });
+
+                        // Always fetch from DB to be sure
+                        fetchUserRole(userId).then(async (role) => {
+                            console.log("[AuthContext] AuthStateChange DB Role:", role);
+                            setUserRole(role);
+                            lastFetchedUserId.current = userId;
+                            if (role) {
+                                localStorage.setItem("app-user-role", role);
+                                if (session.user.user_metadata?.role !== role) {
+                                    await supabase.auth.updateUser({ data: { role } });
+                                }
                             }
-                        });
+                        }).catch(err => console.error("[AuthContext] AuthStateChange role fetch failed:", err));
                     }
                 } else {
                     setSession(null);
@@ -265,11 +248,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
 
                 if (event === "SIGNED_OUT") {
+                    setLoading(true); // Ensure loading is true while navigating to auth
                     clearStoredSession();
                     navigate("/auth");
+                    setLoading(false);
+                } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
+                    // Logic already handled in initSession or previously in callback
+                    // Just clear the safety timeout
+                    clearTimeout(safetyTimeout);
                 }
 
-                setLoading(false);
                 clearTimeout(safetyTimeout);
             }
         );

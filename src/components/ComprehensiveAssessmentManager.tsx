@@ -52,11 +52,13 @@ export function ComprehensiveAssessmentManager() {
         },
     });
 
-    const filteredAssessments = assessments?.filter(a =>
-        (a.display_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (a.clients?.email?.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    const filteredAssessments = assessments?.filter(a => {
+        const matchesSearch = (a.display_name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (a.clients?.name?.toLowerCase().includes(searchTerm.toLowerCase())) ||
+            (a.clients?.email?.toLowerCase().includes(searchTerm.toLowerCase()));
+
+        return matchesSearch && a.status === 'completed';
+    });
 
     const handleDelete = async (id: string) => {
         try {

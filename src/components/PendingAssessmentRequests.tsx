@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Brain, Moon, CheckCircle } from "lucide-react";
+import { FileText, Brain, Moon, CheckCircle, Trash2 } from "lucide-react";
 import { formatDate } from "@/lib/formatters";
+import { toast } from "sonner";
 
 interface AssessmentRequest {
   id: string;
@@ -76,6 +77,25 @@ export function PendingAssessmentRequests({
     return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
+  const handleDelete = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('assessment_requests')
+        .delete()
+        .eq('id', requestId);
+
+      if (error) throw error;
+
+      toast.success("Assessment request deleted");
+      // Update local state is optional because of real-time subscription, 
+      // but let's do it for immediate feedback
+      setRequests(prev => prev.filter(r => r.id !== requestId));
+    } catch (error: any) {
+      console.error('Error deleting assessment request:', error);
+      toast.error(error.message || "Failed to delete request");
+    }
+  };
+
   if (loading) return null;
   if (requests.length === 0) return null;
 
@@ -91,7 +111,7 @@ export function PendingAssessmentRequests({
         {requests.map(request => {
           const Icon = getIcon(request.assessment_type);
           return (
-            <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg bg-card">
+            <div key={request.id} className="flex items-center justify-between p-3 border rounded-lg bg-card group">
               <div className="flex items-center gap-3">
                 <Icon className="h-5 w-5 text-muted-foreground" />
                 <div>
@@ -101,12 +121,22 @@ export function PendingAssessmentRequests({
                   </p>
                 </div>
               </div>
-              <Button
-                size="sm"
-                onClick={() => onStartAssessment(request.id, request.assessment_type)}
-              >
-                Start
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={() => handleDelete(request.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => onStartAssessment(request.id, request.assessment_type)}
+                >
+                  Start
+                </Button>
+              </div>
             </div>
           );
         })}

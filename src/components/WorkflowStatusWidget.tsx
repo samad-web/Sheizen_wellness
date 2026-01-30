@@ -14,8 +14,8 @@ export const WorkflowStatusWidget = () => {
     const now = new Date().toISOString();
     const next24Hours = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    // Run both queries in parallel
-    const [overdueResult, upcomingResult] = await Promise.all([
+    // Run queries in parallel
+    const [overdueResult, upcomingResult, pendingCardsResult] = await Promise.all([
       supabase
         .from('client_workflow_state')
         .select('id')
@@ -26,11 +26,15 @@ export const WorkflowStatusWidget = () => {
         .select('id')
         .not('next_action_due_at', 'is', null)
         .gte('next_action_due_at', now)
-        .lt('next_action_due_at', next24Hours)
+        .lt('next_action_due_at', next24Hours),
+      supabase
+        .from('pending_review_cards')
+        .select('id', { count: 'exact', head: true })
+        .in('status', ['pending', 'edited'])
     ]);
 
     return {
-      overdueCount: overdueResult.data?.length || 0,
+      overdueCount: (overdueResult.data?.length || 0) + (pendingCardsResult.count || 0),
       upcomingCount: upcomingResult.data?.length || 0,
     };
   };

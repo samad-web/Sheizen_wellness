@@ -32,9 +32,11 @@ interface PendingCard {
 
 interface PendingReviewDashboardProps {
   onReviewCard: (cardId: string, cardType: string) => void;
+  onSuccess?: () => void;
+  clientId?: string;
 }
 
-export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardProps) {
+export function PendingReviewDashboard({ onReviewCard, onSuccess, clientId }: PendingReviewDashboardProps) {
   const queryClient = useQueryClient();
   const [sendingCard, setSendingCard] = useState<string | null>(null);
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
@@ -48,17 +50,21 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
       const count = await supabase.from('pending_review_cards').select('*', { count: 'exact', head: true });
       console.log("Total pending_review_cards count (all statuses):", count.count);
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('pending_review_cards')
-        // .select('*, clients(name)') // Try without join first if suspicious, but let's keep it for now and log error
         .select(`
-          *,
-          clients (
-            name
-          )
-        `)
-        //.in('status', ['pending', 'edited']) // Comment out status filter to see ALL
-        .order('ai_generated_at', { ascending: false });
+            *,
+            clients (
+              name
+            )
+          `)
+        .in('status', ['pending', 'edited']);
+
+      if (clientId) {
+        query = query.eq('client_id', clientId);
+      }
+
+      const { data, error } = await query.order('ai_generated_at', { ascending: false });
 
       if (error) {
         console.error('PendingReviewDashboard: Fetch Error:', error);
@@ -131,6 +137,7 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
         description: "Assessment card sent to client successfully",
       });
 
+      onSuccess?.();
       queryClient.invalidateQueries({ queryKey: ['pending-review-cards'] });
     } catch (error: any) {
       console.error('Error sending card:', error);
@@ -277,7 +284,7 @@ export function PendingReviewDashboard({ onReviewCard }: PendingReviewDashboardP
                   {formatDateTime(card.ai_generated_at)}
                 </div>
                 {card.status === 'edited' && (
-                  <Badge variant="outline">Edited</Badge>
+                  <Badge variant="outline">Reviewed</Badge>
                 )}
               </div>
               <div className="flex items-center gap-2">

@@ -197,7 +197,7 @@ export default function AdminEditSleepAssessment() {
                     <FormItem>
                       <FormLabel>Time to Fall Asleep (minutes)</FormLabel>
                       <FormDescription>How long does it take to fall asleep?</FormDescription>
-                      <FormControl><Input type="number" {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input type="number" {...field} disabled={isViewMode} onlyNumbers /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -206,7 +206,7 @@ export default function AdminEditSleepAssessment() {
                     <FormItem>
                       <FormLabel>Actual Sleep Hours</FormLabel>
                       <FormDescription>Hours of actual sleep</FormDescription>
-                      <FormControl><Input type="number" step="0.5" {...field} disabled={isViewMode} /></FormControl>
+                      <FormControl><Input type="number" step="0.5" {...field} disabled={isViewMode} onlyNumbers /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )} />

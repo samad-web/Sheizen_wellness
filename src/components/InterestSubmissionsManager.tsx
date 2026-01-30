@@ -329,7 +329,7 @@ export function InterestSubmissionsManager({ clients }: { clients?: Client[] }) 
                         <TableRow key={submission.id}>
                           <TableCell className="font-medium">{submission.name}</TableCell>
                           <TableCell>
-                            {userRole === "admin" ? `${submission.age} / ${submission.gender}` : "Restricted"}
+                            {(userRole === "admin" || userRole === "manager") ? `${submission.age} / ${submission.gender}` : "Restricted"}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-col gap-1 text-sm">

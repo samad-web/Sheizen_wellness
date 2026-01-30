@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
   // Get CORS headers based on origin
   const origin = req.headers.get('origin');
   const corsHeaders = getCorsHeaders(origin);
-  
+
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -29,104 +29,72 @@ Deno.serve(async (req) => {
     console.log(`Checking achievements for client ${client_id}, action: ${action_type}`);
 
     // Fetch all active achievements
+    // Note: 'is_active' doesn't exist in new schema, but we'll assume they are all active or filter if needed
+    // In migration 20251219000400, achievements table has no is_active.
     const { data: achievements, error: achievementsError } = await supabaseClient
       .from('achievements')
-      .select('*')
-      .eq('is_active', true);
+      .select('*');
 
     if (achievementsError) throw achievementsError;
 
-    // Fetch client's current progress
-    const { data: existingProgress, error: progressError } = await supabaseClient
-      .from('achievement_progress')
-      .select('*')
-      .eq('client_id', client_id);
+    // Fetch client record to get user_id
+    const { data: client, error: clientError } = await supabaseClient
+      .from('clients')
+      .select('user_id, target_kcal')
+      .eq('id', client_id)
+      .single();
 
-    if (progressError) throw progressError;
+    if (clientError) throw clientError;
+    const userId = client.user_id;
 
-    // Fetch client's earned achievements
-    const { data: earnedAchievements, error: earnedError } = await supabaseClient
+    // Fetch client's current achievement records (Progress & Earned)
+    const { data: existingRecords, error: recordsError } = await supabaseClient
       .from('user_achievements')
-      .select('achievement_id')
-      .eq('client_id', client_id);
+      .select('*')
+      .eq('user_id', userId);
 
-    if (earnedError) throw earnedError;
+    if (recordsError) throw recordsError;
 
-    const earnedIds = new Set(earnedAchievements?.map(a => a.achievement_id) || []);
+    const recordMap = new Map(existingRecords?.map(r => [r.achievement_id, r]) || []);
     const newlyEarned = [];
     const updatedProgress = [];
 
-    // Check each achievement
+    // Check each achievement definition
     for (const achievement of achievements || []) {
-      if (earnedIds.has(achievement.id)) continue; // Already earned
+      const existing = recordMap.get(achievement.id);
+      if (existing?.is_unlocked) continue; // Already earned
 
-      let currentValue = 0;
-      let shouldAward = false;
+      let currentValue = existing?.current_value || 0;
+      let calculatedValue = 0;
 
-      // Calculate current progress based on criteria type
-      switch (achievement.criteria_type) {
-        case 'first_meal':
-        case 'meal_log_count': {
+      // Calculate progress based on category
+      switch (achievement.category) {
+        case 'meal': {
           const { count } = await supabaseClient
             .from('meal_logs')
             .select('*', { count: 'exact', head: true })
             .eq('client_id', client_id);
-          currentValue = count || 0;
-          shouldAward = currentValue >= achievement.criteria_value;
+          calculatedValue = count || 0;
           break;
         }
 
-        case 'meal_log_streak': {
-          // Get recent meal logs ordered by date
-          const { data: mealLogs } = await supabaseClient
-            .from('meal_logs')
-            .select('logged_at')
-            .eq('client_id', client_id)
-            .order('logged_at', { ascending: false })
-            .limit(100);
-
-          currentValue = calculateStreak(mealLogs?.map(m => m.logged_at) || []);
-          shouldAward = currentValue >= achievement.criteria_value;
-          break;
-        }
-
-        case 'weight_consistency': {
-          const { data: dailyLogs } = await supabaseClient
-            .from('daily_logs')
-            .select('log_date, weight')
-            .eq('client_id', client_id)
-            .not('weight', 'is', null)
-            .order('log_date', { ascending: false })
-            .limit(30);
-
-          currentValue = calculateStreak(dailyLogs?.map(d => d.log_date) || []);
-          shouldAward = currentValue >= achievement.criteria_value;
-          break;
-        }
-
-        case 'hydration_streak': {
-          const { data: client } = await supabaseClient
-            .from('clients')
-            .select('target_kcal')
-            .eq('id', client_id)
-            .single();
-
-          const waterTarget = Math.round((client?.target_kcal || 2000) * 0.035) * 100;
-
+        case 'water': {
+          // If achievement is 'water_7_days', it might be a streak or a total
+          // Based on code 'water_7_days', let's check for streak of 2000ml
           const { data: dailyLogs } = await supabaseClient
             .from('daily_logs')
             .select('log_date, water_intake')
             .eq('client_id', client_id)
-            .gte('water_intake', waterTarget)
+            .gte('water_intake', 2000)
             .order('log_date', { ascending: false })
             .limit(30);
 
-          currentValue = calculateStreak(dailyLogs?.map(d => d.log_date) || []);
-          shouldAward = currentValue >= achievement.criteria_value;
+          calculatedValue = calculateStreak(dailyLogs?.map(d => d.log_date) || []);
           break;
         }
 
-        case 'activity_streak': {
+        case 'streak': {
+          // General activity streak
           const { data: dailyLogs } = await supabaseClient
             .from('daily_logs')
             .select('log_date, activity_minutes')
@@ -135,80 +103,68 @@ Deno.serve(async (req) => {
             .order('log_date', { ascending: false })
             .limit(30);
 
-          currentValue = calculateStreak(dailyLogs?.map(d => d.log_date) || []);
-          shouldAward = currentValue >= achievement.criteria_value;
+          calculatedValue = calculateStreak(dailyLogs?.map(d => d.log_date) || []);
           break;
         }
 
-        case 'weight_loss_milestone': {
-          const { data: dailyLogs } = await supabaseClient
+        case 'activity': {
+          // Total activity minutes
+          const { data } = await supabaseClient
             .from('daily_logs')
-            .select('weight')
-            .eq('client_id', client_id)
-            .not('weight', 'is', null)
-            .order('log_date', { ascending: true })
-            .limit(1);
+            .select('activity_minutes')
+            .eq('client_id', client_id);
 
-          const { data: client } = await supabaseClient
-            .from('clients')
-            .select('last_weight')
-            .eq('id', client_id)
-            .single();
+          calculatedValue = data?.reduce((sum, log) => sum + (log.activity_minutes || 0), 0) || 0;
+          break;
+        }
 
-          const startWeight = dailyLogs?.[0]?.weight || 0;
-          const currentWeight = client?.last_weight || 0;
-          const weightLost = startWeight - currentWeight;
-          
-          currentValue = Math.max(0, Math.floor(weightLost));
-          shouldAward = currentValue >= achievement.criteria_value;
+        case 'assessment': {
+          // Total assessments completed
+          const { count } = await supabaseClient
+            .from('assessments')
+            .select('*', { count: 'exact', head: true })
+            .eq('client_id', client_id);
+          calculatedValue = count || 0;
           break;
         }
       }
 
-      // Update or create progress record
-      const existingProgressRecord = existingProgress?.find(p => p.achievement_id === achievement.id);
-      
-      if (existingProgressRecord) {
-        await supabaseClient
-          .from('achievement_progress')
-          .update({
-            current_value: currentValue,
-            last_updated: new Date().toISOString(),
-          })
-          .eq('id', existingProgressRecord.id);
-      } else {
-        await supabaseClient
-          .from('achievement_progress')
-          .insert({
-            client_id,
-            achievement_id: achievement.id,
-            current_value: currentValue,
-            target_value: achievement.criteria_value,
-          });
-      }
+      // Update if calculated value is higher
+      if (calculatedValue > currentValue) {
+        currentValue = calculatedValue;
+        const shouldUnlock = currentValue >= achievement.target_value;
 
-      updatedProgress.push({
-        achievement_id: achievement.id,
-        current_value: currentValue,
-        target_value: achievement.criteria_value,
-      });
-
-      // Award achievement if criteria met
-      if (shouldAward) {
-        await supabaseClient
+        const { data: updatedRecord, error: upsertError } = await supabaseClient
           .from('user_achievements')
-          .insert({
-            client_id,
+          .upsert({
+            user_id: userId,
             achievement_id: achievement.id,
-            progress: { value: currentValue },
-          });
+            current_value: currentValue,
+            is_unlocked: shouldUnlock,
+            unlocked_at: shouldUnlock ? new Date().toISOString() : null,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id,achievement_id' })
+          .select()
+          .single();
 
-        newlyEarned.push({
-          ...achievement,
-          earned_at: new Date().toISOString(),
+        if (upsertError) {
+          console.error(`Error saving achievement ${achievement.code}:`, upsertError);
+          continue;
+        }
+
+        updatedProgress.push({
+          achievement_id: achievement.id,
+          current_value: currentValue,
+          target_value: achievement.target_value,
         });
 
-        console.log(`Awarded achievement: ${achievement.name} to client ${client_id}`);
+        if (shouldUnlock) {
+          newlyEarned.push({
+            ...achievement,
+            earned_at: updatedRecord.unlocked_at,
+          });
+          console.log(`Awarded achievement: ${achievement.title} to user ${userId}`);
+        }
       }
     }
 
@@ -240,7 +196,7 @@ function calculateStreak(dates: string[]): number {
   for (const dateStr of uniqueDates) {
     const checkDate = new Date(dateStr);
     const expectedStr = expectedDate.toISOString().split('T')[0];
-    
+
     if (dateStr === expectedStr) {
       streak++;
       expectedDate.setDate(expectedDate.getDate() - 1);

@@ -67,7 +67,7 @@ export function CalendarDayDetail({ date, events, clientId, onBack, onEventsChan
           if (plan) {
             const startDate = new Date(plan.start_date);
             const dayNumber = Math.floor((date.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-            
+
             const dayMeals = mealCards.filter(card => card.day_number === dayNumber);
             setMealPlanDetails(dayMeals);
           }
@@ -175,7 +175,7 @@ export function CalendarDayDetail({ date, events, clientId, onBack, onEventsChan
               </CardDescription>
             </div>
           </div>
-          {userRole === 'admin' && (
+          {(userRole === 'admin' || userRole === 'manager') && (
             <Button onClick={() => setShowScheduleDialog(true)} size="sm">
               <Plus className="h-4 w-4 mr-2" />
               Schedule Meeting
@@ -212,19 +212,19 @@ export function CalendarDayDetail({ date, events, clientId, onBack, onEventsChan
                                 {event.metadata.duration && ` (${event.metadata.duration} min)`}
                               </span>
                             )}
-                            {userRole === 'admin' && event.metadata?.id && event.type === 'custom' && (
+                            {(userRole === 'admin' || userRole === 'manager') && event.metadata?.id && event.type === 'custom' && (
                               <div className="flex gap-1 ml-2">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   className="h-6 w-6"
                                   onClick={() => handleEditEvent(event)}
                                 >
                                   <Edit className="h-3 w-3" />
                                 </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   className="h-6 w-6 text-destructive hover:text-destructive"
                                   onClick={() => handleDeleteEvent(event)}
                                 >

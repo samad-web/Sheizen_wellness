@@ -29,6 +29,9 @@ interface FileRecord {
   file_type: string | null;
   file_size: number | null;
   created_at: string;
+  source: 'file' | 'assessment'; // Distinguish source
+  bucket: 'client-files' | 'assessment-files';
+  assessment_type?: string | null;
 }
 
 export function FileUploadSection({ clientId }: FileUploadSectionProps) {
@@ -44,15 +47,61 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
 
   const fetchFiles = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    console.log("Fetching files for client:", clientId);
+
+    // Fetch from 'files' table
+    const { data: clientFiles, error: filesError } = await supabase
       .from("files")
       .select("*")
       .eq("client_id", clientId)
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setFiles(data);
+    if (filesError) {
+      console.error("Error fetching client files:", filesError);
+      toast.error("Failed to load your uploads");
+    } else {
+      console.log("Client files fetched:", clientFiles?.length);
     }
+
+    // Fetch from 'assessments' table (files only)
+    const { data: assessmentFiles, error: assessmentsError } = await supabase
+      .from("assessments")
+      .select("id, file_name, file_url, created_at") // Select relevant fields
+      .eq("client_id", clientId)
+      .not("file_url", "is", null)
+      .order("created_at", { ascending: false });
+
+    if (assessmentsError) {
+      console.error("Error fetching assessment files:", assessmentsError);
+    } else {
+      console.log("Assessment files fetched:", assessmentFiles?.length);
+    }
+
+    const mappedFiles: FileRecord[] = (clientFiles || []).map(f => ({
+      ...f,
+      source: 'file',
+      bucket: 'client-files'
+    }));
+
+    const mappedAssessments: FileRecord[] = (assessmentFiles || []).map(a => ({
+      id: a.id,
+      file_name: a.file_name || "Assessment File",
+      file_url: a.file_url,
+      file_type: "application/pdf", // Assuming mostly PDFs for assessments
+      file_size: null, // Size might not be stored in assessments table
+      created_at: a.created_at,
+      source: 'assessment',
+      bucket: 'assessment-files',
+      assessment_type: (a as any).assessment_type // Cast to any since we updated query but maybe not types
+    }));
+
+    // Combine and sort by date
+    const combined = [...mappedFiles, ...mappedAssessments].sort((a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    console.log("Total combined files:", combined.length);
+    setFiles(combined);
     setLoading(false);
   };
 
@@ -76,13 +125,13 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
 
       if (uploadError) throw uploadError;
 
-      // Insert file record with file path (not public URL)
+      // Insert file record with file path
       const { error: dbError } = await supabase
         .from("files")
         .insert({
           client_id: clientId,
           file_name: selectedFile.name,
-          file_url: fileName, // Store path, not public URL
+          file_url: fileName,
           file_type: selectedFile.type,
           file_size: selectedFile.size,
         });
@@ -92,6 +141,7 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
       toast.success("File uploaded successfully!");
       fetchFiles();
     } catch (error: any) {
+      console.error("Upload error:", error);
       toast.error(error.message || "Failed to upload file");
     } finally {
       setUploading(false);
@@ -99,26 +149,57 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
     }
   };
 
-  const handleDelete = async (fileId: string, filePath: string) => {
+  const handleDelete = async (fileId: string, filePath: string, source: 'file' | 'assessment', bucket: string) => {
     try {
-      // Delete from storage (filePath is already the path, not a URL)
+      // Delete from storage
       const { error: storageError } = await supabase.storage
-        .from("client-files")
+        .from(bucket)
         .remove([filePath]);
 
-      if (storageError) throw storageError;
+      if (storageError) {
+        console.error("Storage delete error:", storageError);
+        // Continue to try DB delete even if storage fails
+      }
 
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from("files")
-        .delete()
-        .eq("id", fileId);
+      // Delete from database based on source
+      if (source === 'file') {
+        const { error: dbError } = await supabase
+          .from("files")
+          .delete()
+          .eq("id", fileId);
+        if (dbError) throw dbError;
+      } else {
+        // For assessments, try to delete the record if it's a generic upload (assessment_type is NULL)
+        // Check count to see if delete actually happened (RLS might silently ignore)
+        const { error: dbError, count } = await supabase
+          .from("assessments")
+          .delete({ count: 'exact' })
+          .eq("id", fileId);
 
-      if (dbError) throw dbError;
+        if (dbError) {
+          console.warn("Delete assessment failed:", dbError);
+          throw dbError;
+        }
+
+        // If nothing deleted (likely due to RLS protecting non-null assessment_type), try Updating fields to null
+        if (count === 0) {
+          console.log("Delete affected 0 rows, attempting to clear file fields instead...");
+          const { error: updateError } = await supabase
+            .from("assessments")
+            .update({ file_name: null, file_url: null, display_name: null } as any)
+            .eq("id", fileId);
+
+          if (updateError) {
+            console.error("Fallback update failed:", updateError);
+            throw new Error("Could not delete file attachment (System restricted)");
+          }
+        }
+      }
 
       toast.success("File deleted successfully!");
       fetchFiles();
     } catch (error: any) {
+      console.error("Delete error:", error);
       toast.error(error.message || "Failed to delete file");
     } finally {
       setDeleteId(null);
@@ -199,7 +280,7 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
                         size="sm"
                         onClick={async () => {
                           try {
-                            const signedUrl = await getSignedUrl("client-files", file.file_url);
+                            const signedUrl = await getSignedUrl(file.bucket, file.file_url);
                             window.open(signedUrl, "_blank");
                           } catch (error) {
                             toast.error("Failed to open file");
@@ -237,7 +318,7 @@ export function FileUploadSection({ clientId }: FileUploadSectionProps) {
             <AlertDialogAction
               onClick={() => {
                 const file = files.find(f => f.id === deleteId);
-                if (file) handleDelete(file.id, file.file_url);
+                if (file) handleDelete(file.id, file.file_url, file.source, file.bucket);
               }}
             >
               Delete

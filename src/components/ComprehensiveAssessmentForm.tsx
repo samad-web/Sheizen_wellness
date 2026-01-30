@@ -531,6 +531,7 @@ export function ComprehensiveAssessmentForm({
                                                                     {...field}
                                                                     placeholder="Type name..."
                                                                     autoComplete="off"
+                                                                    onlyAlphabets
                                                                     onFocus={() => {
                                                                         if (field.value.length >= 2) setPopoverOpen(true);
                                                                     }}
@@ -576,7 +577,7 @@ export function ComprehensiveAssessmentForm({
                                                     )}
                                                 />
                                                 <FormField control={form.control} name="personal.date_of_assessment" render={({ field }) => (<FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="personal.contact" render={({ field }) => (<FormItem><FormLabel>Contact</FormLabel><FormControl><Input {...field} value={isAdmin ? field.value : "**********"} disabled={!isAdmin} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="personal.contact" render={({ field }) => (<FormItem><FormLabel>Contact</FormLabel><FormControl><Input {...field} value={isAdmin ? field.value : "**********"} disabled={!isAdmin} onlyNumbers /></FormControl><FormMessage /></FormItem>)} />
                                                 <FormField control={form.control} name="personal.email" render={({ field }) => (<FormItem><FormLabel>Email *</FormLabel><FormControl><Input type="email" {...field} value={isAdmin ? field.value : "***@***.com"} disabled={!isAdmin} /></FormControl><FormMessage /></FormItem>)} />
                                                 {["age_gender", "occupation", "marital_status", "address", "purpose_of_visit", "referrals"].map((key) => (
                                                     <FormField key={key} control={form.control} name={`personal.${key}` as any} render={({ field }) => (
@@ -587,6 +588,8 @@ export function ComprehensiveAssessmentForm({
                                                                     {...field}
                                                                     value={isAdmin || key !== "age_gender" ? field.value : "*** / ***"}
                                                                     disabled={!isAdmin && key === "age_gender"}
+                                                                    onlyAlphabets={key === "occupation"}
+                                                                    onlyNumbers={key === "age_gender"}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -613,7 +616,7 @@ export function ComprehensiveAssessmentForm({
                                                     { name: "weight_change_percent", label: "% Weight Change" }, { name: "body_fat_percent", label: "Body Fat %" },
                                                     { name: "growth_percentile", label: "Growth Percentile" },
                                                 ].map((item) => (
-                                                    <FormField key={item.name} control={form.control} name={`anthropometric.${item.name}` as any} render={({ field }) => (<FormItem><FormLabel>{item.label}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField key={item.name} control={form.control} name={`anthropometric.${item.name}` as any} render={({ field }) => (<FormItem><FormLabel>{item.label}</FormLabel><FormControl><Input {...field} onlyNumbers /></FormControl><FormMessage /></FormItem>)} />
                                                 ))}
                                                 <div className="col-span-full">
                                                     <Label className="mb-2 block">Interpretation</Label>
@@ -636,7 +639,7 @@ export function ComprehensiveAssessmentForm({
                                             <CardHeader><CardTitle>3. Biochemical Assessment</CardTitle></CardHeader>
                                             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                 {["fbs_ppbs", "hba1c", "lipid_profile", "hemoglobin", "vitamin_d", "vitamin_b12", "serum_iron_ferritin", "serum_calcium", "thyroid_function", "lft_rft", "hormone", "others"].map(key => (
-                                                    <FormField key={key} control={form.control} name={`biochemical.${key}` as any} render={({ field }) => (<FormItem><FormLabel className="uppercase">{key.replace(/_/g, " ")}</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField key={key} control={form.control} name={`biochemical.${key}` as any} render={({ field }) => (<FormItem><FormLabel className="uppercase">{key.replace(/_/g, " ")}</FormLabel><FormControl><Input {...field} onlyNumbers /></FormControl><FormMessage /></FormItem>)} />
                                                 ))}
                                                 <FormField control={form.control} name="biochemical.interpretation" render={({ field }) => (<FormItem className="col-span-full"><FormLabel>Interpretation</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </CardContent>
@@ -774,7 +777,7 @@ export function ComprehensiveAssessmentForm({
                                                     <FormField key={key} control={form.control} name={`lifestyle.${key}` as any} render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel className="capitalize">{key.replace(/_/g, " ")}</FormLabel>
-                                                            <FormControl><Input {...field} /></FormControl>
+                                                            <FormControl><Input {...field} onlyNumbers /></FormControl>
                                                             <FormMessage />
                                                         </FormItem>
                                                     )} />

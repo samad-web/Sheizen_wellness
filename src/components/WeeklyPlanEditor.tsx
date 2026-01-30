@@ -22,7 +22,7 @@ import { WeeklyPlanDownloader } from "@/components/WeeklyPlanDownloader";
 
 interface MealCard {
   day_number: number;
-  meal_type: "early_morning" | "breakfast" | "mid_morning" | "lunch" | "evening_snack_1" | "evening_snack_2" | "dinner";
+  meal_type: "cleansing_water" | "early_morning" | "breakfast" | "mid_breakfast" | "lunch" | "evening_snack_1" | "evening_snack_2" | "dinner";
   meal_name: string;
   description: string;
   ingredients: string;
@@ -45,11 +45,12 @@ interface WeeklyPlanEditorProps {
   onSuccess: () => void;
 }
 
-const MEAL_TYPES = ["early_morning", "breakfast", "mid_morning", "lunch", "evening_snack_1", "evening_snack_2", "dinner"] as const;
+const MEAL_TYPES = ["cleansing_water", "early_morning", "breakfast", "mid_breakfast", "lunch", "evening_snack_1", "evening_snack_2", "dinner"] as const;
 const MEAL_LABELS = {
+  cleansing_water: "Cleansing Water",
   early_morning: "Early Morning",
   breakfast: "Breakfast",
-  mid_morning: "Mid Morning",
+  mid_breakfast: "Mid Breakfast",
   lunch: "Lunch",
   evening_snack_1: "Evening Snack 1",
   evening_snack_2: "Evening Snack 2",
