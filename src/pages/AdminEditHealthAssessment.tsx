@@ -32,6 +32,7 @@ const healthAssessmentSchema = z.object({
   kidney_function_test_done: z.boolean().default(false),
   vitamin_d_done: z.boolean().default(false),
   vitamin_b12_done: z.boolean().default(false),
+  biochemical_others_done: z.boolean().default(false),
   goal_weight_loss_kg: z.coerce.number().optional(),
   goal_correct_sleep_pattern: z.string().optional(),
   goal_other: z.string().optional(),
@@ -75,6 +76,7 @@ export default function AdminEditHealthAssessment() {
       kidney_function_test_done: false,
       vitamin_d_done: false,
       vitamin_b12_done: false,
+      biochemical_others_done: false,
       meal_preparation_self: false,
       meal_preparation_family: false,
       meal_preparation_outsourced: false,
@@ -296,14 +298,14 @@ export default function AdminEditHealthAssessment() {
                 <div>
                   <FormLabel className="mb-3 block">Biochemical Tests Done</FormLabel>
                   <div className="grid grid-cols-2 gap-3">
-                    {['cbc_done', 'lipid_profile_done', 'blood_sugar_done', 'liver_function_test_done', 'kidney_function_test_done', 'vitamin_d_done', 'vitamin_b12_done'].map((field) => (
+                    {['cbc_done', 'lipid_profile_done', 'blood_sugar_done', 'liver_function_test_done', 'kidney_function_test_done', 'vitamin_d_done', 'vitamin_b12_done', 'biochemical_others_done'].map((field) => (
                       <FormField key={field} control={form.control} name={field as any} render={({ field: checkField }) => (
                         <FormItem className="flex items-center space-x-2">
                           <FormControl>
                             <Checkbox checked={checkField.value} onCheckedChange={checkField.onChange} disabled={isViewMode} />
                           </FormControl>
                           <FormLabel className="!mt-0 cursor-pointer">
-                            {field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {field === 'biochemical_others_done' ? 'Others' : field.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </FormLabel>
                         </FormItem>
                       )} />

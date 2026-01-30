@@ -32,6 +32,7 @@ const sleepSymptoms = [
   { id: 'long_pauses_breathing', label: 'Long pauses in breathing' },
   { id: 'leg_twitching', label: 'Leg twitching' },
   { id: 'disorientation', label: 'Disorientation/confusion' },
+  { id: 'others', label: 'Others' },
 ];
 
 export default function AdminEditSleepAssessment() {
@@ -182,7 +183,7 @@ export default function AdminEditSleepAssessment() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  
+
                   <FormField control={form.control} name="wake_time_usual" render={({ field }) => (
                     <FormItem>
                       <FormLabel>Usual Wake Time</FormLabel>

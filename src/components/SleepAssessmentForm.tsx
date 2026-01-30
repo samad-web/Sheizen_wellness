@@ -40,10 +40,10 @@ export const SleepAssessmentForm = ({ clientId, clientName, onComplete }: SleepA
   };
 
   const handleGenerate = async () => {
-    if (!formData.bedtime_usual || !formData.sleep_latency_minutes || !formData.wake_time_usual || 
-        !formData.actual_sleep_hours || !formData.sleep_trouble_frequency || !formData.sleep_medicine_frequency ||
-        !formData.daytime_sleepiness_frequency || !formData.enthusiasm_problem_level || 
-        !formData.overall_sleep_quality_rating) {
+    if (!formData.bedtime_usual || !formData.sleep_latency_minutes || !formData.wake_time_usual ||
+      !formData.actual_sleep_hours || !formData.sleep_trouble_frequency || !formData.sleep_medicine_frequency ||
+      !formData.daytime_sleepiness_frequency || !formData.enthusiasm_problem_level ||
+      !formData.overall_sleep_quality_rating) {
       toast.error("Please answer all required questions");
       return;
     }
@@ -211,6 +211,7 @@ export const SleepAssessmentForm = ({ clientId, clientName, onComplete }: SleepA
               { value: "long_pauses_in_breathing", label: "Long pauses in breathing" },
               { value: "leg_twitching", label: "Leg twitching" },
               { value: "disorientation_confusion", label: "Disorientation/confusion" },
+              { value: "others", label: "Others" },
             ].map(({ value, label }) => (
               <div key={value} className="flex items-center space-x-2">
                 <Checkbox

@@ -44,6 +44,7 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
     kidney_function_test_done: false,
     vitamin_d_done: false,
     vitamin_b12_done: false,
+    biochemical_others_done: false,
     goal_weight_loss_kg: "",
     goal_correct_sleep_pattern: "",
     goal_other: "",
@@ -246,6 +247,7 @@ export function HealthAssessmentForm({ clientId, clientName, onComplete }: Healt
               { key: "kidney_function_test_done", label: "Kidney Function Test" },
               { key: "vitamin_d_done", label: "Vitamin D" },
               { key: "vitamin_b12_done", label: "Vitamin B12" },
+              { key: "biochemical_others_done", label: "Others" },
             ].map(({ key, label }) => (
               <div key={key} className="flex items-center space-x-2">
                 <Checkbox
