@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { CustomLogo } from "@/components/CustomLogo";
 import { MealPhotoUpload } from "@/components/MealPhotoUpload";
+import { ComprehensiveAssessmentForm } from "@/components/ComprehensiveAssessmentForm";
 import { FileUploadSection } from "@/components/FileUploadSection";
 import { WeeklyPlanViewer } from "@/components/WeeklyPlanViewer";
 import { ProgressCharts } from "@/components/ProgressCharts";
@@ -1438,6 +1439,18 @@ export default function ClientDashboard() {
                 onComplete={() => {
                   setShowAssessmentForm(false);
                   toast.success('Assessment submitted! Your results will be ready shortly.');
+                }}
+              />
+            )}
+            {selectedAssessmentRequest?.type === 'comprehensive_assessment' && clientData && (
+              <ComprehensiveAssessmentForm
+                clients={[]}
+                initialClientId={clientData.id}
+                open={showAssessmentForm}
+                onOpenChange={setShowAssessmentForm}
+                onSuccess={() => {
+                  setShowAssessmentForm(false);
+                  toast.success('Comprehensive assessment submitted!');
                 }}
               />
             )}

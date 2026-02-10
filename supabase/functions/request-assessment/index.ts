@@ -151,6 +151,10 @@ serve(async (req) => {
       'sleep_assessment': {
         title: 'Sleep Assessment',
         description: 'Please complete your sleep assessment to help us improve your sleep quality.'
+      },
+      'comprehensive_assessment': {
+        title: 'Comprehensive Nutritional Assessment',
+        description: 'Please complete your comprehensive nutritional assessment form to help us understand your overall wellness goals.'
       }
     };
 

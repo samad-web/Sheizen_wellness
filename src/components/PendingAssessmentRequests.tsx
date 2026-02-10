@@ -69,11 +69,13 @@ export function PendingAssessmentRequests({
       case 'health_assessment': return FileText;
       case 'stress_assessment': return Brain;
       case 'sleep_assessment': return Moon;
+      case 'comprehensive_assessment': return FileText;
       default: return FileText;
     }
   };
 
   const getLabel = (type: string) => {
+    if (type === 'comprehensive_assessment') return 'Comprehensive Nutritional Assessment';
     return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 

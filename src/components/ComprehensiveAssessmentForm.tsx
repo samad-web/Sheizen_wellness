@@ -181,6 +181,8 @@ export function ComprehensiveAssessmentForm({
     const [isLoading, setIsLoading] = useState(false);
     const { userRole } = useAuth();
     const isAdmin = userRole === "admin";
+    const isClient = userRole === "client";
+    const canViewSensitve = isAdmin || isClient;
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
@@ -413,8 +415,8 @@ export function ComprehensiveAssessmentForm({
                 assessment_type: "custom",
                 display_name: values.personal.name || "Comprehensive Nutritional Assessment",
                 form_responses: values as any,
-                status: "completed",
-                notes: values.diagnosis_plan.nutritional_diagnosis,
+                status: isAdmin ? "completed" : "pending",
+                notes: values.diagnosis_plan.nutritional_diagnosis || "Assessment submitted by client",
                 updated_at: new Date().toISOString(),
             });
 
@@ -577,8 +579,8 @@ export function ComprehensiveAssessmentForm({
                                                     )}
                                                 />
                                                 <FormField control={form.control} name="personal.date_of_assessment" render={({ field }) => (<FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="personal.contact" render={({ field }) => (<FormItem><FormLabel>Contact</FormLabel><FormControl><Input {...field} value={isAdmin ? field.value : "**********"} disabled={!isAdmin} onlyNumbers /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="personal.email" render={({ field }) => (<FormItem><FormLabel>Email *</FormLabel><FormControl><Input type="email" {...field} value={isAdmin ? field.value : "***@***.com"} disabled={!isAdmin} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="personal.contact" render={({ field }) => (<FormItem><FormLabel>Contact</FormLabel><FormControl><Input {...field} value={canViewSensitve ? field.value : "**********"} disabled={!canViewSensitve} onlyNumbers /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={form.control} name="personal.email" render={({ field }) => (<FormItem><FormLabel>Email *</FormLabel><FormControl><Input type="email" {...field} value={canViewSensitve ? field.value : "***@***.com"} disabled={!canViewSensitve} /></FormControl><FormMessage /></FormItem>)} />
                                                 {["age_gender", "occupation", "marital_status", "address", "purpose_of_visit", "referrals"].map((key) => (
                                                     <FormField key={key} control={form.control} name={`personal.${key}` as any} render={({ field }) => (
                                                         <FormItem>
@@ -586,8 +588,8 @@ export function ComprehensiveAssessmentForm({
                                                             <FormControl>
                                                                 <Input
                                                                     {...field}
-                                                                    value={isAdmin || key !== "age_gender" ? field.value : "*** / ***"}
-                                                                    disabled={!isAdmin && key === "age_gender"}
+                                                                    value={canViewSensitve || key !== "age_gender" ? field.value : "*** / ***"}
+                                                                    disabled={!canViewSensitve && key === "age_gender"}
                                                                     onlyAlphabets={key === "occupation"}
                                                                     onlyNumbers={key === "age_gender"}
                                                                 />

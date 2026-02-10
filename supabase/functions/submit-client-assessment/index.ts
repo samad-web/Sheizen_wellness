@@ -42,13 +42,42 @@ serve(async (req) => {
       mappedFormData.copingMechanisms = form_data.current_coping_mechanisms || 'None';
       mappedFormData.physicalSymptoms = form_data.stress_physical_symptoms || 'None';
     } else if (assessment_type === 'health_assessment') {
-      // Health assessment usually has correct keys but good to ensure
-      mappedFormData.height = form_data.height;
-      mappedFormData.weight = form_data.weight;
-      mappedFormData.sleep_hours = form_data.average_sleep_hours;
-      mappedFormData.stress_level = form_data.daily_stress_level;
-      mappedFormData.medical_conditions = form_data.existing_medical_conditions || 'None';
-      mappedFormData.fixed_sleep_time = form_data.consistent_sleep_schedule === 'yes';
+      // Calculate BMI from height (cm) and weight (kg)
+      const heightInMeters = (form_data.height_cm || 0) / 100;
+      const bmi = heightInMeters > 0 ? Number((form_data.weight_kg / (heightInMeters * heightInMeters)).toFixed(1)) : 0;
+
+      // Calculate BMR (Basal Metabolic Rate) using Mifflin-St Jeor Equation
+      // Men: BMR = 10W + 6.25H - 5A + 5
+      // Women: BMR = 10W + 6.25H - 5A - 161
+      // Where W = weight in kg, H = height in cm, A = age in years
+      const weight = form_data.weight_kg || 0;
+      const height = form_data.height_cm || 0;
+      const age = form_data.age || 25;
+      const isMale = (form_data.gender || '').toLowerCase() === 'male';
+      const bmr = Math.round((10 * weight) + (6.25 * height) - (5 * age) + (isMale ? 5 : -161));
+
+      // Calculate ideal weight (simplified - using mid-range of healthy BMI: 21.5)
+      const idealWeight = heightInMeters > 0 ? Number((21.5 * heightInMeters * heightInMeters).toFixed(1)) : 0;
+
+      // Structure data to match admin UI expectations
+      mappedFormData.client_details = {
+        name: form_data.client_name || client_name,
+        age: form_data.age,
+        gender: form_data.gender
+      };
+
+      mappedFormData.key_findings = {
+        height: form_data.height_cm,
+        weight: form_data.weight_kg,
+        bmi: bmi,
+        bmr: bmr,
+        ideal_weight: idealWeight,
+        calorie_intake: bmr * 1.2, // Sedentary activity level multiplier
+        medical_condition: form_data.medical_condition
+      };
+
+      // Keep all form data for reference
+      mappedFormData.form_responses = form_data;
     }
 
     // Update request status to completed

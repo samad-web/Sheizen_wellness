@@ -52,7 +52,43 @@ export function HealthAssessmentCardEditor({
       if (error) throw error;
 
       setCardData(data);
-      setFormData(data.generated_content);
+
+      // Normalize data structure if it's from the old flat format
+      let normalizedContent = { ...(data.generated_content as any || {}) };
+
+      if (!normalizedContent.client_details && normalizedContent.form_responses) {
+        const responses = normalizedContent.form_responses;
+        const heightInMeters = (responses.height_cm || 0) / 100;
+        const bmi = heightInMeters > 0 ? (responses.weight_kg / (heightInMeters * heightInMeters)).toFixed(1) : 0;
+
+        normalizedContent.client_details = {
+          name: responses.client_name || data.clients?.name || '',
+          age: responses.age,
+          gender: responses.gender
+        };
+
+        normalizedContent.key_findings = {
+          height: responses.height_cm,
+          weight: responses.weight_kg,
+          bmi: parseFloat(bmi as string),
+          medical_condition: responses.medical_condition
+        };
+      } else if (!normalizedContent.client_details) {
+        // Fallback for very basic data
+        normalizedContent.client_details = {
+          name: data.clients?.name || '',
+          age: '',
+          gender: ''
+        };
+        normalizedContent.key_findings = {
+          height: '',
+          weight: '',
+          bmi: '',
+          medical_condition: ''
+        };
+      }
+
+      setFormData(normalizedContent);
 
       // Generate display name if not exists
       const cardWithDisplayName = data as any;

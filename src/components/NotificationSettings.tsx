@@ -8,26 +8,29 @@ interface NotificationSettingsProps {
 }
 
 export function NotificationSettings({ clientId }: NotificationSettingsProps) {
-  const { 
-    isSupported, 
-    isSubscribed, 
-    isLoading, 
-    permissionStatus, 
-    subscribe, 
+  const {
+    isSupported,
+    isSubscribed,
+    isLoading,
+    permissionStatus,
+    subscribe,
     unsubscribe,
-    refreshPermissionStatus 
+    refreshPermissionStatus
   } = usePushNotifications(clientId);
 
   const getStatusInfo = () => {
     if (!isSupported) {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
       return {
-        icon: <XCircle className="h-5 w-5 text-destructive" />,
-        title: "Not Supported",
-        description: "Push notifications are not supported in your browser.",
-        color: "text-destructive"
+        icon: <AlertCircle className="h-5 w-5 text-yellow-500" />,
+        title: isIOS ? "PWA Required" : "Not Supported",
+        description: isIOS
+          ? "iOS requires you to add this app to your Home Screen to enable notifications."
+          : "Push notifications are not supported in your browser.",
+        color: isIOS ? "text-yellow-500" : "text-destructive"
       };
     }
-    
+
     if (permissionStatus === 'denied') {
       return {
         icon: <XCircle className="h-5 w-5 text-destructive" />,
@@ -36,7 +39,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
         color: "text-destructive"
       };
     }
-    
+
     if (permissionStatus === 'granted' && isSubscribed) {
       return {
         icon: <CheckCircle className="h-5 w-5 text-green-500" />,
@@ -45,7 +48,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
         color: "text-green-500"
       };
     }
-    
+
     return {
       icon: <AlertCircle className="h-5 w-5 text-yellow-500" />,
       title: "Not Enabled",
@@ -58,7 +61,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
 
   const getBrowserInstructions = () => {
     const userAgent = navigator.userAgent.toLowerCase();
-    
+
     if (userAgent.includes('chrome')) {
       return {
         browser: "Chrome",
@@ -70,7 +73,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
         ]
       };
     }
-    
+
     if (userAgent.includes('firefox')) {
       return {
         browser: "Firefox",
@@ -83,7 +86,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
         ]
       };
     }
-    
+
     if (userAgent.includes('safari')) {
       return {
         browser: "Safari",
@@ -95,7 +98,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
         ]
       };
     }
-    
+
     if (userAgent.includes('edg')) {
       return {
         browser: "Edge",
@@ -107,7 +110,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
         ]
       };
     }
-    
+
     return {
       browser: "your browser",
       steps: [
@@ -142,6 +145,22 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
             <p className="text-sm text-muted-foreground">{statusInfo.description}</p>
           </div>
         </div>
+
+        {/* iOS PWA Instructions */}
+        {!isSupported && /iPad|iPhone|iPod/.test(navigator.userAgent) && (
+          <div className="border border-yellow-200 bg-yellow-50/50 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-yellow-800">
+              <RefreshCw className="h-4 w-4" />
+              How to enable on iPhone/iPad
+            </div>
+            <ol className="text-sm text-yellow-700 space-y-2 list-decimal list-inside">
+              <li>Tap the <strong>Share</strong> button (box with upward arrow)</li>
+              <li>Scroll down and tap <strong>'Add to Home Screen'</strong></li>
+              <li>Open the app from your Home Screen</li>
+              <li>Go back to these settings and click <strong>'Enable'</strong></li>
+            </ol>
+          </div>
+        )}
 
         {/* Action button */}
         {isSupported && permissionStatus !== 'denied' && (
@@ -179,7 +198,7 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
                 <li key={index}>{step}</li>
               ))}
             </ol>
-            
+
             {/* Check Again button - fallback for browsers without Permissions API change events */}
             <Button
               variant="outline"

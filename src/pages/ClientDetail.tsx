@@ -1152,6 +1152,11 @@ const ClientDetail = () => {
                     <div className="text-2xl font-bold">{data?.assessmentRequestCounts?.sleep || 0}</div>
                     <p className="text-xs text-muted-foreground mt-1">Sleep</p>
                   </div>
+                  <div className="flex flex-col items-center p-4 border rounded-lg">
+                    <FileText className="h-8 w-8 text-orange-600 mb-2" />
+                    <div className="text-2xl font-bold">{assessments.filter(a => (a as any).assessment_type === 'custom').length}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Comprehensive</p>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -1190,6 +1195,16 @@ const ClientDetail = () => {
                 >
                   <Moon className="mr-2 h-4 w-4" />
                   Request Sleep Assessment
+                </Button>
+
+                <Button
+                  onClick={() => handleRequestAssessment('comprehensive_assessment')}
+                  disabled={isRequestingAssessment}
+                  className="w-full"
+                  variant="outline"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Request Comprehensive Assessment
                 </Button>
               </CardContent>
             </Card>
