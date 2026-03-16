@@ -12,7 +12,7 @@ import { toast } from "sonner";
 
 interface MessageFeedProps {
     messages: Message[];
-    currentUserType: 'admin' | 'client';
+    currentUserType: 'admin' | 'client' | 'manager';
     onStartAssessment?: (requestId: string, type: string) => void;
     inverted?: boolean;
 }
@@ -270,7 +270,10 @@ export function MessageFeed({ messages, currentUserType, onStartAssessment, inve
 
                         {groupedMessages[date].map((message) => {
                             const isSystem = message.sender_type === 'system';
-                            const isCurrentUser = message.sender_type?.toLowerCase() === currentUserType.toLowerCase();
+                            const isCurrentUser = (
+                                (message.sender_type?.toLowerCase() === 'admin' || message.sender_type?.toLowerCase() === 'manager') && 
+                                (currentUserType.toLowerCase() === 'admin' || currentUserType.toLowerCase() === 'manager')
+                            ) || message.sender_type?.toLowerCase() === currentUserType.toLowerCase();
 
                             return (
                                 <div

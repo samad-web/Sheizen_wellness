@@ -1,4 +1,7 @@
-project_id = "wnthdwfllxhhjaxchjnl"
+project_id = "ljxgaycjomnyfihdsgke"
+
+[functions.send-assessment]
+verify_jwt = true
 
 [functions.generate-health-assessment-card]
 verify_jwt = true

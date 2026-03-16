@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { calculateNutrients, summarizeNutrients, roundNutrients } from "@/lib/nutrition";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,12 +62,6 @@ interface RecipeIngredient {
   unit: string;
 }
 
-interface NutritionTotals {
-  kcal: number;
-  protein: number;
-  carbs: number;
-  fats: number;
-}
 
 const recipeSchema = z.object({
   name: z.string().min(1, "Recipe name is required").max(100),
@@ -211,26 +206,17 @@ export function RecipeBuilder() {
     setRecipeIngredients(recipeIngredients.filter((_, i) => i !== index));
   };
 
-  const calculateNutrition = (): NutritionTotals => {
-    const totals = recipeIngredients.reduce(
-      (acc, ing) => {
-        const ingredient = ing.ingredient || ingredients.find((f) => f.id === ing.ingredient_id);
-        if (!ingredient) return acc;
+  const calculateNutrition = () => {
+    const items = recipeIngredients.map(ing => {
+      const ingredient = ing.ingredient || ingredients.find((f) => f.id === ing.ingredient_id);
+      if (!ingredient) return { nutrients: { kcal: 0, protein: 0, carbs: 0, fats: 0 } };
+      
+      return {
+        nutrients: calculateNutrients(ingredient, ing.quantity)
+      };
+    });
 
-        const servingSizeNum = parseFloat(ingredient.serving_size);
-        const multiplier = ing.quantity / servingSizeNum;
-
-        return {
-          kcal: acc.kcal + ingredient.kcal_per_serving * multiplier,
-          protein: acc.protein + (ingredient.protein || 0) * multiplier,
-          carbs: acc.carbs + (ingredient.carbs || 0) * multiplier,
-          fats: acc.fats + (ingredient.fats || 0) * multiplier,
-        };
-      },
-      { kcal: 0, protein: 0, carbs: 0, fats: 0 }
-    );
-
-    return totals;
+    return summarizeNutrients(items);
   };
 
   const handleSave = async () => {
@@ -340,13 +326,14 @@ export function RecipeBuilder() {
     recipe.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalNutrition = calculateNutrition();
-  const perServingNutrition = {
-    kcal: totalNutrition.kcal / servings,
-    protein: totalNutrition.protein / servings,
-    carbs: totalNutrition.carbs / servings,
-    fats: totalNutrition.fats / servings,
-  };
+  const totals = calculateNutrition();
+  const totalNutrition = roundNutrients(totals);
+  const perServingNutrition = roundNutrients({
+    kcal: totals.kcal / servings,
+    protein: totals.protein / servings,
+    carbs: totals.carbs / servings,
+    fats: totals.fats / servings,
+  });
 
   return (
     <>

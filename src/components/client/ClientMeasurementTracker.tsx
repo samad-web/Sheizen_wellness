@@ -40,11 +40,22 @@ export function ClientMeasurementTracker({ clientId }: { clientId: string }) {
                 .eq("client_id", clientId)
                 .order("recorded_at", { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                // Check if it's a "table not found" error
+                if (error.code === 'P0001' || error.message.includes('relation "client_measurements" does not exist')) {
+                    console.warn("client_measurements table not found, expected if migrations haven't run");
+                    setMeasurements([]);
+                    return;
+                }
+                throw error;
+            }
             setMeasurements(data || []);
         } catch (error) {
             console.error("Error fetching measurements:", error);
-            toast.error("Failed to load measurements");
+            // Don't show toast for "table not found" to avoid annoying user
+            if (!(error as any).message?.includes('relation "client_measurements" does not exist')) {
+                toast.error("Failed to load measurements");
+            }
         } finally {
             setIsLoading(false);
         }

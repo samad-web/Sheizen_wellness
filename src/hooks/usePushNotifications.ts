@@ -35,6 +35,21 @@ export function usePushNotifications(clientId: string | null) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // Check if the app is running in standalone mode (installed as PWA)
+    const checkStandalone = () => {
+      const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches || 
+                          (window.navigator as any).standalone || 
+                          document.referrer.includes('android-app://');
+      setIsStandalone(isStandaloneMode);
+    };
+
+    checkStandalone();
+    window.matchMedia('(display-mode: standalone)').addEventListener('change', checkStandalone);
+    return () => window.matchMedia('(display-mode: standalone)').removeEventListener('change', checkStandalone);
+  }, []);
 
   const checkSubscriptionStatus = useCallback(async () => {
     if (!clientId) return;
@@ -113,7 +128,18 @@ export function usePushNotifications(clientId: string | null) {
 
   const requestPermission = async () => {
     if (!isSupported) {
+      console.warn('[PushNotifications] Not supported in this browser');
       toast.error('Push notifications are not supported in your browser');
+      return false;
+    }
+
+    // iOS specific warning: users must add to home screen first
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    if (isIOS && !isStandalone) {
+      console.warn('[PushNotifications] iOS requires Add to Home Screen for notifications');
+      toast.info('On iOS, you must add this app to your Home Screen before enabling notifications.', {
+        duration: 10000,
+      });
       return false;
     }
 
@@ -222,6 +248,7 @@ export function usePushNotifications(clientId: string | null) {
     isSupported,
     isSubscribed,
     isLoading,
+    isStandalone,
     permissionStatus,
     subscribe,
     unsubscribe,

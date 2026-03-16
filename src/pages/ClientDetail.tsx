@@ -291,7 +291,8 @@ const ClientDetail = () => {
 
   const updateUnreadCount = async () => {
     if (!id) return;
-    const count = await getUnreadCount(id, 'admin');
+    const viewerType = (userRole === 'admin' || userRole === 'manager') ? 'admin' : 'client';
+    const count = await getUnreadCount(id, viewerType);
     setUnreadCount(count);
   };
 
@@ -302,7 +303,8 @@ const ClientDetail = () => {
 
   const handleMessagesTabOpen = async () => {
     if (id) {
-      await markMessagesAsRead(id);
+      const viewerType = (userRole === 'admin' || userRole === 'manager') ? 'admin' : 'client';
+      await markMessagesAsRead(id, viewerType);
       setUnreadCount(0);
     }
   };
@@ -1098,12 +1100,12 @@ const ClientDetail = () => {
                 <CardTitle>Messages</CardTitle>
                 <CardDescription>Communication with {client.name}</CardDescription>
               </CardHeader>
-              <MessageFeed messages={messages} currentUserType="admin" />
+              <MessageFeed messages={messages} currentUserType={userRole as any} />
               {user && id && (
                 <MessageComposer
                   clientId={id}
                   senderId={user.id}
-                  senderType="admin"
+                  senderType={userRole as any}
                   onMessageSent={handleMessageSent}
                 />
               )}

@@ -25,6 +25,7 @@ const Community = lazy(() => import("./pages/Community"));
 const SupabaseConnectionTest = lazy(() => import("./components/SupabaseConnectionTest"));
 const DatabaseConnectionTest = lazy(() => import("./components/DatabaseConnectionTest").then(m => ({ default: m.DatabaseConnectionTest })));
 import Footer from "@/components/Footer";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +47,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <InstallPrompt />
           <AuthProvider>
             <div className="flex flex-col min-h-screen">
               <main className="flex-grow">

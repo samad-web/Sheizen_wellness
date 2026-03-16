@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { calculateNutrients, roundNutrients } from "@/lib/nutrition";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -28,6 +29,10 @@ interface MealCard {
   ingredients: string;
   instructions: string;
   kcal: number;
+  source_id?: string;
+  source_type?: 'food_item' | 'ingredient' | 'recipe';
+  quantity?: number;
+  unit?: string;
 }
 
 interface FoodItem {
@@ -37,6 +42,8 @@ interface FoodItem {
   carbs: number | null;
   fats: number | null;
   kcal_per_serving: number;
+  serving_size: string;
+  serving_unit: string;
 }
 
 interface WeeklyPlanEditorProps {
@@ -64,6 +71,9 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
   const [mealCards, setMealCards] = useState<MealCard[]>([]);
   const [currentDay, setCurrentDay] = useState(1);
   const [foodItems, setFoodItems] = useState<FoodItem[]>([]);
+  const [ingredients, setIngredients] = useState<any[]>([]);
+  const [recipes, setRecipes] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -77,16 +87,26 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
   }, [planId, open]);
 
   const fetchFoodItems = async () => {
+    setLoadingItems(true);
     try {
-      const { data, error } = await supabase
-        .from('food_items')
-        .select('id, name, protein, carbs, fats, kcal_per_serving')
-        .order('name');
+      const [foodResp, ingResp, recResp] = await Promise.all([
+        supabase.from('food_items').select('*').order('name'),
+        supabase.from('ingredients').select('*').order('name'),
+        supabase.from('recipes').select('*').order('name')
+      ]);
 
-      if (error) throw error;
-      setFoodItems(data || []);
+      if (foodResp.error) throw foodResp.error;
+      if (ingResp.error) throw ingResp.error;
+      if (recResp.error) throw recResp.error;
+
+      setFoodItems(foodResp.data || []);
+      setIngredients(ingResp.data || []);
+      setRecipes(recResp.data || []);
     } catch (error: any) {
       console.error('Error fetching food items:', error);
+      toast.error("Failed to load food options");
+    } finally {
+      setLoadingItems(false);
     }
   };
 
@@ -141,6 +161,10 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
             ingredients: existingCard.ingredients || "",
             instructions: existingCard.instructions || "",
             kcal: existingCard.kcal,
+            source_id: (existingCard as any).source_id,
+            source_type: (existingCard as any).source_type,
+            quantity: (existingCard as any).quantity,
+            unit: (existingCard as any).unit,
           };
         }
 
@@ -187,21 +211,69 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
     return mealCards.reduce((sum, card) => sum + (Number(card.kcal) || 0), 0);
   };
 
-  const autofillFromFoodItem = (day: number, mealType: string, foodItemId: string) => {
-    const foodItem = foodItems.find(f => f.id === foodItemId);
-    if (!foodItem) return;
+  const autofillFromSource = (day: number, mealType: string, value: string) => {
+    const [type, id] = value.split(':');
+    let item: any;
+    let name = '';
+    let kcal = 0;
+    let unit = '';
+    let quantity = 1;
 
-    updateMealCard(day, mealType, 'meal_name', foodItem.name);
-    updateMealCard(day, mealType, 'description', '');
-    updateMealCard(day, mealType, 'kcal', foodItem.kcal_per_serving || 0);
+    if (type === 'recipe') {
+      item = recipes.find(r => r.id === id);
+      name = item?.name || '';
+      kcal = item?.total_kcal ? Math.round(item.total_kcal / (item.servings || 1)) : 0;
+      unit = 'portion';
+    } else {
+      item = type === 'ingredient' ? ingredients.find(i => i.id === id) : foodItems.find(f => f.id === id);
+      name = item?.name || '';
+      quantity = parseFloat(item?.serving_size) || 1;
+      unit = item?.serving_unit || '';
+      
+      const nutrients = calculateNutrients(item, quantity);
+      kcal = Math.round(nutrients.kcal);
+    }
 
-    // Auto-generate ingredient list from nutritional data
-    const nutrients = [];
-    if (foodItem.protein) nutrients.push(`Protein: ${foodItem.protein}g`);
-    if (foodItem.carbs) nutrients.push(`Carbs: ${foodItem.carbs}g`);
-    if (foodItem.fats) nutrients.push(`Fats: ${foodItem.fats}g`);
+    updateMealCard(day, mealType, 'meal_name', name);
+    updateMealCard(day, mealType, 'kcal', kcal);
+    updateMealCard(day, mealType, 'source_id', id);
+    updateMealCard(day, mealType, 'source_type', type as any);
+    updateMealCard(day, mealType, 'quantity', quantity);
+    updateMealCard(day, mealType, 'unit', unit);
 
-    updateMealCard(day, mealType, 'ingredients', nutrients.join(', '));
+    if (item && (type === 'ingredient' || type === 'food_item')) {
+      const nutrients = [];
+      if (item.protein) nutrients.push(`Protein: ${item.protein}g`);
+      if (item.carbs) nutrients.push(`Carbs: ${item.carbs}g`);
+      if (item.fats) nutrients.push(`Fats: ${item.fats}g`);
+      updateMealCard(day, mealType, 'ingredients', nutrients.join(', '));
+    }
+  };
+
+  const handleQuantityChange = (day: number, mealType: string, qty: number) => {
+    const card = getMealCard(day, mealType);
+    if (!card || !card.source_id || !card.source_type || card.source_type === 'recipe') {
+      updateMealCard(day, mealType, 'quantity', qty);
+      return;
+    }
+
+    const item = card.source_type === 'ingredient' 
+      ? ingredients.find(i => i.id === card.source_id)
+      : foodItems.find(f => f.id === card.source_id);
+
+    if (item) {
+      const nutrients = calculateNutrients(item, qty);
+      updateMealCard(day, mealType, 'kcal', Math.round(nutrients.kcal));
+      
+      const nutrientText = [];
+      const rounded = roundNutrients(nutrients);
+      if (rounded.protein) nutrientText.push(`Protein: ${rounded.protein}g`);
+      if (rounded.carbs) nutrientText.push(`Carbs: ${rounded.carbs}g`);
+      if (rounded.fats) nutrientText.push(`Fats: ${rounded.fats}g`);
+      updateMealCard(day, mealType, 'ingredients', nutrientText.join(', '));
+    }
+
+    updateMealCard(day, mealType, 'quantity', qty);
   };
 
   const handleSave = async (publish: boolean) => {
@@ -265,6 +337,10 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
           ingredients: card.ingredients || null,
           instructions: card.instructions || null,
           kcal: card.kcal,
+          source_id: card.source_id || null,
+          source_type: card.source_type || null,
+          quantity: card.quantity || null,
+          unit: card.unit || null,
         }));
 
       if (cardsToInsert.length > 0) {
@@ -273,6 +349,18 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
           .insert(cardsToInsert);
 
         if (cardsError) throw cardsError;
+      }
+      
+      // Send push notification if published
+      if (publish) {
+        supabase.functions.invoke('send-push-notification', {
+          body: {
+            client_id: clientId,
+            title: 'New Weekly Plan Published',
+            body: 'Your latest nutrition and meal plan is ready to view!',
+            url: '/dashboard?tab=diet_plan',
+          }
+        }).catch(err => console.error('Error sending published plan notification:', err));
       }
 
       toast.success(publish ? "Plan published successfully!" : "Plan saved as draft!");
@@ -330,28 +418,78 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
                         </CardHeader>
                         <CardContent className="space-y-3">
                           <div>
-                            <Label>Select Food Item (Optional)</Label>
-                            <Select onValueChange={(foodId) => autofillFromFoodItem(day, mealType, foodId)}>
-                              <SelectTrigger disabled={saving}>
-                                <SelectValue placeholder="Choose from food items..." />
+                            <Label>Select Food/Recipe (Optional)</Label>
+                            <Select 
+                              onValueChange={(val) => autofillFromSource(day, mealType, val)}
+                              disabled={loadingItems || saving}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder={loadingItems ? "Loading options..." : "Choose from food, ingredients or recipes..."} />
                               </SelectTrigger>
                               <SelectContent>
-                                {foodItems.map(item => (
-                                  <SelectItem key={item.id} value={item.id}>
-                                    {item.name} ({item.kcal_per_serving} kcal)
-                                  </SelectItem>
-                                ))}
+                                {recipes.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">Recipes</div>
+                                    {recipes.map(recipe => (
+                                      <SelectItem key={recipe.id} value={`recipe:${recipe.id}`}>
+                                        {recipe.name} ({Math.round(recipe.total_kcal / recipe.servings)} kcal)
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {ingredients.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">Ingredients</div>
+                                    {ingredients.map(ing => (
+                                      <SelectItem key={ing.id} value={`ingredient:${ing.id}`}>
+                                        {ing.name} ({ing.kcal_per_serving} kcal / {ing.serving_size}{ing.serving_unit})
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
+                                {foodItems.length > 0 && (
+                                  <>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">Food Items</div>
+                                    {foodItems.map(item => (
+                                      <SelectItem key={item.id} value={`food_item:${item.id}`}>
+                                        {item.name} ({item.kcal_per_serving} kcal / {item.serving_size}{item.serving_unit})
+                                      </SelectItem>
+                                    ))}
+                                  </>
+                                )}
                               </SelectContent>
                             </Select>
                           </div>
-                          <div>
-                            <Label>Meal Name</Label>
-                            <Input
-                              value={card.meal_name}
-                              onChange={(e) => updateMealCard(day, mealType, "meal_name", e.target.value)}
-                              placeholder="e.g., Oatmeal with Berries"
-                              disabled={saving}
-                            />
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label>Meal Name</Label>
+                              <Input
+                                value={card.meal_name}
+                                onChange={(e) => updateMealCard(day, mealType, "meal_name", e.target.value)}
+                                placeholder="e.g., Oatmeal with Berries"
+                                disabled={saving}
+                              />
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <Label>Quantity</Label>
+                                <Input
+                                  type="number"
+                                  step="0.1"
+                                  value={card.quantity || ''}
+                                  onChange={(e) => handleQuantityChange(day, mealType, parseFloat(e.target.value) || 0)}
+                                  disabled={saving}
+                                />
+                              </div>
+                              <div>
+                                <Label>Unit</Label>
+                                <Input
+                                  value={card.unit || ''}
+                                  onChange={(e) => updateMealCard(day, mealType, "unit", e.target.value)}
+                                  disabled={saving}
+                                />
+                              </div>
+                            </div>
                           </div>
                           <div>
                             <Label>Description</Label>
@@ -359,38 +497,30 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
                               value={card.description}
                               onChange={(e) => updateMealCard(day, mealType, "description", e.target.value)}
                               placeholder="Brief description..."
-                              rows={2}
+                              rows={1}
                               disabled={saving}
                             />
                           </div>
-                          <div>
-                            <Label>Ingredients</Label>
-                            <Textarea
-                              value={card.ingredients}
-                              onChange={(e) => updateMealCard(day, mealType, "ingredients", e.target.value)}
-                              placeholder="List ingredients..."
-                              rows={2}
-                              disabled={saving}
-                            />
-                          </div>
-                          <div>
-                            <Label>Instructions</Label>
-                            <Textarea
-                              value={card.instructions}
-                              onChange={(e) => updateMealCard(day, mealType, "instructions", e.target.value)}
-                              placeholder="Preparation instructions..."
-                              rows={2}
-                              disabled={saving}
-                            />
-                          </div>
-                          <div>
-                            <Label>Kcal</Label>
-                            <Input
-                              type="number"
-                              value={card.kcal}
-                              onChange={(e) => updateMealCard(day, mealType, "kcal", parseInt(e.target.value) || 0)}
-                              disabled={saving}
-                            />
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label>Ingredients / Macros</Label>
+                              <Textarea
+                                value={card.ingredients}
+                                onChange={(e) => updateMealCard(day, mealType, "ingredients", e.target.value)}
+                                placeholder="List ingredients..."
+                                rows={1}
+                                disabled={saving}
+                              />
+                            </div>
+                            <div>
+                              <Label>Kcal</Label>
+                              <Input
+                                type="number"
+                                value={card.kcal}
+                                onChange={(e) => updateMealCard(day, mealType, "kcal", parseInt(e.target.value) || 0)}
+                                disabled={saving}
+                              />
+                            </div>
                           </div>
                         </CardContent>
                       </Card>

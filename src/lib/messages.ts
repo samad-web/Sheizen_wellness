@@ -4,7 +4,7 @@ export interface Message {
   id: string;
   client_id: string;
   sender_id: string | null;
-  sender_type: 'system' | 'admin' | 'client';
+  sender_type: 'system' | 'admin' | 'client' | 'manager';
   message_type: string;
   content: string;
   metadata: Record<string, any>;
@@ -56,10 +56,10 @@ export const getUnreadCount = async (clientId: string, viewerType: 'admin' | 'cl
       .eq('client_id', clientId)
       .eq('is_read', false);
 
-    // If viewer is client, count only ADMIN/SYSTEM messages (exclude client's own)
-    // If viewer is admin, count only CLIENT messages
+    // If viewer is client, count only STAFF (admin/manager/system) messages
+    // If viewer is staff (admin/manager), count only CLIENT messages
     if (viewerType === 'client') {
-      query = query.neq('sender_type', 'client');
+      query = query.in('sender_type', ['admin', 'manager', 'system']);
     } else {
       query = query.eq('sender_type', 'client');
     }
@@ -78,13 +78,27 @@ export const getUnreadCount = async (clientId: string, viewerType: 'admin' | 'cl
   }
 };
 
-export const markMessagesAsRead = async (clientId: string): Promise<void> => {
+export const markMessagesAsRead = async (
+  clientId: string,
+  viewerType: 'admin' | 'client' = 'client'
+): Promise<void> => {
   try {
-    const { error } = await supabase
+    let query = supabase
       .from('messages')
       .update({ is_read: true })
       .eq('client_id', clientId)
       .eq('is_read', false);
+
+    // Only mark messages sent by the OTHER party as read
+    if (viewerType === 'client') {
+      // Client marks staff messages as read
+      query = query.in('sender_type', ['admin', 'manager', 'system']);
+    } else {
+      // Staff marks client messages as read
+      query = query.eq('sender_type', 'client');
+    }
+
+    const { error } = await query;
 
     if (error) {
       console.error('Error marking messages as read:', error);
@@ -98,7 +112,8 @@ export const sendBulkMessage = async (
   clientIds: string[],
   templateId: string | null,
   messageContent: string,
-  adminId: string
+  adminId: string,
+  senderType: 'admin' | 'manager' = 'admin'
 ): Promise<{ success: number; failed: number; batchId: string }> => {
   const batchId = crypto.randomUUID();
   let successCount = 0;
@@ -146,7 +161,7 @@ export const sendBulkMessage = async (
         return {
           client_id: clientId,
           sender_id: adminId,
-          sender_type: 'admin',
+          sender_type: senderType,
           message_type: 'manual',
           content: personalizedContent,
           metadata: {},
@@ -166,6 +181,23 @@ export const sendBulkMessage = async (
         console.error('Error inserting batch:', insertError);
       } else {
         successCount += messages.length;
+        
+        // Trigger push notifications for the successful batch
+        try {
+          await Promise.all(batchClientIds.map(clientId => 
+            supabase.functions.invoke('send-push-notification', {
+              body: {
+                client_id: clientId,
+                title: 'New Message from Sheizen AI',
+                body: messageContent.length > 60 ? messageContent.substring(0, 57) + '...' : messageContent,
+                url: '/dashboard?tab=messages',
+              }
+            })
+          ));
+        } catch (pushError) {
+          console.error('Error triggering push notifications for bulk batch:', pushError);
+          // Don't fail the whole process if push fails
+        }
       }
 
       // Rate limiting: wait 500ms between batches

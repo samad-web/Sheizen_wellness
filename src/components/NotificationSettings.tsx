@@ -2,6 +2,8 @@ import { Bell, BellOff, CheckCircle, XCircle, AlertCircle, Settings, RefreshCw }
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { usePushNotifications } from "@/hooks/usePushNotifications";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface NotificationSettingsProps {
   clientId: string | null;
@@ -164,26 +166,53 @@ export function NotificationSettings({ clientId }: NotificationSettingsProps) {
 
         {/* Action button */}
         {isSupported && permissionStatus !== 'denied' && (
-          <Button
-            onClick={isSubscribed ? unsubscribe : subscribe}
-            disabled={isLoading}
-            variant={isSubscribed ? "outline" : "default"}
-            className="w-full"
-          >
-            {isLoading ? (
-              "Processing..."
-            ) : isSubscribed ? (
-              <>
-                <BellOff className="h-4 w-4 mr-2" />
-                Disable Notifications
-              </>
-            ) : (
-              <>
-                <Bell className="h-4 w-4 mr-2" />
-                Enable Notifications
-              </>
+          <div className="space-y-2">
+            <Button
+              onClick={isSubscribed ? unsubscribe : subscribe}
+              disabled={isLoading}
+              variant={isSubscribed ? "outline" : "default"}
+              className="w-full"
+            >
+              {isLoading ? (
+                "Processing..."
+              ) : isSubscribed ? (
+                <>
+                  <BellOff className="h-4 w-4 mr-2" />
+                  Disable Notifications
+                </>
+              ) : (
+                <>
+                  <Bell className="h-4 w-4 mr-2" />
+                  Enable Notifications
+                </>
+              )}
+            </Button>
+
+            {isSubscribed && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs"
+                onClick={async () => {
+                  try {
+                    await supabase.functions.invoke('send-push-notification', {
+                      body: {
+                        client_id: clientId,
+                        title: 'Test Notification 🔔',
+                        body: 'This is a test to verify your notifications are working correctly!',
+                        url: '/dashboard',
+                      }
+                    });
+                    toast.success("Test notification sent!");
+                  } catch (err) {
+                    toast.error("Failed to send test notification.");
+                  }
+                }}
+              >
+                Send Test Notification
+              </Button>
             )}
-          </Button>
+          </div>
         )}
 
         {/* Re-enable instructions when blocked */}

@@ -127,7 +127,13 @@ export function BulkMessageDialog({ open, onOpenChange, clients, onSuccess }: Bu
         setProgress(prev => Math.min(prev + 10, 90));
       }, 300);
 
-      const result = await sendBulkMessage(clientIds, templateId, message, user.id);
+      const result = await sendBulkMessage(
+        clientIds, 
+        templateId, 
+        message, 
+        user.id, 
+        userRole === 'manager' ? 'manager' : 'admin'
+      );
 
       clearInterval(interval);
       setProgress(100);

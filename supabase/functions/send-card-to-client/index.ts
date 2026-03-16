@@ -77,6 +77,20 @@ serve(async (req) => {
 
     if (messageError) console.error('Error creating message:', messageError);
 
+    // Send push notification
+    try {
+      await supabase.functions.invoke('send-push-notification', {
+        body: {
+          client_id: card.client_id,
+          title: `New ${cardTypeName} Ready`,
+          body: `Your dietitian has reviewed and sent your ${cardTypeName.toLowerCase()}.`,
+          url: '/dashboard'
+        }
+      });
+    } catch (pushError) {
+      console.error('Error sending push notification for card:', pushError);
+    }
+
     // Update workflow stage
     const { error: workflowError } = await supabase
       .from('client_workflow_state')

@@ -58,15 +58,15 @@ import { ActionPlanCardView } from "@/components/client/ActionPlanCardView";
 import { DietPlanCardView } from "@/components/client/DietPlanCardView";
 import { ClipboardList } from "lucide-react";
 import { PendingAssessmentRequests } from "@/components/PendingAssessmentRequests";
+import { ClientReportList } from "@/components/ClientReportList";
+import { ClientComprehensiveReportList } from "@/components/ClientComprehensiveReportList";
+import { NotificationSettings } from "@/components/NotificationSettings";
+import { ClientRecipeList } from "@/components/client/ClientRecipeList";
 import { ClientHealthAssessmentForm } from "@/components/client/ClientHealthAssessmentForm";
 import { ClientStressAssessmentForm } from "@/components/client/ClientStressAssessmentForm";
 import { ClientSleepAssessmentForm } from "@/components/client/ClientSleepAssessmentForm";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { NotificationSettings } from "@/components/NotificationSettings";
-import { ClientReportList } from "@/components/ClientReportList";
 import { ModeToggle } from "@/components/mode-toggle";
-
-import { ClientRecipeList } from "@/components/client/ClientRecipeList";
 import { Textarea } from "@/components/ui/textarea"; // Ensure this is imported or use Input as fallback
 
 import { ClientMeasurementTracker } from "@/components/client/ClientMeasurementTracker"; // Add import
@@ -359,7 +359,7 @@ export default function ClientDashboard() {
   const handleMessagesTabOpen = async () => {
     setActiveTab('messages');
     if (clientData?.id) {
-      await markMessagesAsRead(clientData.id);
+      await markMessagesAsRead(clientData.id, 'client');
       setUnreadCount(0);
     }
   };
@@ -680,7 +680,10 @@ export default function ClientDashboard() {
           </div>
           <div className="flex flex-wrap gap-2 w-full lg:w-auto">
             <ModeToggle />
-            <NotificationBell clientId={clientData?.id} onNavigate={handleNavigateToCalendar} />
+            <NotificationBell 
+              clientId={clientData?.id || ''} 
+              onNavigate={(tab) => setActiveTab(tab as any)} 
+            />
             {pushSupported && !isSubscribed && permissionStatus !== 'denied' && (
               <Button variant="default" onClick={subscribe} disabled={pushLoading} size="sm" className="bg-primary hover:bg-primary/90 flex-1 sm:flex-none">
                 Enable Notifications
@@ -1333,15 +1336,21 @@ export default function ClientDashboard() {
           <TabsContent value="reports">
             <Card>
               <CardHeader>
-                <CardTitle>Weekly Reports</CardTitle>
-                <CardDescription>Your progress reports</CardDescription>
+                <CardTitle>Your Reports</CardTitle>
+                <CardDescription>View your progress and comprehensive assessments</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-10">
                 {clientData?.id ? (
-                  <ClientReportList clientId={clientData.id} />
+                  <>
+                    <ClientComprehensiveReportList clientId={clientData.id} />
+                    <div className="pt-8 border-t">
+                      <h3 className="text-lg font-bold mb-4">Weekly Progress Reports</h3>
+                      <ClientReportList clientId={clientData.id} />
+                    </div>
+                  </>
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
-                    <p>Loading...</p>
+                    <p>Loading reports...</p>
                   </div>
                 )}
               </CardContent>

@@ -17,7 +17,7 @@ import { formatFileSize, isImageFile, getFileIcon } from "@/lib/fileUtils";
 interface MessageComposerProps {
   clientId: string;
   senderId: string;
-  senderType: 'admin' | 'client';
+  senderType: 'admin' | 'client' | 'manager';
   onMessageSent?: (message: any) => void;
 }
 
@@ -166,6 +166,18 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
           }).then(({ error }) => {
             if (error) console.error('Error sending notification:', error);
           });
+        } else if (senderType === 'admin' || senderType === 'manager') {
+          console.log('Sending notification to client...');
+          supabase.functions.invoke('send-push-notification', {
+            body: {
+              client_id: clientId,
+              title: 'New Message from your Nutritionist',
+              body: message.trim() || 'Sent an attachment',
+              url: '/dashboard?tab=messages',
+            }
+          }).then(({ error }) => {
+            if (error) console.error('Error sending notification:', error);
+          });
         }
       }
     } catch (error) {
@@ -193,7 +205,7 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
 
   return (
     <div className="border-t bg-background p-4 space-y-3">
-      {senderType === 'admin' && (
+      {(senderType === 'admin' || senderType === 'manager') && (
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-muted-foreground" />
           <Select onValueChange={handleTemplateSelect}>

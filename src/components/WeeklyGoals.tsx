@@ -41,9 +41,9 @@ export function WeeklyGoals({ clientId }: WeeklyGoalsProps) {
       .eq("client_id", clientId)
       .gte("log_date", weekAgo.toISOString().split("T")[0]);
 
-    const waterDays = dailyLogs?.filter((log) => (log.water_intake || 0) >= 2000).length || 0;
-    const activeDays = dailyLogs?.filter((log) => (log.activity_minutes || 0) > 0).length || 0;
-    const weightDays = dailyLogs?.filter((log) => log.weight !== null).length || 0;
+    const waterDays = (dailyLogs || []).filter((log) => (log.water_intake || 0) >= 2000).length;
+    const activeDays = (dailyLogs || []).filter((log) => (log.activity_minutes || 0) > 0).length;
+    const weightDays = (dailyLogs || []).filter((log) => log.weight !== null).length;
 
     setGoals({
       mealPhotos: { current: mealCount || 0, target: 56, label: "Meal Photos" },

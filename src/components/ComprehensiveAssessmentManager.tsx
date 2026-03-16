@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, FileText, Edit, Trash2, Printer, Search, ArrowRight } from "lucide-react";
+import { Plus, FileText, Edit, Trash2, Printer, Search, ArrowRight, Send } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
 import { ComprehensiveAssessmentForm } from "./ComprehensiveAssessmentForm";
 import { ComprehensiveAssessmentReport } from "./ComprehensiveAssessmentReport";
+import { SendAssessmentDialog } from "./SendAssessmentDialog";
 
 export function ComprehensiveAssessmentManager() {
     const queryClient = useQueryClient();
@@ -31,6 +32,7 @@ export function ComprehensiveAssessmentManager() {
     const [reportOpen, setReportOpen] = useState(false);
     const [selectedReportData, setSelectedReportData] = useState<any>(null);
     const [selectedClientName, setSelectedClientName] = useState("");
+    const [sendDialogOpen, setSendDialogOpen] = useState(false);
     const { userRole } = useAuth();
 
     const canViewPersonalInfo = userRole === "admin";
@@ -167,6 +169,19 @@ export function ComprehensiveAssessmentManager() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => {
+                                                setSelectedAssessmentId(assessment.id);
+                                                setSendDialogOpen(true);
+                                            }}
+                                            className="bg-white hover:bg-wellness-green hover:text-white border-slate-200"
+                                            title="Send to Client"
+                                        >
+                                            <Send className="h-4 w-4 mr-2" />
+                                            Send
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => {
                                                 setSelectedReportData(assessment.form_responses);
                                                 setSelectedClientName(assessment.display_name || assessment.clients?.name || "");
                                                 setReportOpen(true);
@@ -248,6 +263,16 @@ export function ComprehensiveAssessmentManager() {
                 onOpenChange={setReportOpen}
                 data={selectedReportData}
                 clientName={selectedClientName}
+            />
+
+            <SendAssessmentDialog
+                open={sendDialogOpen}
+                onOpenChange={setSendDialogOpen}
+                assessmentId={selectedAssessmentId}
+                onSuccess={() => {
+                    refetch();
+                    setSendDialogOpen(false);
+                }}
             />
         </div>
     );

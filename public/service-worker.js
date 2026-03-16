@@ -24,7 +24,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: data.body,
     icon: '/icon-192.png',
-    badge: '/badge-72.png',
+    badge: '/icon-192.png', // Fallback to icon if specific badge not found, or use /favicon.ico
     data: {
       url: data.url,
       notificationId: data.id,

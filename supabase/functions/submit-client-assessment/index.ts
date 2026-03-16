@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Credentials': 'true',
 };
 
 serve(async (req) => {
@@ -141,6 +142,20 @@ serve(async (req) => {
     }
 
     console.log('Assessment card created successfully:', insertedCard.id);
+
+    // Trigger push notification for staff
+    try {
+      await supabase.functions.invoke('send-push-notification', {
+        body: {
+          target_roles: ['admin', 'manager'],
+          title: 'Assessment Submitted',
+          body: `${client_name} has submitted their ${assessment_type.replace('_', ' ')}.`,
+          url: `/admin/client/${client_id}`, // Direct link to client details for admin/manager
+        }
+      });
+    } catch (pushError) {
+      console.error('Error notifying staff of assessment submission:', pushError);
+    }
 
     return new Response(
       JSON.stringify({
