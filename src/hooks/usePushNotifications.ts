@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 // VAPID public key - hardcoded for frontend use (public keys are meant to be public!)
-const VAPID_PUBLIC_KEY = "BA11f-wSr9t_hdnn_hrkwKbqjVb2x-VKcG9CMym7IWXz1JwCa2LLdD1eTgGq2bfwOOPKScNlO7P8uyMAlIvUWu4";
+const VAPID_PUBLIC_KEY = "BA4PmjN1Np_fvvN8ABQ2pcYF_nTDTc_tizzRelPNQ_EYnMMWiZXY6H_LvksgiRFOqcORB8JndEH8BXZ-IwSK7lY";
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);

@@ -34,7 +34,7 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Get VAPID keys
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || 'BA11f-wSr9t_hdnn_hrkwKbqjVb2x-VKcG9CMym7IWXz1JwCa2LLdD1eTgGq2bfwOOPKScNlO7P8uyMAlIvUWu4'; // Fallback to what we generated
+    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY') || 'BA4PmjN1Np_fvvN8ABQ2pcYF_nTDTc_tizzRelPNQ_EYnMMWiZXY6H_LvksgiRFOqcORB8JndEH8BXZ-IwSK7lY';
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY');
     const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@sheizen.com';
 
