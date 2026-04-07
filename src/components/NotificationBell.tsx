@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
@@ -17,71 +17,77 @@ export function NotificationBell({ clientId, onNavigate }: NotificationBellProps
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
 
+  // Track known IDs to detect new items
+  const knownRequestIds = useRef<Set<string>>(new Set());
+  const knownMessageIds = useRef<Set<string>>(new Set());
+  const knownMeetingIds = useRef<Set<string>>(new Set());
+  const isFirstLoad = useRef(true);
+
+  // Show a browser notification
+  const notify = useCallback((title: string, body: string, tag: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        const n = new Notification(title, { body, icon: '/icon-192.png', tag });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch (e) {}
+    }
+  }, []);
+
   useEffect(() => {
     if (!clientId) return;
-    
+
+    isFirstLoad.current = true;
     loadAllNotifications();
 
-    // Real-time subscriptions
-    const meetingsChannel = supabase
-      .channel('calendar-events-notifications')
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'calendar_events',
-        filter: `client_id=eq.${clientId}`
-      }, () => loadUpcomingMeetings())
-      .subscribe();
-
-    const messagesChannel = supabase
-      .channel('messages-notifications')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'messages',
-        filter: `client_id=eq.${clientId}`
-      }, () => loadUnreadMessages())
-      .subscribe();
-
-    const assessmentsChannel = supabase
-      .channel('assessment-requests-notifications')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'assessment_requests',
-        filter: `client_id=eq.${clientId}`
-      }, () => loadPendingRequests())
-      .subscribe();
+    // Poll every 10 seconds for new data (reliable - no realtime dependency)
+    const pollInterval = setInterval(() => {
+      loadAllNotificationsWithNotify();
+    }, 10000);
 
     return () => {
-      supabase.removeChannel(meetingsChannel);
-      supabase.removeChannel(messagesChannel);
-      supabase.removeChannel(assessmentsChannel);
+      clearInterval(pollInterval);
     };
   }, [clientId]);
 
-  const loadAllNotifications = () => {
-    loadUpcomingMeetings();
-    loadUnreadMessages();
-    loadPendingRequests();
+  const loadAllNotificationsWithNotify = async () => {
+    await Promise.all([
+      loadUpcomingMeetingsWithNotify(),
+      loadUnreadMessagesWithNotify(),
+      loadPendingRequestsWithNotify(),
+    ]);
   };
 
-  const loadUpcomingMeetings = async () => {
-    const today = new Date();
-    const nextMonth = addDays(today, 30);
-
+  const loadPendingRequestsWithNotify = async () => {
     const { data, error } = await supabase
-      .from('calendar_events')
+      .from('assessment_requests')
       .select('*')
       .eq('client_id', clientId)
-      .gte('event_date', format(today, 'yyyy-MM-dd'))
-      .lte('event_date', format(nextMonth, 'yyyy-MM-dd'))
-      .order('event_date', { ascending: true });
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
 
-    if (!error && data) setUpcomingMeetings(data);
+    if (!error && data) {
+      // Detect NEW requests (not seen before)
+      if (!isFirstLoad.current) {
+        for (const req of data) {
+          if (!knownRequestIds.current.has(req.id)) {
+            const label = req.assessment_type
+              ? req.assessment_type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+              : 'Assessment';
+            notify(
+              `New ${label} Requested`,
+              `Your nutritionist has requested a ${label}. Please complete it.`,
+              `sheizen-assessment-${req.id}`
+            );
+          }
+        }
+      }
+      // Update known IDs
+      knownRequestIds.current = new Set(data.map((r: any) => r.id));
+      setPendingRequests(data);
+    }
   };
 
-  const loadUnreadMessages = async () => {
+  const loadUnreadMessagesWithNotify = async () => {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -90,18 +96,56 @@ export function NotificationBell({ clientId, onNavigate }: NotificationBellProps
       .neq('sender_type', 'client')
       .order('created_at', { ascending: false });
 
-    if (!error && data) setUnreadMessages(data);
+    if (!error && data) {
+      if (!isFirstLoad.current) {
+        for (const msg of data) {
+          if (!knownMessageIds.current.has(msg.id)) {
+            notify(
+              'New Message from your Nutritionist',
+              (msg.content || 'You have a new message').replace(/[#*`_]/g, '').slice(0, 100),
+              `sheizen-msg-${msg.id}`
+            );
+          }
+        }
+      }
+      knownMessageIds.current = new Set(data.map((m: any) => m.id));
+      setUnreadMessages(data);
+    }
   };
 
-  const loadPendingRequests = async () => {
+  const loadUpcomingMeetingsWithNotify = async () => {
+    const today = new Date();
+    const nextMonth = addDays(today, 30);
     const { data, error } = await supabase
-      .from('assessment_requests')
+      .from('calendar_events')
       .select('*')
       .eq('client_id', clientId)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: false });
+      .gte('event_date', format(today, 'yyyy-MM-dd'))
+      .lte('event_date', format(nextMonth, 'yyyy-MM-dd'))
+      .order('event_date', { ascending: true });
 
-    if (!error && data) setPendingRequests(data);
+    if (!error && data) {
+      if (!isFirstLoad.current) {
+        for (const meeting of data) {
+          if (!knownMeetingIds.current.has(meeting.id)) {
+            notify(
+              'New Meeting Scheduled',
+              meeting.title || 'A new meeting has been scheduled',
+              `sheizen-meeting-${meeting.id}`
+            );
+          }
+        }
+      }
+      knownMeetingIds.current = new Set(data.map((m: any) => m.id));
+      setUpcomingMeetings(data);
+    }
+
+    // Mark first load complete after all data loaded
+    isFirstLoad.current = false;
+  };
+
+  const loadAllNotifications = () => {
+    loadAllNotificationsWithNotify();
   };
 
   const totalCount = upcomingMeetings.length + unreadMessages.length + pendingRequests.length;

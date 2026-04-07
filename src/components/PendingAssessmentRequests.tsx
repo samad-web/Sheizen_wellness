@@ -32,7 +32,42 @@ export function PendingAssessmentRequests({
     const channel = supabase
       .channel('assessment-requests')
       .on('postgres_changes', {
-        event: '*',
+        event: 'INSERT',
+        schema: 'public',
+        table: 'assessment_requests',
+        filter: `client_id=eq.${clientId}`
+      }, (payload) => {
+        fetchRequests();
+
+        // Show browser notification for new assessment request
+        const req = payload.new as any;
+        const label = req?.assessment_type
+          ? req.assessment_type.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+          : 'Assessment';
+
+        if ('Notification' in window && Notification.permission === 'granted') {
+          try {
+            const n = new Notification('New Assessment Requested', {
+              body: `Your nutritionist has requested a ${label}. Please complete it.`,
+              icon: '/icon-192.png',
+              tag: `sheizen-assessment-${req?.id || Date.now()}`,
+            });
+            n.onclick = () => { window.focus(); n.close(); };
+          } catch (e) {}
+        }
+
+        toast.info(`New ${label} requested! Check your pending assessments.`, { duration: 8000 });
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'assessment_requests',
+        filter: `client_id=eq.${clientId}`
+      }, () => {
+        fetchRequests();
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
         schema: 'public',
         table: 'assessment_requests',
         filter: `client_id=eq.${clientId}`

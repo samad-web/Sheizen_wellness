@@ -181,6 +181,8 @@ export function HealthAssessmentCardEditor({
 
       if (error) throw error;
 
+      try { localStorage.setItem('sheizen-notify', JSON.stringify({ title: 'New Health Assessment Card', body: 'Your nutritionist has sent your Health Assessment card. View your results now!', ts: Date.now() })); } catch (e) {}
+
       toast({
         title: "Sent",
         description: "Health assessment card sent to client",

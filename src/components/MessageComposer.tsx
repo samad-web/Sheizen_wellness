@@ -178,6 +178,15 @@ export function MessageComposer({ clientId, senderId, senderType, onMessageSent 
           }).then(({ error }) => {
             if (error) console.error('Error sending notification:', error);
           });
+
+          // Notify client tab via localStorage storage event
+          try {
+            localStorage.setItem('sheizen-notify', JSON.stringify({
+              title: 'New Message from your Nutritionist',
+              body: message.trim() || 'Sent an attachment',
+              ts: Date.now(),
+            }));
+          } catch (e) {}
         }
       }
     } catch (error) {

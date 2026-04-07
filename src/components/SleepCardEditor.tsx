@@ -127,6 +127,8 @@ export function SleepCardEditor({
 
       if (error) throw error;
 
+      try { localStorage.setItem('sheizen-notify', JSON.stringify({ title: 'New Sleep Assessment Card', body: 'Your nutritionist has sent your Sleep Assessment card. View your results now!', ts: Date.now() })); } catch (e) {}
+
       toast({
         title: "Sent",
         description: "Sleep card sent to client",

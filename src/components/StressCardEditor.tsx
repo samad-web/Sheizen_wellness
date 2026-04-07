@@ -142,6 +142,8 @@ export function StressCardEditor({
 
       if (error) throw error;
 
+      try { localStorage.setItem('sheizen-notify', JSON.stringify({ title: 'New Stress Assessment Card', body: 'Your nutritionist has sent your Stress Assessment card. View your results now!', ts: Date.now() })); } catch (e) {}
+
       toast({
         title: "Sent",
         description: "Stress card sent to client",

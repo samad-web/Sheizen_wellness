@@ -101,36 +101,61 @@ serve(async (req) => {
       );
     }
 
-    // Payload
+    // Payload - include tag to group related notifications
     const payload = JSON.stringify({
       title,
       body,
       url: url || '/dashboard',
-      timestamp: Date.now()
+      tag: `sheizen-${title.toLowerCase().replace(/\s+/g, '-').slice(0, 30)}`,
+      timestamp: Date.now(),
     });
 
-    // Send to all
-    const results = await Promise.all(subscriptions.map(async (sub) => {
+    // Filter out subscriptions with missing keys (corrupted data)
+    const validSubscriptions = subscriptions.filter(sub => {
+      if (!sub.endpoint || !sub.p256dh || !sub.auth) {
+        console.warn(`Skipping subscription ${sub.id}: missing endpoint/keys`);
+        return false;
+      }
+      return true;
+    });
+
+    if (validSubscriptions.length === 0) {
+      return new Response(
+        JSON.stringify({ message: 'No valid subscriptions found', sent: 0 }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Send to all valid subscriptions
+    const results = await Promise.all(validSubscriptions.map(async (sub) => {
       const subscription = {
         endpoint: sub.endpoint,
-        keys: { p256dh: sub.p256dh, auth: sub.auth }
+        keys: { p256dh: sub.p256dh, auth: sub.auth },
       };
 
       try {
         const result = await sendWebPush(subscription, payload, {
           subject: vapidSubject,
           publicKey: vapidPublicKey,
-          privateKey: vapidPrivateKey
+          privateKey: vapidPrivateKey,
         });
 
-        if (!result.success && result.statusCode === 410) {
-          // Subscription expired/gone, delete it
+        // Clean up expired/invalid subscriptions
+        if (!result.success && (result.statusCode === 410 || result.statusCode === 404)) {
+          console.log(`Removing expired subscription ${sub.id}`);
           await supabase.from('push_subscriptions').delete().eq('id', sub.id);
         }
 
-        return result;
-      } catch (e) {
-        return { success: false, error: e };
+        // Also clean up on 403 (VAPID key mismatch - user needs to re-subscribe)
+        if (!result.success && result.statusCode === 403) {
+          console.log(`Removing subscription ${sub.id} due to VAPID mismatch`);
+          await supabase.from('push_subscriptions').delete().eq('id', sub.id);
+        }
+
+        return { ...result, subscriptionId: sub.id };
+      } catch (e: any) {
+        console.error(`Error sending to subscription ${sub.id}:`, e);
+        return { success: false, error: e.message, subscriptionId: sub.id };
       }
     }));
 

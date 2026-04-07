@@ -132,6 +132,8 @@ export function PendingReviewDashboard({ onReviewCard, onSuccess, clientId }: Pe
 
       if (error) throw error;
 
+      try { localStorage.setItem('sheizen-notify', JSON.stringify({ title: 'New Assessment Card', body: 'Your nutritionist has sent your assessment card. View your results now!', ts: Date.now() })); } catch (e) {}
+
       toast({
         title: "Card Sent",
         description: "Assessment card sent to client successfully",

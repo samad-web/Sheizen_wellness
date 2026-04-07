@@ -119,6 +119,39 @@ interface MealLog {
   logged_at: string;
 }
 
+// Helper: Show a native browser notification using new Notification() directly
+function showBrowserNotification(title: string, body: string, _url: string) {
+  if (!('Notification' in window)) return;
+
+  if (Notification.permission === 'granted') {
+    try {
+      const n = new Notification(title, {
+        body,
+        icon: '/icon-192.png',
+        tag: `sheizen-${Date.now()}`,
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (err) {
+      console.error('[Notify] Failed:', err);
+    }
+  } else if (Notification.permission === 'default') {
+    Notification.requestPermission().then((perm) => {
+      if (perm === 'granted') {
+        try {
+          const n = new Notification(title, {
+            body,
+            icon: '/icon-192.png',
+            tag: `sheizen-${Date.now()}`,
+          });
+          n.onclick = () => { window.focus(); n.close(); };
+        } catch (err) {
+          console.error('[Notify] Failed:', err);
+        }
+      }
+    });
+  }
+}
+
 const ClientDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -309,6 +342,18 @@ const ClientDetail = () => {
     }
   };
 
+  // Auto-request notification permission
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      const timer = setTimeout(() => {
+        Notification.requestPermission().then((perm) => {
+          console.log('[Notify] Auto-permission result:', perm);
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
   // Real-time messages subscription
   useEffect(() => {
     if (!id) return;
@@ -325,6 +370,11 @@ const ClientDetail = () => {
         setMessages(prev => [...prev, newMsg]);
         if (newMsg.sender_type === 'client') {
           setUnreadCount(prev => prev + 1);
+          showBrowserNotification(
+            'New Message from Client',
+            newMsg.content?.slice(0, 100) || 'You have a new message',
+            `/admin/client/${id}`
+          );
         }
       })
       .subscribe();
@@ -483,6 +533,16 @@ const ClientDetail = () => {
       toast.success('Assessment request sent to client');
       // Refresh client data to update assessment request counts
       refetchClientData();
+
+      // Notify other tabs (client dashboard) via localStorage storage event
+      const label = assessmentType.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+      try {
+        localStorage.setItem('sheizen-notify', JSON.stringify({
+          title: `New ${label} Requested`,
+          body: `Your nutritionist has requested a ${label}. Please complete it.`,
+          ts: Date.now(),
+        }));
+      } catch (e) {}
     } catch (error: any) {
       console.error('Error requesting assessment:', error);
       toast.error(error.message || 'Failed to send assessment request');
@@ -1095,6 +1155,35 @@ const ClientDetail = () => {
           </TabsContent>
 
           <TabsContent value="messages" className="space-y-6">
+            {/* Notification diagnostic */}
+            {(() => {
+              const supported = 'Notification' in window;
+              const perm = supported ? Notification.permission : 'unsupported';
+              if (perm === 'granted') return null;
+              return (
+                <div className="p-3 rounded-lg border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 dark:border-yellow-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm text-yellow-700 dark:text-yellow-300 font-medium">
+                      {!supported ? 'Browser does not support notifications' :
+                       perm === 'denied' ? 'Notifications BLOCKED. Click lock icon → Notifications → Allow, then refresh.' :
+                       'Notifications not enabled. Click to allow →'}
+                    </span>
+                    {perm === 'default' && (
+                      <Button size="sm" variant="outline" className="shrink-0"
+                        onClick={() => {
+                          Notification.requestPermission().then((p) => {
+                            if (p === 'granted') {
+                              try { new Notification('Notifications Enabled!', { body: 'You will now receive message alerts.' }); } catch(e) {}
+                              window.location.reload();
+                            } else { toast.error('Permission denied. Click lock icon in address bar.'); }
+                          });
+                        }}
+                      >Enable Notifications</Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             <Card className="h-[600px] flex flex-col overflow-hidden">
               <CardHeader>
                 <CardTitle>Messages</CardTitle>

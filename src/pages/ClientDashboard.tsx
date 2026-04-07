@@ -61,6 +61,7 @@ import { PendingAssessmentRequests } from "@/components/PendingAssessmentRequest
 import { ClientReportList } from "@/components/ClientReportList";
 import { ClientComprehensiveReportList } from "@/components/ClientComprehensiveReportList";
 import { NotificationSettings } from "@/components/NotificationSettings";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { ClientRecipeList } from "@/components/client/ClientRecipeList";
 import { ClientHealthAssessmentForm } from "@/components/client/ClientHealthAssessmentForm";
 import { ClientStressAssessmentForm } from "@/components/client/ClientStressAssessmentForm";
@@ -70,6 +71,39 @@ import { ModeToggle } from "@/components/mode-toggle";
 import { Textarea } from "@/components/ui/textarea"; // Ensure this is imported or use Input as fallback
 
 import { ClientMeasurementTracker } from "@/components/client/ClientMeasurementTracker"; // Add import
+
+// Helper: Show a native browser notification using new Notification() directly
+function showBrowserNotification(title: string, body: string, _url: string) {
+  if (!('Notification' in window)) return;
+
+  if (Notification.permission === 'granted') {
+    try {
+      const n = new Notification(title, {
+        body,
+        icon: '/icon-192.png',
+        tag: `sheizen-${Date.now()}`,
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (err) {
+      console.error('[Notify] Failed:', err);
+    }
+  } else if (Notification.permission === 'default') {
+    Notification.requestPermission().then((perm) => {
+      if (perm === 'granted') {
+        try {
+          const n = new Notification(title, {
+            body,
+            icon: '/icon-192.png',
+            tag: `sheizen-${Date.now()}`,
+          });
+          n.onclick = () => { window.focus(); n.close(); };
+        } catch (err) {
+          console.error('[Notify] Failed:', err);
+        }
+      }
+    });
+  }
+}
 
 export default function ClientDashboard() {
   const navigate = useNavigate();
@@ -232,6 +266,22 @@ export default function ClientDashboard() {
     }
   }, [data, isLoading, userRole, user, navigate]);
 
+  // Auto-request notification permission when dashboard loads
+  useEffect(() => {
+    if (!clientData?.id) return;
+    if ('Notification' in window && Notification.permission === 'default') {
+      // Small delay so it doesn't interfere with page load
+      const timer = setTimeout(() => {
+        Notification.requestPermission().then((perm) => {
+          console.log('[Notify] Auto-permission result:', perm);
+        });
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [clientData?.id]);
+
+  // Cross-tab notification listener is in main.tsx (runs at app startup, no dependencies)
+
   // Real-time messages subscription
   useEffect(() => {
     if (!clientData?.id) return;
@@ -252,6 +302,15 @@ export default function ClientDashboard() {
         setMessages(prev => [...prev, newMsg]);
         setNewMessage(newMsg);
         setUnreadCount(prev => prev + 1);
+
+        // Show native browser notification for messages from admin/manager/system
+        if (newMsg.sender_type && newMsg.sender_type !== 'client') {
+          showBrowserNotification(
+            'New Message from your Nutritionist',
+            newMsg.content?.slice(0, 100) || 'You have a new message',
+            '/dashboard?tab=messages'
+          );
+        }
       })
       .subscribe((status) => {
 
@@ -277,11 +336,48 @@ export default function ClientDashboard() {
         table: 'pending_review_cards',
         filter: `client_id=eq.${clientData.id}`
       }, (payload) => {
-        const updatedCard = payload.new;
+        const updatedCard = payload.new as any;
         if (updatedCard.status === 'sent') {
           setNewCardNotification(updatedCard);
           fetchAssessmentCards();
-          toast.success(`New ${updatedCard.card_type.replace('_', ' ')} card received!`);
+          const cardLabel = (updatedCard.card_type || 'assessment').replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase());
+          toast.success(`New ${cardLabel} card received!`);
+
+          // Show browser notification
+          showBrowserNotification(
+            `New ${cardLabel} Card`,
+            `Your nutritionist has sent your ${cardLabel} card. View your results now!`,
+            '/dashboard'
+          );
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [clientData?.id]);
+
+  // Real-time weekly plan subscription
+  useEffect(() => {
+    if (!clientData?.id) return;
+
+    const channel = supabase
+      .channel('weekly-plans-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'weekly_plans',
+        filter: `client_id=eq.${clientData.id}`
+      }, (payload) => {
+        const plan = payload.new as any;
+        if (payload.eventType === 'INSERT' || (payload.eventType === 'UPDATE' && plan?.status === 'published')) {
+          toast.success('Your nutritionist has published a new weekly plan!');
+          showBrowserNotification(
+            'New Weekly Plan Published',
+            'Your latest nutrition and meal plan is ready to view!',
+            '/dashboard?tab=diet_plan'
+          );
         }
       })
       .subscribe();
@@ -1358,6 +1454,53 @@ export default function ClientDashboard() {
           </TabsContent>
 
           <TabsContent value="messages">
+            {/* Notification diagnostic banner */}
+            {(() => {
+              const notifSupported = 'Notification' in window;
+              const permission = notifSupported ? Notification.permission : 'unsupported';
+              const swReady = 'serviceWorker' in navigator;
+
+              if (permission === 'granted') return null; // All good, hide banner
+
+              return (
+                <div className="mb-3 p-3 rounded-lg border border-yellow-300 bg-yellow-50 dark:bg-yellow-950/30 dark:border-yellow-800">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm">
+                      {!notifSupported ? (
+                        <span className="text-red-600 font-medium">Browser does not support notifications</span>
+                      ) : permission === 'denied' ? (
+                        <span className="text-red-600 font-medium">
+                          Notifications are BLOCKED. Click the lock icon in the address bar → Notifications → Allow, then refresh.
+                        </span>
+                      ) : (
+                        <span className="text-yellow-700 dark:text-yellow-300 font-medium">
+                          Notifications not enabled yet. Click the button to allow →
+                        </span>
+                      )}
+                    </div>
+                    {permission === 'default' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="shrink-0 border-yellow-400 text-yellow-700 hover:bg-yellow-100"
+                        onClick={() => {
+                          Notification.requestPermission().then((p) => {
+                            if (p === 'granted') {
+                              try { new Notification('Notifications Enabled!', { body: 'You will now receive message alerts.' }); } catch(e) {}
+                              window.location.reload();
+                            } else {
+                              toast.error('Permission denied. Click the lock icon in address bar to change.');
+                            }
+                          });
+                        }}
+                      >
+                        Enable Notifications
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="h-[600px] flex flex-col">
               <Card className="flex-1 flex flex-col overflow-hidden">
                 <CardHeader>
@@ -1414,6 +1557,9 @@ export default function ClientDashboard() {
           onClose={() => setNewMessage(null)}
           onOpen={handleMessagesTabOpen}
         />
+
+        {/* Push Notification Prompt */}
+        <NotificationPrompt clientId={clientData?.id || null} />
 
         {/* Assessment Form Dialog */}
         <Dialog open={showAssessmentForm} onOpenChange={setShowAssessmentForm}>

@@ -361,6 +361,8 @@ export function WeeklyPlanEditor({ clientId, planId, onSuccess }: WeeklyPlanEdit
             url: '/dashboard?tab=diet_plan',
           }
         }).catch(err => console.error('Error sending published plan notification:', err));
+
+        try { localStorage.setItem('sheizen-notify', JSON.stringify({ title: 'New Weekly Plan Published', body: 'Your latest nutrition and meal plan is ready to view!', ts: Date.now() })); } catch (e) {}
       }
 
       toast.success(publish ? "Plan published successfully!" : "Plan saved as draft!");

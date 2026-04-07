@@ -36,7 +36,10 @@ export const sendWebPush = async (
             }
         };
 
-        const result = await webpush.sendNotification(pushSubscription, payload);
+        const result = await webpush.sendNotification(pushSubscription, payload, {
+            TTL: 86400, // 24 hours - keep message in push queue for offline devices
+            urgency: 'high', // Ensures delivery on mobile even in doze/battery saver mode
+        });
         return { success: true, statusCode: result.statusCode };
     } catch (error: any) {
         console.error('WebPush Error:', error);
