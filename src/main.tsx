@@ -48,12 +48,17 @@ window.addEventListener('storage', (e: StorageEvent) => {
     try {
       const { title, body } = JSON.parse(e.newValue);
       if (title && body && 'Notification' in window && Notification.permission === 'granted') {
-        const n = new Notification(title, {
-          body,
-          icon: '/icon-192.png',
-          tag: `sheizen-${Date.now()}`,
-        });
-        n.onclick = () => { window.focus(); n.close(); };
+        // Use service worker on mobile, basic Notification on desktop
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.ready.then((reg) => {
+            reg.showNotification(title, { body, icon: '/icon-192.png', tag: `sheizen-${Date.now()}`, vibrate: [200, 100, 200] });
+          }).catch(() => {});
+        } else {
+          try {
+            const n = new Notification(title, { body, icon: '/icon-192.png', tag: `sheizen-${Date.now()}` });
+            n.onclick = () => { window.focus(); n.close(); };
+          } catch (e) {}
+        }
       }
     } catch (err) {
       console.error('[Notify] storage event error:', err);

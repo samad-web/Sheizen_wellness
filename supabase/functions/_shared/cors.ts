@@ -12,9 +12,9 @@ const allowedOrigins = [
     'http://localhost:5174',                    // Alternative local port
     'http://localhost:3000',                    // Alternative local port
     'http://localhost:8080',                    // User's current local port
-    'https://YOUR_PRODUCTION_DOMAIN.com',       // Production - REPLACE THIS
-    'https://www.YOUR_PRODUCTION_DOMAIN.com',   // Production with www - REPLACE THIS
-    'https://YOUR_STAGING_DOMAIN.com',          // Staging - REPLACE THIS
+    'https://sheizenwellness.com',              // Production
+    'https://www.sheizenwellness.com',          // Production with www
+    'https://tyrannizingly-beamish-jackie.ngrok-free.dev', // ngrok tunnel
 ];
 
 /**

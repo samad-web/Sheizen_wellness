@@ -23,9 +23,29 @@ export function NotificationBell({ clientId, onNavigate }: NotificationBellProps
   const knownMeetingIds = useRef<Set<string>>(new Set());
   const isFirstLoad = useRef(true);
 
-  // Show a browser notification
+  // Show a browser notification (works on both desktop and mobile)
   const notify = useCallback((title: string, body: string, tag: string) => {
-    if ('Notification' in window && Notification.permission === 'granted') {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+    // Try service worker first (works on mobile Android Chrome)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.showNotification(title, {
+          body,
+          icon: '/icon-192.png',
+          badge: '/favicon.ico',
+          tag,
+          data: { url: '/dashboard' },
+          vibrate: [200, 100, 200],
+        });
+      }).catch(() => {
+        // Fallback to basic Notification (desktop)
+        try {
+          const n = new Notification(title, { body, icon: '/icon-192.png', tag });
+          n.onclick = () => { window.focus(); n.close(); };
+        } catch (e) {}
+      });
+    } else {
       try {
         const n = new Notification(title, { body, icon: '/icon-192.png', tag });
         n.onclick = () => { window.focus(); n.close(); };
